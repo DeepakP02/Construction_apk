@@ -1,0 +1,599 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, StatusBar, Dimensions, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SHADOWS } from '../../constants/theme';
+import { useApp } from '../../context/AppContext';
+import api from '../../utils/api';
+
+const { width } = Dimensions.get('window');
+
+const PMProjectDetailScreen = ({ route, navigation }) => {
+    const { projectId } = route.params;
+    const { projects, jobs: allJobs, refreshData, teamMembers, addJob } = useApp();
+    const [loading, setLoading] = useState(false);
+    const [isCreatingJob, setIsCreatingJob] = useState(false);
+    const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+
+    // Create Job states
+    const [jobTitle, setJobTitle] = useState('Demo Project job');
+    const [jobCode, setJobCode] = useState('123 selevt option');
+    const [jobBudget, setJobBudget] = useState('1200');
+    const [leadWorker, setLeadWorker] = useState('Worker');
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState('All');
+
+    const project = (projects || []).find(p => p._id === projectId || p.id === projectId) || {
+        name: 'Demo two',
+        status: 'planning',
+        projectManager: 'p m',
+        budget: 1200,
+        startDate: '2026-03-31',
+        endDate: '2026-05-08'
+    };
+
+    const projectJobs = (allJobs || []).filter(j => (j.projectId?._id || j.projectId) === projectId);
+    const displayJobs = projectJobs.length > 0 ? projectJobs : [{
+        id: 'mock-1',
+        name: 'Demo Project job',
+        jobCode: '123 selevt option',
+        status: 'planning',
+        progress: 0,
+        projectManager: 'p m',
+        leadWorker: 'Worker',
+        crewSize: 0,
+        startDate: '2026-04-09',
+        endDate: '2026-04-22',
+        budget: 1200
+    }];
+
+    const stats = {
+        totalJobs: projectJobs.length || 1,
+    };
+
+    const filteredJobs = projectJobs.length > 0 ? projectJobs.filter(job => {
+        const matchesSearch = (job.name || job.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter = activeFilter === 'All' || 
+            (activeFilter === 'Active' && job.status === 'in_progress') ||
+            (activeFilter === 'Planning' && (job.status === 'planning' || job.status === 'on-hold')) ||
+            (activeFilter === 'Completed' && job.status === 'completed');
+        return matchesSearch && matchesFilter;
+    }) : displayJobs;
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', refreshData);
+        return unsubscribe;
+    }, [navigation]);
+
+    const handleBack = () => navigation.goBack();
+
+    const handleCreateJob = async () => {
+        if (!jobTitle.trim()) {
+            Alert.alert('Required', 'Job title is required');
+            return;
+        }
+
+        try {
+            setIsCreatingJob(true);
+            const payload = {
+                name: jobTitle,
+                jobCode: jobCode,
+                budget: Number(jobBudget) || 0,
+                status: 'planning',
+                progress: 0,
+                projectId: projectId,
+                leadWorker: leadWorker,
+                projectManager: project.projectManager || 'p m',
+                startDate: '2026-04-09',
+                endDate: '2026-04-22'
+            };
+
+            const res = await addJob(payload);
+            if (res.success) {
+                setIsCreateModalVisible(false);
+                setJobTitle('Demo Project job');
+                setJobCode('123 selevt option');
+                setJobBudget('1200');
+                refreshData();
+                Alert.alert('Success', 'Job created successfully');
+            } else {
+                Alert.alert('Error', res.message || 'Failed to create job');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'An unexpected error occurred');
+        } finally {
+            setIsCreatingJob(false);
+        }
+    };
+
+    const handleHeaderMenuPress = () => {
+        Alert.alert('Project Actions', 'Choose an action', [
+            { text: 'Refresh', onPress: refreshData },
+            { text: 'Create Job', onPress: () => setIsCreateModalVisible(true) },
+            { text: 'Cancel', style: 'cancel' },
+        ]);
+    };
+
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleWrap}>
+                <Text style={styles.headerTitle}>{project.name || 'Project Detail'}</Text>
+                <View style={styles.statusBadge}>
+                    <View style={[styles.statusDot, { backgroundColor: '#F97316' }]} />
+                    <Text style={styles.statusText}>{project.status?.toUpperCase() || 'PLANNING'}</Text>
+                </View>
+            </View>
+            <TouchableOpacity style={styles.headerActionBtn} onPress={handleHeaderMenuPress}>
+                <MaterialCommunityIcons name="dots-vertical" size={24} color="#64748B" />
+            </TouchableOpacity>
+        </View>
+    );
+
+    const renderProjectInfo = () => (
+        <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Project Manager</Text>
+                    <View style={styles.managerWrap}>
+                        <View style={styles.managerAvatar}>
+                            <Text style={styles.avatarText}>{(project.projectManager?.[0] || 'P').toUpperCase()}</Text>
+                        </View>
+                        <Text style={styles.managerName}>{project.projectManager || 'Not Assigned'}</Text>
+                    </View>
+                </View>
+                <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Project Phase</Text>
+                    <View style={styles.phaseWrap}>
+                        <Text style={styles.phaseName}>{project.status === 'planning' ? 'Planning' : 'Active Site'}</Text>
+                        <TouchableOpacity style={styles.changeBtn}>
+                            <Text style={styles.changeBtnText}>CHANGE</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+
+    const renderQuickActions = () => {
+        const actions = [
+            {
+                key: 'drawings',
+                icon: 'floor-plan',
+                label: 'View Drawings',
+                color: '#6366F1',
+                onPress: () => navigation.navigate('Drawings', { projectId, projectName: project.name }),
+            },
+            {
+                key: 'client-update',
+                icon: 'update',
+                label: 'Client Update',
+                color: '#10B981',
+                onPress: () => navigation.navigate('Reports', { projectId, projectName: project.name, source: 'client-update' }),
+            },
+            {
+                key: 'create',
+                icon: 'plus-circle',
+                label: 'Create',
+                color: '#F59E0B',
+                onPress: () => setIsCreateModalVisible(true),
+            },
+            {
+                key: 'overview',
+                icon: 'view-dashboard-outline',
+                label: 'Overview',
+                color: '#3B82F6',
+                onPress: () => navigation.navigate('ProjectDetails', { projectId }),
+            },
+            {
+                key: 'purchase-orders',
+                icon: 'cart-outline',
+                label: 'Purchase Orders',
+                color: '#EF4444',
+                onPress: () => navigation.navigate('PurchaseOrders', { projectId, projectName: project.name }),
+            },
+            {
+                key: 'tasks',
+                icon: 'clipboard-list-outline',
+                label: 'Tasks',
+                color: '#8B5CF6',
+                onPress: () => navigation.navigate('MainTabs', {
+                    screen: 'Tasks',
+                    params: { projectId, projectName: project.name }
+                }),
+            },
+            {
+                key: 'deficiencies',
+                icon: 'alert-circle-outline',
+                label: 'Deficiencies',
+                color: '#F43F5E',
+                onPress: () => navigation.navigate('ForemanIssues', { projectId, projectName: project.name }),
+            },
+            {
+                key: 'contacts',
+                icon: 'contacts-outline',
+                label: 'Contacts',
+                color: '#14B8A6',
+                onPress: () => navigation.navigate('CrewClock', { projectId, projectName: project.name }),
+            },
+            {
+                key: 'client-updates',
+                icon: 'bullhorn-outline',
+                label: 'Client Updates',
+                color: '#F97316',
+                onPress: () => navigation.navigate('Reports', { projectId, projectName: project.name, source: 'client-updates' }),
+            },
+        ];
+
+        return (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsScroll}>
+                {actions.map((action) => (
+                    <TouchableOpacity
+                        key={action.key}
+                        style={styles.actionItem}
+                        onPress={() => {
+                            try {
+                                action.onPress?.();
+                            } catch (e) {
+                                Alert.alert('Navigation', `${action.label} is not available right now.`);
+                            }
+                        }}
+                    >
+                        <View style={[styles.actionIconBox, { backgroundColor: action.color + '15' }]}>
+                            <MaterialCommunityIcons name={action.icon} size={22} color={action.color} />
+                        </View>
+                        <Text style={styles.actionLabel}>{action.label}</Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        );
+    };
+
+    const renderDatesAndStats = () => (
+        <View style={styles.statsContainer}>
+            <View style={styles.dateRow}>
+                <View style={styles.dateCard}>
+                    <Text style={styles.dateLabel}>Start Date</Text>
+                    <Text style={styles.dateValue}>{project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Mar 31, 2026'}</Text>
+                </View>
+                <View style={styles.dateCard}>
+                    <Text style={styles.dateLabel}>End Date</Text>
+                    <Text style={styles.dateValue}>{project.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 8, 2026'}</Text>
+                </View>
+            </View>
+
+        </View>
+    );
+
+    const renderJobsHeader = () => (
+        <View style={styles.jobsHeader}>
+            <View style={styles.jobsTitleRow}>
+                <View>
+                    <Text style={styles.jobsTitle}>Jobs</Text>
+                    <Text style={styles.jobsSubtitle}>{stats.totalJobs} job in this project</Text>
+                </View>
+                <TouchableOpacity style={styles.createJobBtn} onPress={() => setIsCreateModalVisible(true)}>
+                    <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                    <Text style={styles.createJobBtnText}>Create Job</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterRow}>
+                <View style={styles.searchBox}>
+                    <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search jobs..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+                    {['All', 'Planning', 'Active', 'Completed'].map(filter => (
+                        <TouchableOpacity
+                            key={filter}
+                            style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+                            onPress={() => setActiveFilter(filter)}
+                        >
+                            <Text style={[styles.filterChipText, activeFilter === filter && styles.filterChipTextActive]}>{filter}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        </View>
+    );
+
+    const renderJobCard = (job) => (
+        <TouchableOpacity key={job._id || job.id} style={styles.jobCard}>
+            <View style={styles.jobCardHeader}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.jobTitle}>{job.name || job.title || 'Untitled Job'}</Text>
+                    <Text style={styles.jobSubtitle}>{job.jobCode || '123 select option'}</Text>
+                </View>
+                <View style={styles.jobStatusWrap}>
+                    <View style={[styles.jobStatusBadge, { backgroundColor: (job.status === 'on_hold' || job.status === 'on-hold') ? '#FEFCE8' : '#EFF6FF' }]}>
+                        <Text style={[styles.jobStatusText, { color: (job.status === 'on_hold' || job.status === 'on-hold') ? '#CA8A04' : '#2563EB' }]}>
+                            {(job.status === 'on_hold' || job.status === 'on-hold') ? 'On Hold' : job.status?.replace('_', ' ').toUpperCase() || 'PLANNING'}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            <View style={styles.progressSection}>
+                <View style={styles.progressLabels}>
+                    <Text style={styles.progressLabel}>Progress</Text>
+                    <Text style={styles.progressValue}>{job.progress || 0}%</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${job.progress || 0}%` }]} />
+                </View>
+            </View>
+
+            <View style={styles.jobMetaGrid}>
+                <View style={styles.metaItem}>
+                    <MaterialCommunityIcons name="account-tie-outline" size={14} color="#64748B" />
+                    <Text style={styles.metaText}>PM: {job.projectManager || project.projectManager || 'p m'}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                    <MaterialCommunityIcons name="account-hard-hat-outline" size={14} color="#64748B" />
+                    <Text style={styles.metaText}>Lead Worker: {job.leadWorker || 'Worker'}</Text>
+                </View>
+            </View>
+
+            <View style={styles.jobActionsRow}>
+                <TouchableOpacity 
+                    style={styles.assignBtn}
+                    onPress={() => navigation.navigate('CrewClock')}
+                >
+                    <MaterialCommunityIcons name="account-plus-outline" size={14} color="#2563EB" />
+                    <Text style={styles.assignBtnText}>Assign Foreman/Sub</Text>
+                </TouchableOpacity>
+                <View style={styles.crewInfo}>
+                    <MaterialCommunityIcons name="account-group-outline" size={14} color="#64748B" />
+                    <Text style={styles.crewText}>Crew: {job.crewSize || 0} assigned</Text>
+                </View>
+            </View>
+
+            <View style={styles.jobFooter}>
+                <View style={styles.footerItem}>
+                    <MaterialCommunityIcons name="calendar-range" size={14} color="#64748B" />
+                    <Text style={styles.footerText}>Apr 9 → Apr 22, 2026</Text>
+                </View>
+                <View style={styles.footerItem}>
+                    <MaterialCommunityIcons name="currency-usd" size={14} color="#10B981" />
+                    <Text style={[styles.footerText, { color: '#10B981', fontWeight: '800' }]}>${(job.budget || 0).toLocaleString()}</Text>
+                </View>
+            </View>
+
+            <View style={styles.equipmentRow}>
+                <Text style={styles.equipmentLabel}>Equipment On Site</Text>
+                <View style={styles.equipmentBadge}>
+                    <Text style={styles.equipmentCount}>0</Text>
+                </View>
+                <Text style={styles.noEquipment}>No equipment assigned</Text>
+            </View>
+        </TouchableOpacity>
+    );
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+            {renderHeader()}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {renderProjectInfo()}
+                {renderQuickActions()}
+                {renderDatesAndStats()}
+                {renderJobsHeader()}
+                
+                {filteredJobs.length > 0 ? (
+                    filteredJobs.map(renderJobCard)
+                ) : (
+                    <TouchableOpacity style={styles.emptyJobs} onPress={() => setIsCreateModalVisible(true)}>
+                        <MaterialCommunityIcons name="office-building" size={48} color="#E2E8F0" />
+                        <Text style={styles.emptyJobsTitle}>Create New Job</Text>
+                        <Text style={styles.emptyJobsSub}>Add a job to this project</Text>
+                    </TouchableOpacity>
+                )}
+            </ScrollView>
+
+            <Modal visible={isCreateModalVisible} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView
+                        style={styles.modalKeyboardWrap}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Create Job</Text>
+                            <TouchableOpacity onPress={() => setIsCreateModalVisible(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color="#0F172A" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView
+                            style={{ maxHeight: 500 }}
+                            keyboardShouldPersistTaps="always"
+                            keyboardDismissMode="none"
+                        >
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Job Title</Text>
+                                <TextInput style={styles.modalInput} value={jobTitle} onChangeText={setJobTitle} placeholder="Job Title" />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Job Code / Option</Text>
+                                <TextInput style={styles.modalInput} value={jobCode} onChangeText={setJobCode} placeholder="123 select option" />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Budget ($)</Text>
+                                <TextInput style={styles.modalInput} value={jobBudget} onChangeText={setJobBudget} placeholder="Budget" keyboardType="numeric" />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Lead Worker</Text>
+                                <TextInput style={styles.modalInput} value={leadWorker} onChangeText={setLeadWorker} placeholder="Lead Worker" />
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.saveBtn, { backgroundColor: '#0F172A', marginTop: 20 }]} 
+                                onPress={handleCreateJob}
+                                disabled={isCreatingJob}
+                            >
+                                {isCreatingJob ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Job</Text>}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
+
+            {/* Bottom Nav Simulation */}
+            <View style={styles.bottomNav}>
+                <TouchableOpacity style={styles.navItem}>
+                    <MaterialCommunityIcons name="view-dashboard" size={24} color="#2563EB" />
+                    <Text style={[styles.navText, { color: '#2563EB' }]}>Dashboard</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navItem}>
+                    <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#64748B" />
+                    <Text style={styles.navText}>Punch List</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        paddingHorizontal: 16, 
+        paddingTop: 30, 
+        paddingBottom: 15,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9'
+    },
+    backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+    headerTitleWrap: { flex: 1, alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
+    statusBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+    statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+    statusText: { fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5 },
+    headerActionBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+
+    scrollContent: { paddingBottom: 100 },
+
+    infoCard: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 12 },
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    infoItem: { flex: 0.48 },
+    infoLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8 },
+    managerWrap: { flexDirection: 'row', alignItems: 'center' },
+    managerAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+    avatarText: { fontSize: 10, fontWeight: '900', color: '#4F46E5' },
+    managerName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    phaseWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    phaseName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    changeBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: '#F1F5F9' },
+    changeBtnText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+
+    actionsScroll: { paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+    actionItem: { alignItems: 'center', width: 80 },
+    actionIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    actionLabel: { fontSize: 10, fontWeight: '700', color: '#64748B', textAlign: 'center' },
+
+    statsContainer: { paddingHorizontal: 16, marginBottom: 20 },
+    dateRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    dateCard: { flex: 0.48, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+    dateLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', marginBottom: 4 },
+    dateValue: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+
+    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+    metricCard: { width: '48.5%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginBottom: 10, borderLeftWidth: 4, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
+    metricLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', marginBottom: 4 },
+    metricValue: { fontSize: 15, fontWeight: '900', color: '#1E293B' },
+
+    jobsHeader: { paddingHorizontal: 16, marginBottom: 12 },
+    jobsTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    jobsTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    jobsSubtitle: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+    createJobBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+    createJobBtnText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF', marginLeft: 4 },
+
+    filterRow: { gap: 12 },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, height: 44, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#1E293B' },
+    filterChips: { gap: 8 },
+    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
+    filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+    filterChipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    filterChipTextActive: { color: '#FFFFFF' },
+
+    emptyJobs: { alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: '#FFFFFF', marginHorizontal: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#E2E8F0' },
+    emptyJobsTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginTop: 12 },
+    emptyJobsSub: { fontSize: 13, fontWeight: '600', color: '#94A3B8', marginTop: 4 },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalKeyboardWrap: { width: '100%' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    inputGroup: { marginBottom: 16 },
+    inputLabel: { fontSize: 12, fontWeight: '900', color: '#64748B', marginBottom: 8, textTransform: 'uppercase' },
+    modalInput: { backgroundColor: '#F8FAFC', borderRadius: 12, height: 48, paddingHorizontal: 16, fontSize: 14, fontWeight: '600', color: '#1E293B', borderWidth: 1, borderColor: '#E2E8F0' },
+    saveBtn: { height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+
+    jobCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
+    jobCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+    jobTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+    jobSubtitle: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginTop: 2 },
+    jobStatusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    jobStatusText: { fontSize: 10, fontWeight: '900' },
+
+    progressSection: { marginBottom: 16 },
+    progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    progressLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    progressValue: { fontSize: 12, fontWeight: '900', color: '#0F172A' },
+    progressBarBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3 },
+    progressBarFill: { height: '100%', backgroundColor: '#10B981', borderRadius: 3 },
+
+    jobMetaGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', flex: 0.48 },
+    metaText: { fontSize: 12, fontWeight: '600', color: '#64748B', marginLeft: 6 },
+
+    jobActionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC', borderBottomWidth: 1, borderBottomColor: '#F8FAFC', marginBottom: 12 },
+    assignBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+    assignBtnText: { fontSize: 11, fontWeight: '800', color: '#2563EB', marginLeft: 4 },
+    crewInfo: { flexDirection: 'row', alignItems: 'center' },
+    crewText: { fontSize: 11, fontWeight: '700', color: '#64748B', marginLeft: 4 },
+
+    jobFooter: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    footerItem: { flexDirection: 'row', alignItems: 'center' },
+    footerText: { fontSize: 12, fontWeight: '700', color: '#64748B', marginLeft: 6 },
+
+    equipmentRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8 },
+    equipmentLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', marginRight: 8 },
+    equipmentBadge: { backgroundColor: '#E2E8F0', width: 18, height: 18, borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+    equipmentCount: { fontSize: 10, fontWeight: '900', color: '#475569' },
+    noEquipment: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
+
+    bottomNav: { 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        height: 60, 
+        backgroundColor: '#FFFFFF', 
+        flexDirection: 'row', 
+        justifyContent: 'space-around', 
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9'
+    },
+    navItem: { alignItems: 'center' },
+    navText: { fontSize: 10, fontWeight: '800', color: '#64748B', marginTop: 4 }
+});
+
+export default PMProjectDetailScreen;

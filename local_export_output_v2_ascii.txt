@@ -1,0 +1,17 @@
+node.exe : Invalid project 
+root: C:\Users\dell\OneDrive\D
+esktop\custruction\App\false
+At C:\Program 
+Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS 
+$args
++   
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (Invalid p  
+  roject...ction\App\false:   
+ String) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 

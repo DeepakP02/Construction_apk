@@ -1,0 +1,20 @@
+node.exe : Invalid 
+project root: C:\Users\
+dell\OneDrive\Desktop\c
+ustruction\App\false
+At C:\Program Files\nod
+ejs\npx.ps1:29 char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Invalid proje   
+ ct...ction\App\fal    
+se:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
