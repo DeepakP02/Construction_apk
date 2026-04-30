@@ -206,7 +206,28 @@ const ForemanPhotosScreen = () => {
                             </TouchableOpacity>
                             <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Brief Note / Activity</Text>
                             <TextInput style={[styles.inputField, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(16), marginBottom: verticalScale(20) }]} placeholder="e.g. Scaffolding complete" value={description} onChangeText={setDescription} />
-                            
+
+                            <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Select Site</Text>
+                            <TouchableOpacity
+                                style={[styles.customDropdownBtn, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(14), marginBottom: verticalScale(20) }]}
+                                onPress={() => openDropdown(
+                                    'Select Upload Site',
+                                    [
+                                        { label: 'General / None', value: 'none', icon: 'link-off' },
+                                        ...projects.map((p) => ({ label: p.name, value: projectIdFromDoc(p), icon: 'office-building' }))
+                                    ],
+                                    (opt) => setUploadProjectId(opt.value === 'none' ? 'none' : idKey(opt.value))
+                                )}
+                            >
+                                <View style={[styles.dropdownLeft, { gap: scale(10) }]}>
+                                    <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
+                                    <Text style={[styles.dropdownValueText, { fontSize: moderateScale(13) }]} numberOfLines={1}>
+                                        {uploadProjectId === 'none' ? 'General / None' : (uploadTargetLabel || 'Select Site')}
+                                    </Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
+                            </TouchableOpacity>
+
                             <TouchableOpacity style={[styles.submitBtn, { height: verticalScale(56), borderRadius: moderateScale(16) }]} onPress={uploadImage} disabled={uploading}>
                                 {uploading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.submitBtnText, { fontSize: moderateScale(16) }]}>SYNC WITH DASHBOARD</Text>}
                             </TouchableOpacity>

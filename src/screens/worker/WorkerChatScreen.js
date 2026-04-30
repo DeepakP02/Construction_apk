@@ -5,13 +5,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
-import { isUserPmOfProject, getAllowedDmPeerIdsForPm } from '../../utils/siteChatScope';
 
 const { width } = Dimensions.get('window');
 
 const WorkerChatScreen = ({ navigation, route }) => {
     const { room } = route.params || {};
-    const { user, messages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile, projects, jobs, tasks } = useApp();
+    const { user, messages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile } = useApp();
     const [msgText, setMsgText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
@@ -33,32 +32,6 @@ const WorkerChatScreen = ({ navigation, route }) => {
                     );
                     return;
                 }
-                if (room.type === 'project' && (projects || []).length > 0) {
-                    const rid = String(room.id);
-                    const p = (projects || []).find((x) => String(x._id || x.id) === rid);
-                    if (!p || !isUserPmOfProject(p, user)) {
-                        Alert.alert(
-                            'Site Communications',
-                            'You can only open chats for projects you manage.',
-                            [{ text: 'OK', onPress: () => navigation.goBack() }]
-                        );
-                        return;
-                    }
-                }
-                if (room.type === 'private') {
-                    const dataReady = (projects?.length > 0) || (jobs?.length > 0) || (tasks?.length > 0);
-                    if (dataReady) {
-                        const allowed = getAllowedDmPeerIdsForPm(projects, jobs, tasks, user);
-                        if (allowed && !allowed.has(String(room.id))) {
-                            Alert.alert(
-                                'Site Communications',
-                                'You can only message people assigned to your projects.',
-                                [{ text: 'OK', onPress: () => navigation.goBack() }]
-                            );
-                            return;
-                        }
-                    }
-                }
             }
 
             setLoading(true);
@@ -77,16 +50,6 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 }
                 if (!cancelled) {
                     await fetchMessages(fetchId);
-                    
-                    // Live Polling
-                    const pollInterval = setInterval(() => {
-                        if (!cancelled) fetchMessages(fetchId);
-                    }, 5000);
-                    
-                    return () => {
-                        cancelled = true;
-                        clearInterval(pollInterval);
-                    };
                 }
             } finally {
                 if (!cancelled) {
@@ -102,7 +65,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 if (typeof cleanupFn === 'function') cleanupFn();
             });
         };
-    }, [room?.id, room?.type, user, projects, jobs, tasks, navigation]);
+    }, [room?.id, room?.type, user, navigation]);
 
     const peerId = room?.id?.toString();
     const myId = user?._id?.toString();
@@ -135,6 +98,8 @@ const WorkerChatScreen = ({ navigation, route }) => {
         return false;
     }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+    const effectiveRoomId = room?.type === 'private' ? (dmRoomId || null) : (room?.id || null);
+
     const handleSend = async () => {
         if (!msgText.trim()) return;
         setSending(true);
@@ -145,7 +110,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
             }
             // Pass correct params: sendMessage(text, projectId, receiverId, roomId)
             const success = room.type === 'private'
-                ? await sendMessage(msgText, null, room.id)
+                ? await sendMessage(msgText, null, room.id, effectiveRoomId || room.id)
                 : await sendMessage(msgText, room.projectId || null, null, room.id);
 
             if (success) {
@@ -223,7 +188,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
             const attachment = await uploadFile(uri, fileName, 'image/jpeg');
 
             const success = room.type === 'private'
-                ? await sendMessage("[Photo Attachment]", null, room.id, room.id, [attachment])
+                ? await sendMessage("[Photo Attachment]", null, room.id, effectiveRoomId || room.id, [attachment])
                 : await sendMessage("[Photo Attachment]", room.projectId || null, null, room.id, [attachment]);
 
             if (success) {

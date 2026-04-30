@@ -9,7 +9,7 @@ import AppNavigation from './src/navigation/AppNavigation';
 import { AppProvider } from './src/context/AppContext';
 import SplashScreen from './src/screens/auth/SplashScreen';
 
-class ErrorBoundary extends Component {
+class ErrorBoundary extends React.Component {
     state = { hasError: false, error: null };
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
     componentDidCatch(error, info) { console.error('CRITICAL APP ERROR:', error, info); }

@@ -1,14 +1,18 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import { Platform } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 import api, { setAuthToken } from '../utils/api';
-import { useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { io } from 'socket.io-client';
 import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ISSUES, MOCK_MESSAGES, MOCK_USER, MOCK_ACTIVITY } from '../mock/data';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+    const socketRef = useRef(null);
+    const appStateRef = useRef(AppState.currentState);
+    const lastPopupMessageIdRef = useRef(null);
     const [user, setUser] = useState(null);
     const [projects, setProjects] = useState([]);
     const [tasks, setTasks] = useState([]);
@@ -33,13 +37,55 @@ export const AppProvider = ({ children }) => {
     const [lastUnreadCount, setLastUnreadCount] = useState(0);
     const [selectedProject, setSelectedProject] = useState(null);
 
-    // Audio setup - using modern expo-audio API
-    const notificationPlayer = useAudioPlayer('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
-    
-    const playNotificationSound = () => {
+    const normalizeNotifications = (rawList) => {
+        const list = Array.isArray(rawList) ? rawList : [];
+        const map = new Map();
+        list.forEach((item) => {
+            const id = String(item?._id || item?.id || '');
+            if (!id) return;
+            const normalized = {
+                ...item,
+                _id: item._id || item.id,
+                title: item.title || 'Notification',
+                message: item.message || '',
+                type: (item.type || 'system').toLowerCase(),
+                isRead: !!item.isRead
+            };
+            map.set(id, normalized);
+        });
+        return Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    };
+
+    // Single sharp iPhone-style tone for all incoming chat notifications.
+    const notificationTone = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+    const notificationPlayer = useAudioPlayer(notificationTone);
+
+    useEffect(() => {
+        const configureAudio = async () => {
+            try {
+                await setAudioModeAsync({
+                    playsInSilentMode: true,
+                    allowsRecording: false,
+                    shouldPlayInBackground: false
+                });
+            } catch (error) {
+                console.log('--- AUDIO MODE ERROR ---', error.message);
+            }
+        };
+        configureAudio();
+    }, []);
+
+    const playNotificationSound = async () => {
         try {
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldPlayInBackground: false
+            });
             if (notificationPlayer) {
-                notificationPlayer.play();
+                // Restart from beginning so rapid incoming messages always produce a sound.
+                await notificationPlayer.seekTo(0);
+                await notificationPlayer.play();
             }
         } catch (error) {
             console.log('--- SOUND PLAY ERROR ---', error.message);
@@ -49,6 +95,13 @@ export const AppProvider = ({ children }) => {
     // Persist login state
     useEffect(() => {
         checkToken();
+    }, []);
+
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (nextState) => {
+            appStateRef.current = nextState;
+        });
+        return () => sub?.remove?.();
     }, []);
 
     const checkToken = async () => {
@@ -139,12 +192,39 @@ export const AppProvider = ({ children }) => {
 
             // SEQUENTIAL FETCH for stability on mobile devices
             const projRes = await fetchData('/projects', setProjects, 'Projects');
-            await new Promise(r => setTimeout(r, 100)); // Minor jitter
-            const taskRes = await fetchData('/tasks', setTasks, 'Tasks');
+            // Give the backend a moment to settle after any recent POST operations
+            await new Promise(r => setTimeout(r, 800)); 
+            const taskRes = await fetchData('/tasks', (data) => {
+                const normalized = (data || []).map(t => ({
+                    ...t,
+                    _id: t._id || t.id,
+                    projectId: typeof t.projectId === 'string' ? { _id: t.projectId } : t.projectId,
+                    parentTaskId: t.parentTaskId?._id || t.parentTaskId || null,
+                    level: Number(t.level || 0),
+                    path: t.path || '',
+                    isSubTask: !!(t.parentTaskId || t.isSubTask)
+                }));
+                
+                setTasks(prev => {
+                    const existingById = new Map((normalized || []).map(t => [String(t._id || t.id), t]));
+                    const now = Date.now();
+
+                    for (const previousTask of (prev || [])) {
+                        const previousId = String(previousTask._id || previousTask.id || '');
+                        if (!previousId || existingById.has(previousId)) continue;
+                        const recentlyOptimistic = previousTask.isOptimistic && (now - (previousTask.createdAtTimestamp || 0) < 20000);
+                        if (recentlyOptimistic) {
+                            existingById.set(previousId, previousTask);
+                        }
+                    }
+
+                    return Array.from(existingById.values());
+                });
+            }, 'Tasks');
             const jobRes = await fetchData('/jobs', setJobs, 'Jobs');
             const actsRes = await fetchData('/reports/stats', null, 'Stats');
             const chatRes = await fetchData('/chat/rooms', setChatRooms, 'ChatRooms');
-            const notifRes = await fetchData('/notifications', setNotifications, 'Notifications');
+            const notifRes = await fetchData('/notifications', (data) => setNotifications(normalizeNotifications(data)), 'Notifications');
             const teamRes = await fetchData('/auth/users', setTeamMembers, 'Team');
             const rfiRes = await fetchData('/rfis', setRFIs, 'RFIs');
             const rfiStatsRes = await fetchData('/rfis/stats', setRfiStats, 'RFIStats');
@@ -160,14 +240,11 @@ export const AppProvider = ({ children }) => {
             // Sync Clock Status & Logs
             const activeUser = currentUser || user;
             if (activeUser?._id) {
-                try {
-                    const logsRes = await api.get(`/timelogs?userId=${activeUser._id}`);
-                    setTimeLogs(logsRes.data);
+                const logsRes = await fetchData(`/timelogs?userId=${activeUser._id}`, setTimeLogs, 'Clock Sync');
+                if (logsRes?.data && Array.isArray(logsRes.data)) {
                     const active = logsRes.data.find(l => !l.clockOut);
                     setIsClockedIn(!!active);
                     if (active) setClockInTime(new Date(active.clockIn));
-                } catch (err) {
-                    console.error('[Fetch Failed] Clock Sync:', err.response?.status, err.response?.data || err.message);
                 }
             }
 
@@ -200,15 +277,132 @@ export const AppProvider = ({ children }) => {
         if (user) {
             interval = setInterval(() => {
                 refreshBackgroundData();
-            }, 30000); // 30s background check
+            }, 10000); // 10s fallback refresh; real-time handled by socket
         }
         return () => clearInterval(interval);
     }, [user]);
 
+    useEffect(() => {
+        let mounted = true;
+        const connectSocket = async () => {
+            if (!user?._id) return;
+
+            const token = await AsyncStorage.getItem('token');
+            const base = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+            if (!token || !base) return;
+
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+
+            const socket = io(base, {
+                transports: ['websocket'],
+                auth: { token },
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 1000,
+            });
+
+            socket.on('connect', () => {
+                socket.emit('register_user', {
+                    _id: user._id,
+                    fullName: user.fullName || user.name || 'User',
+                    role: user.role,
+                    companyId: user.companyId
+                });
+                (chatRooms || []).forEach((room) => {
+                    const rid = room?.id || room?._id;
+                    if (rid) socket.emit('join_room', String(rid));
+                });
+            });
+
+            socket.on('new_message', (incoming) => {
+                if (!mounted || !incoming) return;
+                const incomingId = String(incoming._id || incoming.id || '');
+                const normalizedRoomId = String(incoming.roomId?._id || incoming.roomId || '');
+                const normalizedProjectId = incoming.projectId
+                    ? String(incoming.projectId?._id || incoming.projectId)
+                    : null;
+                const normalizedIncoming = {
+                    ...incoming,
+                    id: incoming._id || incoming.id,
+                    roomId: normalizedRoomId || undefined,
+                    projectId: normalizedProjectId || undefined
+                };
+                setMessages((prev) => {
+                    if (!incomingId) return prev;
+                    if ((prev || []).some((m) => String(m._id || m.id) === incomingId)) return prev;
+                    return [...(prev || []), normalizedIncoming];
+                });
+                setChatRooms((prev) => {
+                    const current = Array.isArray(prev) ? [...prev] : [];
+                    const roomId = normalizedRoomId;
+                    if (!roomId) return current;
+                    const idx = current.findIndex((r) => String(r.id || r._id) === roomId);
+                    if (idx === -1) return current;
+
+                    const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
+                    const isMine = senderId && senderId === String(user._id);
+                    const room = { ...current[idx] };
+                    room.lastMessage = {
+                        text: incoming.message,
+                        sender: incoming.sender?.fullName || room.lastMessage?.sender || 'User',
+                        time: incoming.createdAt || new Date().toISOString()
+                    };
+                    room.unreadCount = isMine ? (room.unreadCount || 0) : ((room.unreadCount || 0) + 1);
+                    current.splice(idx, 1);
+                    current.unshift(room);
+                    return current;
+                });
+
+                if (lastPopupMessageIdRef.current !== incomingId) {
+                    lastPopupMessageIdRef.current = incomingId;
+                    playNotificationSound();
+                }
+            });
+
+            socket.on('new_notification', (payload) => {
+                if (!mounted || !payload) return;
+                if (payload?._id || payload?.id) {
+                    setNotifications((prev) => normalizeNotifications([payload, ...(prev || [])]));
+                }
+                if (payload.roomId && socket.connected) {
+                    socket.emit('join_room', String(payload.roomId));
+                }
+                if (payload.type === 'chat') {
+                    void playNotificationSound();
+                    refreshBackgroundData();
+                }
+            });
+
+            socketRef.current = socket;
+        };
+
+        connectSocket();
+
+        return () => {
+            mounted = false;
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+        };
+    }, [user?._id]);
+
+    useEffect(() => {
+        const socket = socketRef.current;
+        if (!socket || !socket.connected) return;
+        (chatRooms || []).forEach((room) => {
+            const rid = room?.id || room?._id;
+            if (rid) socket.emit('join_room', String(rid));
+        });
+    }, [chatRooms]);
+
     const refreshBackgroundData = async () => {
         try {
             const notifRes = await api.get('/notifications');
-            setNotifications(notifRes.data);
+            setNotifications(normalizeNotifications(notifRes.data));
             
             const chatRes = await api.get('/chat/rooms');
             setChatRooms(chatRes.data);
@@ -315,6 +509,21 @@ export const AppProvider = ({ children }) => {
 
     const addTask = async (newTask) => {
         try {
+            const normalizeDateInput = (value) => {
+                if (!value || typeof value !== 'string') return value;
+                const trimmed = value.trim();
+                if (!trimmed) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+                const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                if (slashMatch) {
+                    const day = slashMatch[1].padStart(2, '0');
+                    const month = slashMatch[2].padStart(2, '0');
+                    const year = slashMatch[3];
+                    return `${year}-${month}-${day}`;
+                }
+                return trimmed;
+            };
+
             // Map status to backend enum: 'todo', 'in_progress', 'review', 'completed'
             const statusMap = {
                 'Pending': 'todo',
@@ -330,16 +539,75 @@ export const AppProvider = ({ children }) => {
                 category: (newTask.category || 'TASK').toUpperCase(),
                 status: statusMap[newTask.status] || 'todo',
                 priority: newTask.priority ? (newTask.priority.charAt(0).toUpperCase() + newTask.priority.slice(1).toLowerCase()) : 'Medium',
-                // If assignedTo is a member name, we should ideally find their ID
-                // For now, let's just make sure we don't crash and try to send what's there
-                assignedTo: Array.isArray(newTask.assignedTo) ? newTask.assignedTo : []
+                assignedTo: Array.isArray(newTask.assignedTo) ? newTask.assignedTo[0] : newTask.assignedTo,
+                dueDate: normalizeDateInput(newTask.dueDate),
+                startDate: normalizeDateInput(newTask.startDate)
             };
 
-            const res = await api.post('/tasks', payload);
-            setTasks([res.data, ...tasks]);
+            if (payload.isChild && !payload.parentTaskId) {
+                console.error('Add task rejected: child task missing parentTaskId', payload);
+                return false;
+            }
+
+            let res;
+            console.log(`--- [AppContext] CREATING TASK ---`, payload);
+            res = await api.post('/tasks', payload);
+
+            const saved = res.data;
+            setTasks(prev => {
+                // Find project name for local display
+                const proj = projects.find(p => (p._id || p.id) === (newTask.projectId || saved.projectId));
+                
+                const normalized = {
+                    ...saved,
+                    _id: saved._id || saved.id,
+                    parentTaskId: saved.parentTaskId || newTask.parentTaskId || null,
+                    projectId: proj ? { _id: proj._id || proj.id, name: proj.name } : newTask.projectId,
+                    level: Number(saved.level || 0),
+                    path: saved.path || '',
+                    isOptimistic: true,
+                    createdAtTimestamp: Date.now(),
+                };
+                console.log('--- [AppContext] OPTIMISTIC ADD ---', normalized.title);
+                return [normalized, ...(prev || [])];
+            });
             return true;
         } catch (e) {
             console.error('Add task error', e.response?.data || e);
+            return false;
+        }
+    };
+
+    const addChildTask = async (parentTaskId, childTaskData = {}) => {
+        try {
+            const parentId = String(parentTaskId || '').trim();
+            if (!parentId) {
+                console.error('addChildTask rejected: missing parentTaskId');
+                return false;
+            }
+
+            const parent = (tasks || []).find(t => String(t._id || t.id) === parentId);
+            if (!parent) {
+                console.error('addChildTask rejected: parent task not found in local state', parentId);
+                return false;
+            }
+
+            const inheritedProjectId = parent.projectId?._id || parent.projectId;
+            if (!inheritedProjectId) {
+                console.error('addChildTask rejected: parent has no projectId', parentId);
+                return false;
+            }
+
+            const payload = {
+                ...childTaskData,
+                parentTaskId: parentId,
+                projectId: inheritedProjectId,
+                isChild: true
+            };
+
+            return await addTask(payload);
+        } catch (e) {
+            console.error('addChildTask error', e?.response?.data || e);
             return false;
         }
     };
@@ -361,7 +629,7 @@ export const AppProvider = ({ children }) => {
 
             // Only send fields that are actually being updated
             const payload = {};
-            const allowedFields = ['status', 'progress', 'remarks', 'cancellationReason', 'priority', 'title', 'description', 'dueDate', 'startDate', 'assignedTo'];
+            const allowedFields = ['status', 'progress', 'remarks', 'cancellationReason', 'priority', 'title', 'description', 'notes', 'dueDate', 'startDate', 'assignedTo', 'assignedRoleType', 'category', 'parentTaskId'];
             
             allowedFields.forEach(field => {
                 if (taskData[field] !== undefined) {
@@ -432,13 +700,16 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const deleteTask = async (id) => {
+    const deleteTask = async (id, options = {}) => {
         try {
-            await api.delete(`/tasks/${id}`);
-            setTasks(tasks.filter(t => t._id !== id && t.id !== id));
+            const action = options?.action || null;
+            const query = action ? `?action=${encodeURIComponent(action)}` : '';
+            console.log(`--- [AppContext] DELETING TASK [ID: ${id}] ---`);
+            await api.delete(`/tasks/${id}${query}`);
+            setTasks(prev => (prev || []).filter(t => (t._id || t.id) !== id));
             return true;
         } catch (e) {
-            console.error('Delete task error', e);
+            console.error('Delete task error', e.response?.data || e);
             return false;
         }
     };
@@ -1021,7 +1292,7 @@ export const AppProvider = ({ children }) => {
             updateProfile, updatePassword,
             teamMembers, fetchTeamMembers, inviteMember, updateTeamMember, deleteTeamMember,
             projects, addProject, updateProject, deleteProject,
-            tasks, addTask, updateTask, deleteTask, setTasks,
+            tasks, addTask, addChildTask, updateTask, deleteTask, setTasks,
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
@@ -1042,9 +1313,17 @@ export const AppProvider = ({ children }) => {
             markNotificationAsRead: async (id) => {
                 try {
                     await api.patch(`/notifications/${id}/read`);
-                    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+                    setNotifications(prev => normalizeNotifications((prev || []).map(n => n._id === id ? { ...n, isRead: true } : n)));
                 } catch (e) {
                     console.error('Mark read error', e);
+                }
+            },
+            markAllNotificationsAsRead: async () => {
+                try {
+                    await api.patch('/notifications/mark-all-read');
+                    setNotifications(prev => normalizeNotifications((prev || []).map(n => ({ ...n, isRead: true }))));
+                } catch (e) {
+                    console.error('Mark all read error', e);
                 }
             },
             loading,

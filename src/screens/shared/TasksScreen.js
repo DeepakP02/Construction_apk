@@ -1,17 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Dimensions } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Dimensions, Platform } from 'react-native';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
-import TaskCard from '../../components/TaskCard';
 import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
 const ROLE_LABELS = {
     PM: 'Project Manager',
+    FOREMAN: 'Foreman',
+    WORKER: 'Worker',
+    SUBCONTRACTOR: 'Subcontractor'
 };
 
 const VIEW_MODES = [
@@ -34,12 +38,103 @@ const TasksScreen = ({ navigation }) => {
     const [viewMode, setViewMode] = useState('list');
     const [displayMode, setDisplayMode] = useState('comfortable');
     const [filterTab, setFilterTab] = useState('all'); // 'my' or 'all'
+    const [collapsedNodes, setCollapsedNodes] = useState(new Set());
     
     // Custom Selector State (Stable)
     const [selVisible, setSelVisible] = useState(false);
     const [selTitle, setSelTitle] = useState('');
     const [selOptions, setSelOptions] = useState([]);
     const [selOnSelect, setSelOnSelect] = useState(() => () => {});
+
+    const COLLAPSE_STORAGE_KEY = 'tasksCollapsedNodesV1';
+
+    const [datePickerMode, setDatePickerMode] = useState(null); // 'startDate' or 'dueDate'
+
+    const promptDeleteTask = (task) => {
+        const id = task?._id || task?.id;
+        if (!id) return;
+        const hasChildren = (task?.children && task.children.length > 0) || (tasks || []).some(t => String(t.parentTaskId ? (t.parentTaskId?._id || t.parentTaskId) : '') === String(id));
+
+        if (!hasChildren) {
+            Alert.alert('Delete Task', `Delete "${task.title}"?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) }
+            ]);
+            return;
+        }
+
+        Alert.alert(
+            'Delete Parent Task',
+            'This task has children. Choose delete strategy.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Move Children Up', onPress: () => deleteTask(id, { action: 'moveUpward' }) },
+                { text: 'Delete All', style: 'destructive', onPress: () => deleteTask(id, { action: 'cascade' }) }
+            ]
+        );
+    };
+
+    const openTaskActions = (task) => {
+        Alert.alert(
+            task?.title || 'Task Actions',
+            'Choose an action',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Add Child Task',
+                    onPress: () => navigation.navigate('TaskCreate', {
+                        isChild: true,
+                        parentTaskId: task._id || task.id,
+                        projectId: task?.projectId?._id || task?.projectId
+                    })
+                },
+                { text: 'Rename / Edit', onPress: () => handleOpenModal(task) },
+                {
+                    text: task.status === 'completed' ? 'Mark Incomplete' : 'Mark Complete',
+                    onPress: () => updateTask(task._id || task.id, { status: task.status === 'completed' ? 'todo' : 'completed' })
+                },
+                { text: 'Delete', style: 'destructive', onPress: () => promptDeleteTask(task) }
+            ]
+        );
+    };
+
+    const formatDate = (date) => {
+        if (!date) return '';
+        try {
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        } catch (e) {
+            return '';
+        }
+    };
+
+    const parsePickerDate = (value) => {
+        if (!value || typeof value !== 'string') return new Date();
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
+    const openDatePicker = (field) => {
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                value: parsePickerDate(form[field]),
+                mode: 'date',
+                is24Hour: true,
+                onChange: (event, selectedDate) => {
+                    if (event.type !== 'set' || !selectedDate) return;
+                    setForm(prev => ({ ...prev, [field]: formatDate(selectedDate) }));
+                }
+            });
+            return;
+        }
+        setDatePickerMode(field);
+    };
 
     const [form, setForm] = useState({
         title: '',
@@ -66,6 +161,24 @@ const TasksScreen = ({ navigation }) => {
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
         return unsubscribe;
     }, [navigation]);
+
+    useEffect(() => {
+        const restoreCollapsed = async () => {
+            try {
+                const raw = await AsyncStorage.getItem(COLLAPSE_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    setCollapsedNodes(new Set(parsed.map(v => String(v))));
+                }
+            } catch (e) {}
+        };
+        restoreCollapsed();
+    }, []);
+
+    useEffect(() => {
+        AsyncStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(Array.from(collapsedNodes))).catch(() => {});
+    }, [collapsedNodes]);
 
     // Metrics Calculation
     const role = user?.role;
@@ -108,49 +221,117 @@ const TasksScreen = ({ navigation }) => {
         const matchesSearch = t.title?.toLowerCase().includes(q) || 
                              t.projectId?.name?.toLowerCase().includes(q) ||
                              t.jobName?.toLowerCase?.().includes?.(q) ||
-                             t.category?.toLowerCase().includes(search.toLowerCase()) ||
+                             t.category?.toLowerCase().includes(q) ||
                              assigneeNames.includes(q);
         
         const matchesTab = filterTab === 'all' ? true : isAssignedToMe;
         
-        // Filter by selected project
-        const matchesSelected = !selectedProject || (t.projectId?._id === (selectedProject._id || selectedProject.id) || t.projectId === (selectedProject._id || selectedProject.id));
-        
-        // For personal-only roles, only show assignments to self (matches backend behavior)
-        const canSee = isManagerial ? true : isAssignedToMe;
-        return canSee && matchesSearch && matchesTab && matchesSelected;
+        // --- FORCE VISIBILITY FOR SUBTASKS ---
+        let matchesSelected = !selectedProject;
+        if (selectedProject) {
+            const selId = String(selectedProject._id || selectedProject.id);
+            const myProjId = String(t.projectId?._id || t.projectId);
+            matchesSelected = myProjId === selId;
+        }
+
+        const isCreatedByMe = String(t.createdBy?._id || t.createdBy) === String(user?._id || user?.id);
+        const canSee = isManagerial ? true : (isAssignedToMe || isCreatedByMe);
+        const isRootForList = !t.parentTaskId;
+        const finalMatch = isRootForList && canSee && matchesSearch && matchesTab && matchesSelected;
+        return finalMatch;
     });
 
     // Build hierarchy for rendering
-    const buildHierarchy = (taskList) => {
+    const buildHierarchy = (allTasks, explicitlyMatchedTasks) => {
         const map = new Map();
         const roots = [];
-        taskList.forEach(t => {
-            map.set(String(t._id || t.id), { ...t, children: [], level: 0 });
-        });
-        taskList.forEach(t => {
+        const orphans = [];
+        const matchedIds = new Set(explicitlyMatchedTasks.map(t => String(t._id || t.id)));
+        
+        // 1. Create a map of all tasks with basic structure
+        allTasks.forEach(t => {
             const id = String(t._id || t.id);
-            const parentId = t.parentTaskId || (typeof t.parentTask === 'object' ? t.parentTask._id : t.parentTask);
+            map.set(id, { ...t, children: [], level: 0 });
+        });
+        
+        // 2. Resolve parent-child links
+        allTasks.forEach(t => {
+            const id = String(t._id || t.id);
             const node = map.get(id);
-            if (parentId && map.has(String(parentId))) {
-                map.get(String(parentId)).children.push(node);
+            
+            const directParentId = t.parentTaskId ? String(t.parentTaskId?._id || t.parentTaskId) : null;
+
+            if (directParentId && map.has(directParentId)) {
+                const parentNode = map.get(directParentId);
+                parentNode.children.push(node);
+                
+                if (!node.projectId && parentNode.projectId) {
+                    node.projectId = parentNode.projectId;
+                }
             } else {
-                roots.push(node);
+                if (!directParentId) {
+                    roots.push(node);
+                } else {
+                    // Strict hierarchy mode: if parent is missing, keep as orphan (do not promote as root).
+                    orphans.push(node);
+                }
             }
         });
+
+        // 3. Visibility Check: Node is visible if matched, or descendant is visible
+        const visibleIds = new Set();
+        
+        const checkVisibility = (node) => {
+            const id = String(node._id || node.id);
+            const isMatched = matchedIds.has(id);
+            let childMatched = false;
+            
+            node.children.forEach(child => {
+                if (checkVisibility(child)) {
+                    childMatched = true;
+                }
+            });
+            
+            if (isMatched || childMatched) {
+                visibleIds.add(id);
+                return true;
+            }
+            return false;
+        };
+
+        roots.forEach(root => checkVisibility(root));
+
+        // 4. Flatten visible tree (Collapse aware)
         const flatList = [];
-        const flatten = (nodes, level) => {
-            nodes.forEach(n => {
-                n.level = level;
-                flatList.push(n);
-                if (n.children.length > 0) flatten(n.children, level + 1);
+        const flatten = (nodes, level, parentCollapsed = false) => {
+            const sortedNodes = [...nodes].sort((a, b) => {
+                const pathSort = String(a.path || '').localeCompare(String(b.path || ''));
+                if (pathSort !== 0) return pathSort;
+                return (a.position || 0) - (b.position || 0);
+            });
+            sortedNodes.forEach(n => {
+                const id = String(n._id || n.id);
+                if (visibleIds.has(id)) {
+                    n.level = level;
+                    n.isCollapsed = collapsedNodes.has(id);
+                    n.hasChildren = n.children && n.children.length > 0;
+                    
+                    if (!parentCollapsed) {
+                        flatList.push(n);
+                    }
+                    
+                    if (n.children && n.children.length > 0) {
+                        flatten(n.children, level + 1, parentCollapsed || collapsedNodes.has(id));
+                    }
+                }
             });
         };
-        flatten(roots, 0);
+        flatten(roots, 0, false);
+        console.log(`--- [Hierarchy] Built tree with ${flatList.length} visible items ---`);
         return flatList;
     };
 
-    const hierarchicalTasks = buildHierarchy(filteredTasks);
+    const hierarchicalTasks = buildHierarchy(tasks || [], filteredTasks);
 
     const now = new Date();
     const overdueCount = filteredTasks.filter(t => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now).length;
@@ -162,31 +343,37 @@ const TasksScreen = ({ navigation }) => {
         ? (teamMembers || []).filter(m => m.role === form.assignedRoleType)
         : (teamMembers || []);
 
-    const handleOpenModal = (task = null) => {
+    const handleOpenModal = (task = null, preselectedParentId = '') => {
         if (task) {
             setEditingTask(task);
             setForm({
                 title: task.title,
                 project: task.projectId?.name || '',
                 projectId: task.projectId?._id || task.projectId || '',
-                parentTaskId: task.parentTaskId || (typeof task.parentTask === 'object' ? task.parentTask._id : task.parentTask) || '',
+                parentTaskId: task.parentTaskId ? (task.parentTaskId?._id || task.parentTaskId) : '',
                 assignedRoleType: task.assignedRoleType || '',
                 assignedTo: Array.isArray(task.assignedTo) ? task.assignedTo.map(a => a._id || a) : [],
                 category: task.category || 'TASK',
                 priority: task.priority || 'Medium',
                 status: task.status || 'todo',
-                startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
-                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+                startDate: formatDate(task.startDate),
+                dueDate: formatDate(task.dueDate),
                 description: task.description || ''
             });
         } else {
             setEditingTask(null);
-            const first = projects[0];
+            const parent = preselectedParentId ? tasks.find(t => String(t._id || t.id) === String(preselectedParentId)) : null;
+            
+            let parentId = '';
+            if (parent) {
+                parentId = parent._id || parent.id;
+            }
+
             setForm({
                 title: '',
-                project: first?.name || '',
-                projectId: first?._id || first?.id || '',
-                parentTaskId: '',
+                project: parent ? (parent.projectId?.name || '') : (selectedProject?.name || projects[0]?.name || ''),
+                projectId: parent ? (parent.projectId?._id || parent.projectId || '') : (selectedProject?._id || selectedProject?.id || projects[0]?._id || projects[0]?.id || ''),
+                parentTaskId: parentId,
                 assignedRoleType: '',
                 assignedTo: [],
                 category: 'TASK',
@@ -224,6 +411,15 @@ const TasksScreen = ({ navigation }) => {
         let success;
         
         const payload = { ...form };
+        
+        // Ensure projectId is strictly set (important for filtering)
+        if (!payload.projectId && payload.parentTaskId) {
+            const parent = tasks.find(t => String(t._id || t.id) === String(payload.parentTaskId));
+            if (parent) {
+                payload.projectId = parent.projectId?._id || parent.projectId;
+            }
+        }
+
         if (!payload.assignedRoleType) delete payload.assignedRoleType;
         if (!payload.startDate) delete payload.startDate;
         if (!payload.dueDate) delete payload.dueDate;
@@ -245,6 +441,7 @@ const TasksScreen = ({ navigation }) => {
 
         if (success) {
             setModalVisible(false);
+            // Wait for DB indexing to settle before refreshing the list
             refreshData();
         } else {
             Alert.alert('Error', 'Operation failed. Please check your connection.');
@@ -285,7 +482,11 @@ const TasksScreen = ({ navigation }) => {
                             onChangeText={setSearch}
                         />
                     </View>
-                    <TouchableOpacity style={styles.createTaskBtn} activeOpacity={0.8} onPress={() => handleOpenModal()}>
+                    <TouchableOpacity
+                        style={styles.createTaskBtn}
+                        activeOpacity={0.8}
+                        onPress={() => navigation.navigate('TaskCreate')}
+                    >
                         <MaterialCommunityIcons name="plus" size={16} color="#fff" />
                         <Text style={styles.createTaskBtnText}>New</Text>
                     </TouchableOpacity>
@@ -312,7 +513,7 @@ const TasksScreen = ({ navigation }) => {
 
             <Animated.FlatList
                 data={hierarchicalTasks}
-                keyExtractor={(item, index) => item._id ? `task-${item._id}-${index}` : `task-idx-${index}`}
+                keyExtractor={(item, index) => item._id ? `task-${item._id}` : `task-idx-${index}`}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
@@ -323,55 +524,112 @@ const TasksScreen = ({ navigation }) => {
                         completed: { color: '#10B981', bg: '#ECFDF5', label: 'DONE' }
                     };
                     const sc = statusColors[item.status] || statusColors.todo;
+                    const level = item.level || 0;
 
-                    return (
-                        <TouchableOpacity 
-                            style={[styles.taskTableRow, SHADOWS.small, { marginLeft: (item.level || 0) * 20 }]} 
-                            activeOpacity={0.7}
-                            onPress={() => handleOpenModal(item)}
-                        >
-                            <View style={styles.tableTopRow}>
-                                <View style={styles.tableNameCol}>
-                                    <View style={[styles.indicatorLine, { backgroundColor: sc.color }]} />
-                                    <View style={{ flex: 1 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                            {item.level > 0 && <MaterialCommunityIcons name="subdirectory-arrow-right" size={14} color="#94A3B8" />}
-                                            <Text style={[styles.taskTitleText, { fontSize: width < 380 ? 12 : 14 }]} numberOfLines={1} adjustsFontSizeToFit>{item.title}</Text>
+                        // Damped spacing scheme to scale for infinite hierarchies
+                        const dynamicMargin = level === 0 ? 0 : level === 1 ? 18 : level === 2 ? 32 : Math.min(32 + (level - 2) * 8, 60);
+                        const isDeepLevel = level >= 3;
+
+                        return (
+                            <View style={[styles.taskItemWrapper, { marginLeft: dynamicMargin }]}>
+                                {level > 0 && (
+                                    <View style={styles.treeConnector}>
+                                        <View style={[styles.connectorVertical, { bottom: 25 }]} />
+                                        <View style={styles.connectorHorizontal} />
+                                    </View>
+                                )}
+                                <TouchableOpacity 
+                                    style={[
+                                        styles.taskTableRow, 
+                                        SHADOWS.small,
+                                        level > 0 && styles.subtaskCard,
+                                        level > 1 && styles.deepSubtaskCard,
+                                        isDeepLevel && { padding: 8 } // Tighter padding for deep hierarchy
+                                    ]} 
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('TaskHierarchyDetail', { taskId: item._id || item.id })}
+                                    onLongPress={() => openTaskActions(item)}
+                                >
+                                    <View style={styles.tableTopRow}>
+                                        <View style={styles.tableNameCol}>
+                                            <View style={[styles.indicatorLine, { backgroundColor: sc.color }]} />
+                                            <View style={{ flex: 1 }}>
+                                                <View style={styles.badgeRow}>
+                                                    <View style={[styles.typeBadge, { backgroundColor: level === 0 ? '#EFF6FF' : (level === 1 ? '#F0FDF4' : '#FFF7ED') }]}>
+                                                        <Text style={[styles.typeBadgeText, { color: level === 0 ? '#3B82F6' : (level === 1 ? '#22C55E' : '#F97316') }]}>
+                                                            {level === 0 ? 'MAIN TASK' : (level === 1 ? 'SUBTASK' : `LEVEL ${level}`)}
+                                                        </Text>
+                                                    </View>
+                                                    {level > 0 && (
+                                                        <View style={styles.parentTag}>
+                                                            <Text style={styles.parentTagText} numberOfLines={1}>
+                                                                OF: {(tasks.find(t => String(t._id || t.id) === String(item.parentTaskId ? (item.parentTaskId?._id || item.parentTaskId) : ''))?.title || 'Parent').toUpperCase()}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                    {item.hasChildren && (
+                                                        <TouchableOpacity 
+                                                            style={{ padding: 4 }}
+                                                            onPress={() => {
+                                                                const newCollapsed = new Set(collapsedNodes);
+                                                                const id = String(item._id || item.id);
+                                                                if (newCollapsed.has(id)) {
+                                                                    newCollapsed.delete(id);
+                                                                } else {
+                                                                    newCollapsed.add(id);
+                                                                }
+                                                                setCollapsedNodes(newCollapsed);
+                                                            }}
+                                                        >
+                                                            <MaterialCommunityIcons 
+                                                                name={item.isCollapsed ? 'chevron-right' : 'chevron-down'} 
+                                                                size={18} 
+                                                                color="#64748B" 
+                                                            />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                    <Text style={[styles.taskTitleText, { fontSize: isDeepLevel ? 12 : (width < 380 ? 13 : 15) }]} numberOfLines={1}>{item.title}</Text>
+                                                </View>
+                                                <Text style={styles.projectContextText} numberOfLines={1}>
+                                                    {item.projectId?.name || item.project || 'Main Project'}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <Text style={styles.projectContextText} numberOfLines={1}>{item.projectId?.name || 'Project Name'}</Text>
+                                        
+                                        <View style={styles.tableMetricCol}>
+                                            <View style={[styles.miniStatusBadge, { backgroundColor: sc.bg, borderColor: sc.color + '20' }]}>
+                                                <Text style={[styles.miniStatusText, { color: sc.color }]}>{sc.label}</Text>
+                                            </View>
+                                        </View>
                                     </View>
-                                </View>
-                                
-                                <View style={styles.tableMetricCol}>
-                                    <View style={[styles.miniStatusBadge, { backgroundColor: sc.bg, borderColor: sc.color + '20' }]}>
-                                        <Text style={[styles.miniStatusText, { color: sc.color }]}>{sc.label}</Text>
-                                    </View>
-                                </View>
-                            </View>
 
-                            <View style={styles.tableBottomRow}>
-                                <View style={[styles.assigneeCol, { flex: 1.5 }]}>
-                                    <MaterialCommunityIcons name="account-circle-outline" size={12} color="#94A3B8" />
-                                    <Text style={styles.assigneeText} numberOfLines={1} adjustsFontSizeToFit>
-                                        {Array.isArray(item.assignedTo) && item.assignedTo.length > 0 
-                                            ? item.assignedTo[0].fullName 
-                                            : (item.assignedTo?.fullName || 'Unassigned')}
-                                    </Text>
-                                </View>
-                                <View style={[styles.dateCol, { flex: 1 }]}>
-                                    <MaterialCommunityIcons name="calendar-clock" size={12} color="#94A3B8" />
-                                    <Text style={styles.tableDateText} numberOfLines={1}>{item.dueDate ? new Date(item.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Date'}</Text>
-                                </View>
-                                <View style={styles.actionsCol}>
-                                    <TouchableOpacity onPress={() => handleOpenModal(item)}>
-                                        <MaterialCommunityIcons name="pencil" size={14} color="#64748B" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => deleteTask(item._id || item.id)}>
-                                        <MaterialCommunityIcons name="trash-can-outline" size={14} color="#EF4444" />
-                                    </TouchableOpacity>
-                                </View>
+                                    <View style={styles.tableBottomRow}>
+                                        <View style={[styles.assigneeCol, { flex: 1.5 }]}>
+                                            <MaterialCommunityIcons name="account-circle-outline" size={12} color="#94A3B8" />
+                                            <Text style={styles.assigneeText} numberOfLines={1} adjustsFontSizeToFit>
+                                                {Array.isArray(item.assignedTo) && item.assignedTo.length > 0 
+                                                    ? item.assignedTo[0].fullName 
+                                                    : (item.assignedTo?.fullName || 'Unassigned')}
+                                            </Text>
+                                        </View>
+                                        <View style={[styles.dateCol, { flex: 1 }]}>
+                                            <MaterialCommunityIcons name="calendar-clock" size={12} color="#94A3B8" />
+                                            <Text style={styles.tableDateText} numberOfLines={1}>{item.dueDate ? new Date(item.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Date'}</Text>
+                                        </View>
+                                        <View style={styles.actionsCol}>
+                                            <TouchableOpacity onPress={() => handleOpenModal(item)}>
+                                                <MaterialCommunityIcons name="pencil" size={isDeepLevel ? 12 : 14} color="#64748B" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => promptDeleteTask(item)}>
+                                                <MaterialCommunityIcons name="trash-can-outline" size={isDeepLevel ? 12 : 14} color="#EF4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
                             </View>
-                        </TouchableOpacity>
                     );
                 }}
             />
@@ -408,15 +666,21 @@ const TasksScreen = ({ navigation }) => {
 
                             <DropdownField 
                                 label="Parent Task (Optional)" 
-                                value={form.parentTaskId ? (tasks.find(t => (t._id || t.id) === form.parentTaskId)?.title || 'Selected') : 'None (Top Level)'} 
+                                value={form.parentTaskId ? (tasks.find(t => String(t._id || t.id) === String(form.parentTaskId))?.title || 'Selected') : 'None (Top Level)'} 
                                 onPress={() => openDropdown('Parent Task', 
                                     [
-                                        { label: 'None (Top Level)', value: '' },
+                                        { label: 'None (Top Level)', value: 'NONE' },
                                         ...(tasks || [])
                                             .filter(t => (t.projectId?._id || t.projectId) === form.projectId && (t._id || t.id) !== (editingTask?._id || editingTask?.id))
                                             .map(t => ({ label: t.title, value: t._id || t.id }))
                                     ],
-                                    (val) => setForm({ ...form, parentTaskId: val })
+                                    (val) => {
+                                        if (val === 'NONE') {
+                                            setForm({ ...form, parentTaskId: '' });
+                                        } else {
+                                            setForm({ ...form, parentTaskId: val });
+                                        }
+                                    }
                                 )}
                             />
 
@@ -479,13 +743,49 @@ const TasksScreen = ({ navigation }) => {
                             />
 
                             <View style={styles.formGrid}>
-                                <View style={{ flex: 1 }}>
-                                    <CustomInput label="Start Date" placeholder="YYYY-MM-DD" value={form.startDate} onChangeText={t => setForm({ ...form, startDate: t })} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <CustomInput label="Due Date" placeholder="YYYY-MM-DD" value={form.dueDate} onChangeText={t => setForm({ ...form, dueDate: t })} />
-                                </View>
+                                <TouchableOpacity 
+                                    style={{ flex: 1 }} 
+                                    activeOpacity={0.7}
+                                    onPress={() => openDatePicker('startDate')}
+                                >
+                                    <CustomInput 
+                                        label="Start Date" 
+                                        placeholder="YYYY-MM-DD" 
+                                        value={form.startDate} 
+                                        editable={false}
+                                        icon="calendar-start"
+                                    />
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={{ flex: 1 }} 
+                                    activeOpacity={0.7}
+                                    onPress={() => openDatePicker('dueDate')}
+                                >
+                                    <CustomInput 
+                                        label="Due Date" 
+                                        placeholder="YYYY-MM-DD" 
+                                        value={form.dueDate} 
+                                        editable={false}
+                                        icon="calendar-check"
+                                    />
+                                </TouchableOpacity>
                             </View>
+
+                            {Platform.OS === 'ios' && datePickerMode && (
+                                <DateTimePicker
+                                    value={parsePickerDate(form[datePickerMode])}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={(event, selectedDate) => {
+                                        if (event.type === 'set') {
+                                            const savedMode = datePickerMode;
+                                            if (selectedDate) {
+                                                setForm(prev => ({ ...prev, [savedMode]: formatDate(selectedDate) }));
+                                            }
+                                        }
+                                    }}
+                                />
+                            )}
 
                             <Text style={styles.label}>Description</Text>
                             <TextInput
@@ -531,6 +831,7 @@ const TasksScreen = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
+
         </View>
     );
 };
@@ -600,6 +901,70 @@ const styles = StyleSheet.create({
     dateCol: { flex: 0.8, flexDirection: 'row', alignItems: 'center', gap: 4 },
     tableDateText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
     actionsCol: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+    taskItemWrapper: { position: 'relative' },
+    treeConnector: {
+        position: 'absolute',
+        left: -18,
+        top: 0,
+        bottom: 0,
+        width: 20,
+        zIndex: 1,
+    },
+    connectorVertical: {
+        position: 'absolute',
+        left: 10,
+        top: -20,
+        bottom: 25,
+        width: 1.5,
+        backgroundColor: '#CBD5E1',
+    },
+    connectorHorizontal: {
+        position: 'absolute',
+        left: 10,
+        top: 25,
+        width: 12,
+        height: 1.5,
+        backgroundColor: '#CBD5E1',
+    },
+    subtaskCard: {
+        backgroundColor: '#F8FAFC',
+        borderColor: '#E2E8F0',
+        elevation: 1,
+        shadowOpacity: 0.05
+    },
+    deepSubtaskCard: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#CBD5E1',
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 2
+    },
+    typeBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    typeBadgeText: {
+        fontSize: 7,
+        fontWeight: '900',
+    },
+    parentTag: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        maxWidth: 120
+    },
+    parentTagText: {
+        fontSize: 7,
+        fontWeight: '900',
+        color: '#64748B'
+    },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },

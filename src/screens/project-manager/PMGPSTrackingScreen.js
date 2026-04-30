@@ -34,7 +34,6 @@ const PMGPSTrackingScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [rows, setRows] = useState([]);
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
     const mapRef = useRef(null);
     const simulatedLocationsRef = useRef({});
 
@@ -154,9 +153,18 @@ const PMGPSTrackingScreen = ({ navigation }) => {
 
     const openMap = async (item) => {
         if (!item.hasGps) return;
-        const url = `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`;
         try {
-            await Linking.openURL(url);
+            const latLng = `${item.latitude},${item.longitude}`;
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latLng}`;
+            const iosAppleMapsUrl = `http://maps.apple.com/?q=${latLng}`;
+            const fallbackUrl = Platform.OS === 'ios' ? iosAppleMapsUrl : googleMapsUrl;
+
+            const canOpenGoogle = await Linking.canOpenURL(googleMapsUrl);
+            if (canOpenGoogle) {
+                await Linking.openURL(googleMapsUrl);
+                return;
+            }
+            await Linking.openURL(fallbackUrl);
         } catch (e) {
             console.error('Map open failed:', e.message);
         }
@@ -185,37 +193,10 @@ const PMGPSTrackingScreen = ({ navigation }) => {
                 <TouchableOpacity
                     style={[styles.btn, !item.hasGps && styles.btnDisabled]}
                     disabled={!item.hasGps}
-                    onPress={() => {
-                        if (viewMode === 'list') {
-                            setViewMode('map');
-                            setTimeout(() => {
-                                mapRef.current?.animateToRegion({
-                                    latitude: item.latitude,
-                                    longitude: item.longitude,
-                                    latitudeDelta: 0.01,
-                                    longitudeDelta: 0.01,
-                                }, 1000);
-                            }, 500);
-                        } else {
-                            mapRef.current?.animateToRegion({
-                                latitude: item.latitude,
-                                longitude: item.longitude,
-                                latitudeDelta: 0.01,
-                                longitudeDelta: 0.01,
-                            }, 1000);
-                        }
-                    }}
+                    onPress={() => openMap(item)}
                 >
                     <MaterialCommunityIcons name="map-marker-radius-outline" size={16} color={item.hasGps ? "#fff" : "#94A3B8"} />
                     <Text style={[styles.btnText, !item.hasGps && styles.btnTextDisabled]}>View on Map</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.btnSecondary, !item.hasGps && styles.btnDisabled]}
-                    disabled={!item.hasGps}
-                    onPress={() => openMap(item)}
-                >
-                    <MaterialCommunityIcons name="google-maps" size={16} color={item.hasGps ? "#64748B" : "#94A3B8"} />
-                    <Text style={[styles.btnTextSecondary, !item.hasGps && styles.btnTextDisabledSecondary]}>External</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -300,24 +281,21 @@ const PMGPSTrackingScreen = ({ navigation }) => {
             );
         }
 
-        if (viewMode === 'list') {
-            return (
-                <FlatList
-                    data={filteredRows}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    contentContainerStyle={filteredRows.length ? styles.listContent : styles.emptyContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchLiveGps({ silent: true }); }} />}
-                    ListEmptyComponent={
-                        <View style={styles.empty}>
-                            <MaterialCommunityIcons name="crosshairs-question" size={50} color="#CBD5E1" />
-                            <Text style={styles.emptyText}>No active worker locations found.</Text>
-                        </View>
-                    }
-                />
-            );
-        }
-        return renderMap();
+        return (
+            <FlatList
+                data={filteredRows}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                contentContainerStyle={filteredRows.length ? styles.listContent : styles.emptyContent}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchLiveGps({ silent: true }); }} />}
+                ListEmptyComponent={
+                    <View style={styles.empty}>
+                        <MaterialCommunityIcons name="crosshairs-question" size={50} color="#CBD5E1" />
+                        <Text style={styles.emptyText}>No active worker locations found.</Text>
+                    </View>
+                }
+            />
+        );
     };
 
     return (
@@ -332,18 +310,6 @@ const PMGPSTrackingScreen = ({ navigation }) => {
                     <Text style={[styles.subtitle, { fontSize: moderateScale(11) }]}>Real-time site presence monitoring</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    {width < 768 && (
-                        <TouchableOpacity 
-                            onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')} 
-                            style={[styles.viewToggle, { backgroundColor: viewMode === 'map' ? '#2563EB' : '#F1F5F9' }]}
-                        >
-                            <MaterialCommunityIcons 
-                                name={viewMode === 'list' ? 'map-outline' : 'format-list-bulleted'} 
-                                size={20} 
-                                color={viewMode === 'map' ? '#fff' : '#0F172A'} 
-                            />
-                        </TouchableOpacity>
-                    )}
                     <TouchableOpacity onPress={() => fetchLiveGps({ silent: true })} style={styles.refreshBtn}>
                         <MaterialCommunityIcons name="refresh" size={20} color="#2563EB" />
                     </TouchableOpacity>
@@ -378,7 +344,6 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
     backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    viewToggle: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     refreshBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     title: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
     subtitle: { fontSize: 11, fontWeight: '700', color: '#64748B', marginTop: 1 },
@@ -400,14 +365,11 @@ const styles = StyleSheet.create({
     badgeTextNoGps: { color: '#991B1B' },
     meta: { marginTop: 8, fontSize: 11, fontWeight: '700', color: '#64748B' },
     coords: { marginTop: 4, fontSize: 12, fontWeight: '800', color: '#334155' },
-    actions: { marginTop: 10, flexDirection: 'row', gap: 8 },
-    btn: { backgroundColor: '#2563EB', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' },
-    btnSecondary: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+    actions: { marginTop: 12 },
+    btn: { backgroundColor: '#2563EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', minHeight: 50 },
     btnDisabled: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', borderWidth: 1, opacity: 0.6 },
-    btnText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+    btnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
     btnTextDisabled: { color: '#94A3B8' },
-    btnTextSecondary: { color: '#64748B', fontSize: 11, fontWeight: '900' },
-    btnTextDisabledSecondary: { color: '#CBD5E1' },
     mapContainer: { flex: 1, overflow: 'hidden' },
     map: { width: '100%', height: '100%' },
     mapOverlay: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: 'rgba(15, 23, 42, 0.9)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },

@@ -88,7 +88,11 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
         const config = statusConfig[item.status] || { label: '???', color: '#64748B', bg: '#F8FAFC' };
 
         return (
-            <View style={[styles.ultraCompactRow, SHADOWS.small]}>
+            <TouchableOpacity
+                activeOpacity={0.9}
+                style={[styles.ultraCompactRow, SHADOWS.small]}
+                onPress={() => navigation.navigate('PMProjectDetail', { projectId: item._id })}
+            >
                 <View style={styles.topSection}>
                     <View style={styles.mainInfo}>
                         <View style={[styles.indicatorLine, { backgroundColor: config.color }]} />
@@ -119,15 +123,12 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
                         <TouchableOpacity style={styles.miniBtn} onPress={() => navigation.navigate('Drawings', { projectId: item._id })}>
                             <MaterialCommunityIcons name="floor-plan" size={14} color="#10B981" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.miniBtn} onPress={() => navigation.navigate('PMProjectDetail', { projectId: item._id })}>
-                            <MaterialCommunityIcons name="eye" size={14} color="#64748B" />
-                        </TouchableOpacity>
                         <TouchableOpacity style={styles.miniBtn} onPress={() => openEditModal(item)}>
                             <MaterialCommunityIcons name="pencil" size={14} color="#F59E0B" />
                         </TouchableOpacity>
                     </View>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 

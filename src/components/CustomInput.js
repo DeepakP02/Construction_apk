@@ -3,7 +3,7 @@ import { View, TextInput, Text, StyleSheet, Platform, Dimensions } from 'react-n
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const CustomInput = ({ label, placeholder, value, onChangeText, secureTextEntry, error, icon, keyboardType, autoCapitalize }) => {
+const CustomInput = ({ label, placeholder, value, onChangeText, secureTextEntry, error, icon, keyboardType, autoCapitalize, ...props }) => {
     const [isFocused, setIsFocused] = React.useState(false);
 
     return (
@@ -33,6 +33,7 @@ const CustomInput = ({ label, placeholder, value, onChangeText, secureTextEntry,
                     autoCapitalize={autoCapitalize}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
+                    {...props}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}

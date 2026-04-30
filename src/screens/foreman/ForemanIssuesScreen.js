@@ -3,7 +3,7 @@ import {
     View, Text, StyleSheet, FlatList, ActivityIndicator,
     TouchableOpacity, Modal, TextInput, Alert, ScrollView,
     Dimensions, StatusBar, SafeAreaView, RefreshControl, useWindowDimensions,
-    Image, Platform
+    Image, Platform, KeyboardAvoidingView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,8 +14,9 @@ import api, { getServerUrl } from '../../utils/api';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ForemanIssuesScreen = ({ navigation }) => {
-    const { issues, projects, addIssue, refreshData, uploadFile } = useApp();
+const ForemanIssuesScreen = ({ navigation, route }) => {
+    const { issues, projects, refreshData } = useApp();
+    const focusedProjectId = String(route?.params?.projectId || '');
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const [loading, setLoading] = useState(false);
@@ -77,12 +78,14 @@ const ForemanIssuesScreen = ({ navigation }) => {
 
     const filteredIssues = useMemo(() => {
         return (issues || []).filter(issue => {
+            const issueProjectId = String(issue?.projectId?._id || issue?.projectId || '');
+            const matchesProject = !focusedProjectId || issueProjectId === focusedProjectId;
             const matchesSearch = (issue.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                                  (issue.description || '').toLowerCase().includes(searchQuery.toLowerCase());
             const matchesStatus = selectedStatus === 'All' || issue.status === selectedStatus;
-            return matchesSearch && matchesStatus;
+            return matchesProject && matchesSearch && matchesStatus;
         });
-    }, [issues, searchQuery, selectedStatus]);
+    }, [issues, searchQuery, selectedStatus, focusedProjectId]);
 
     const handleCreateIssue = async () => {
         if (!form.title || !form.projectId) {
@@ -92,37 +95,33 @@ const ForemanIssuesScreen = ({ navigation }) => {
 
         try {
             setSubmitting(true);
-            
-            // 1. Upload attachments first if any
-            let uploadedAttachments = [];
-            if (form.attachments && form.attachments.length > 0) {
-                const uploadPromises = form.attachments.map((uri, idx) => 
-                    uploadFile(uri, `issue_photo_${idx}_${Date.now()}.jpg`, 'image/jpeg', '[INTERNAL_ISSUE_PHOTO]', form.projectId)
-                );
-                uploadedAttachments = await Promise.all(uploadPromises);
-            }
 
-            // 2. Submit issue as JSON (Reliable & matches Backend expectations)
-            const payload = {
-                title: form.title,
-                description: form.description || '',
-                priority: form.priority.toLowerCase(),
-                projectId: form.projectId,
-                location: form.location || '',
-                status: 'open',
-                date: new Date().toISOString(),
-                attachments: uploadedAttachments
-            };
+            // Submit as multipart so backend stores issue images in `images`.
+            const formData = new FormData();
+            formData.append('title', form.title);
+            formData.append('description', form.description || '');
+            formData.append('priority', form.priority.toLowerCase());
+            formData.append('projectId', form.projectId);
+            formData.append('location', form.location || '');
+            formData.append('status', 'open');
+            formData.append('date', new Date().toISOString());
 
-            const res = await addIssue(payload);
+            (form.attachments || []).forEach((uri, idx) => {
+                formData.append('images', {
+                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+                    name: `issue_photo_${idx}_${Date.now()}.jpg`,
+                    type: 'image/jpeg'
+                });
+            });
 
-            if (res.success) {
-                setModalVisible(false);
-                setForm({ title: '', description: '', priority: 'Medium', projectId: null, location: '', attachments: [] });
-                Alert.alert('Success', 'Issue reported successfully');
-            } else {
-                Alert.alert('Error', res.message);
-            }
+            await api.post('/issues', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            setModalVisible(false);
+            setForm({ title: '', description: '', priority: 'Medium', projectId: null, location: '', attachments: [] });
+            await refreshData();
+            Alert.alert('Success', 'Issue reported successfully');
         } catch (e) {
             console.error('Issue Submit Error:', e.response?.data || e.message);
             Alert.alert('Error', 'Failed to submit issue report');
@@ -139,17 +138,24 @@ const ForemanIssuesScreen = ({ navigation }) => {
             default: return '#64748B';
         }
     };
+    const normalizeIssueImages = (issue) => {
+        const toArray = (value) => {
+            if (!value) return [];
+            return Array.isArray(value) ? value : [value];
+        };
+        return [
+            ...toArray(issue?.attachments),
+            ...toArray(issue?.images),
+            ...toArray(issue?.photoIds)
+        ];
+    };
+    const resolveAttachmentUrl = (att) => {
+        if (!att) return null;
+        if (typeof att === 'string') return att;
+        return att.url || att.imageUrl || att.uri || null;
+    };
 
     const renderIssueItem = ({ item }) => {
-        const getAttachmentUrl = (att) => {
-            if (!att) return null;
-            if (typeof att === 'string') return att;
-            return att.url || att.imageUrl || att.uri || null;
-        };
-
-        const firstPhoto = item.attachments && item.attachments.length > 0 ? getAttachmentUrl(item.attachments[0]) : null;
-        const hasImage = !!firstPhoto;
-        
         return (
             <TouchableOpacity 
                 style={[styles.issueCard, SHADOWS.small, { borderRadius: moderateScale(24), marginBottom: verticalScale(16) }]} 
@@ -174,23 +180,6 @@ const ForemanIssuesScreen = ({ navigation }) => {
                             
                             <Text style={[styles.issueDesc, { fontSize: moderateScale(13), marginBottom: verticalScale(15), lineHeight: moderateScale(18) }]} numberOfLines={2}>{item.description || 'No additional details provided.'}</Text>
                         </View>
-
-                        {hasImage && (
-                            <TouchableOpacity 
-                                style={styles.thumbnailWrapper}
-                                onPress={() => setPreviewImage(getServerUrl(firstPhoto))}
-                            >
-                                <Image 
-                                    source={{ uri: getServerUrl(firstPhoto) }} 
-                                    style={styles.thumbnail}
-                                />
-                                {item.attachments.length > 1 && (
-                                    <View style={styles.photoCountBadge}>
-                                        <Text style={styles.photoCountText}>+{item.attachments.length - 1}</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        )}
                     </View>
                     
                     <View style={[styles.cardFooter, { paddingTop: verticalScale(12), gap: scale(15) }]}>
@@ -259,6 +248,11 @@ const ForemanIssuesScreen = ({ navigation }) => {
             {/* CREATE ISSUE MODAL */}
             <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView
+                        style={{ width: '100%' }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
                     <View style={[styles.modalSheet, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), height: '85%', paddingBottom: insets.bottom + 20 }]}>
                         <View style={styles.modalHandle} />
                         <View style={[styles.modalHeader, { paddingHorizontal: scale(20) }]}>
@@ -268,7 +262,11 @@ const ForemanIssuesScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: scale(20), paddingBottom: 40 }}>
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ paddingHorizontal: scale(20), paddingBottom: 30 }}
+                        >
                             <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8), marginTop: verticalScale(16) }]}>ISSUE TITLE</Text>
                             <TextInput 
                                 style={[styles.input, { height: verticalScale(50), borderRadius: moderateScale(14), paddingHorizontal: scale(16), fontSize: moderateScale(15) }]}
@@ -332,17 +330,27 @@ const ForemanIssuesScreen = ({ navigation }) => {
                                 </ScrollView>
                             </View>
 
-                            <TouchableOpacity 
-                                style={[styles.submitBtn, SHADOWS.medium, { height: verticalScale(56), borderRadius: moderateScale(16), marginTop: verticalScale(32), marginBottom: verticalScale(20), backgroundColor: '#2563EB' }, submitting && { opacity: 0.7 }]}
-                                onPress={handleCreateIssue}
-                                disabled={submitting}
-                            >
-                                {submitting ? <ActivityIndicator color="#fff" /> : (
-                                    <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]}>SUBMIT ISSUE REPORT</Text>
-                                )}
-                            </TouchableOpacity>
+                            <View style={[styles.createIssueActions, { marginTop: verticalScale(28), marginBottom: verticalScale(16) }]}>
+                                <TouchableOpacity
+                                    style={styles.createIssueCancelBtn}
+                                    onPress={() => setModalVisible(false)}
+                                    disabled={submitting}
+                                >
+                                    <Text style={styles.createIssueCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.submitBtn, SHADOWS.medium, { height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#2563EB' }, submitting && { opacity: 0.7 }]}
+                                    onPress={handleCreateIssue}
+                                    disabled={submitting}
+                                >
+                                    {submitting ? <ActivityIndicator color="#fff" /> : (
+                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]}>Submit Issue</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </ScrollView>
                     </View>
+                    </KeyboardAvoidingView>
                 </View>
             </Modal>
 
@@ -405,12 +413,13 @@ const ForemanIssuesScreen = ({ navigation }) => {
                                 </View>
                             </View>
 
-                            {selectedIssue?.attachments && selectedIssue.attachments.length > 0 && (
+                            {(normalizeIssueImages(selectedIssue).length > 0) && (
                                 <View style={styles.detailSection}>
-                                    <Text style={styles.detailSectionLabel}>ATTACHED PHOTOS ({selectedIssue.attachments.length})</Text>
+                                    <Text style={styles.detailSectionLabel}>ATTACHED PHOTOS ({normalizeIssueImages(selectedIssue).length})</Text>
                                     <View style={styles.detailPhotoGrid}>
-                                        {selectedIssue.attachments.map((img, idx) => {
-                                            const imgUrl = typeof img === 'string' ? img : (img.url || img.imageUrl || img.uri);
+                                        {normalizeIssueImages(selectedIssue).map((img, idx) => {
+                                            const imgUrl = resolveAttachmentUrl(img);
+                                            if (!imgUrl) return null;
                                             return (
                                                 <TouchableOpacity 
                                                     key={idx} 
@@ -478,7 +487,7 @@ const styles = StyleSheet.create({
     footerText: { fontWeight: '800', color: '#94A3B8' },
     empty: { alignItems: 'center' },
     emptyTxt: { fontWeight: '700', color: '#CBD5E1' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
     modalSheet: { backgroundColor: '#fff', width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20 },
     modalHandle: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginVertical: 12 },
     modalContent: { backgroundColor: '#fff', paddingHorizontal: 20, paddingBottom: 20 },
@@ -495,7 +504,10 @@ const styles = StyleSheet.create({
     prioBtn: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
     prioBtnText: { fontWeight: '900', color: '#64748B' },
     submitBtn: { backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' },
-    submitBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 1 },
+    submitBtnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
+    createIssueActions: { flexDirection: 'row', gap: scale(10), alignItems: 'center' },
+    createIssueCancelBtn: { flex: 1, height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+    createIssueCancelText: { color: '#475569', fontWeight: '900', textTransform: 'uppercase', fontSize: moderateScale(12) },
 
     // Photo Section Styles
     photoSection: { flexDirection: 'row', marginTop: 10, gap: 12, alignItems: 'center' },

@@ -1,55 +1,57 @@
-/**
- * Site Communications: scope for Project Manager role.
- * A PM only sees their managed projects, and DMs with users assigned on those projects (from jobs/tasks).
- */
+import { useApp } from '../context/AppContext';
 
+/**
+ * Robust string ID extractor for MongoDB objects or strings.
+ */
 function strId(x) {
     if (x == null) return '';
+    if (typeof x === 'string') return x.trim();
     if (typeof x === 'object') {
         const i = x._id || x.id;
-        if (i) return String(i);
-        if (x.fullName) return String(x.fullName);
-        if (x.name) return String(x.name);
+        if (i) return String(i).trim();
+        if (x.fullName) return String(x.fullName).trim();
+        if (x.name) return String(x.name).trim();
         return '';
     }
-    return String(x);
+    return String(x).trim();
 }
 
 /**
- * @returns {boolean} True if the user is the PM of this project (by pmId, embedded projectManager, or name).
+ * Checks if a project is officially managed by a user (PM role).
  */
 export function isUserPmOfProject(project, user) {
     if (!project || !user) return false;
-    if (user.role !== 'PM') return false;
+    
     const uid = strId(user);
     if (!uid) return false;
 
+    // Check pmId field (could be object or string)
     const rawPm = project.pmId;
     if (rawPm) {
         const id = strId(rawPm);
         if (id && id === uid) return true;
     }
-    if (project.projectManagerId) {
-        if (strId(project.projectManagerId) === uid) return true;
-    }
+    
+    // Fallback: Check projectManager field (could be name or ID)
     const pm = project.projectManager || project.manager;
     if (pm && typeof pm === 'object') {
         if (strId(pm) === uid) return true;
     }
-    
-    const uName = user.fullName || user.name || '';
-    if (uName && typeof pm === 'string' && pm.trim() && uName.trim() === pm.trim()) return true;
-    if (uName && pm?.fullName && uName.trim() === String(pm.fullName).trim()) return true;
+    if (pm && typeof pm === 'string') {
+        const uname = (user.fullName || user.name || '').toLowerCase();
+        if (pm.toLowerCase() === uname) return true;
+    }
 
     return false;
 }
 
 /**
- * @returns {Set<string>|null} Project ids this PM manages; null if not PM (caller uses "no extra filter")
+ * Gets a Set of all project IDs where the user is the PM.
  */
 export function getManagedProjectIdsForPm(projects, user) {
-    if (user?.role !== 'PM') return null;
     const set = new Set();
+    if (user?.role !== 'PM' && user?.role !== 'ADMIN' && user?.role !== 'COMPANY_OWNER') return set;
+    
     (projects || []).forEach((p) => {
         if (isUserPmOfProject(p, user)) {
             set.add(strId(p));
@@ -58,6 +60,33 @@ export function getManagedProjectIdsForPm(projects, user) {
     return set;
 }
 
+/**
+ * Collects unique User IDs from project records.
+ */
+function collectUserIdsFromProjectRecord(project) {
+    const out = new Set();
+    const add = (v) => {
+        if (v == null) return;
+        if (Array.isArray(v)) {
+            v.forEach((x) => add(x));
+            return;
+        }
+        const id = strId(v);
+        if (id) out.add(id);
+    };
+
+    add(project.assignedTo);
+    add(project.teamMembers);
+    add(project.stakeholders);
+    add(project.projectManagerId);
+    add(project.pmId);
+    
+    return out;
+}
+
+/**
+ * Collects unique User IDs assigned to jobs or tasks within specific projects.
+ */
 function collectAssigneeUserIdsOnProjects(jobs, tasks, projectIdSet) {
     const out = new Set();
     const add = (v) => {
@@ -71,91 +100,162 @@ function collectAssigneeUserIdsOnProjects(jobs, tasks, projectIdSet) {
     };
 
     (jobs || []).forEach((j) => {
-        const pid = strId(j.projectId?._id || j.projectId || j.project);
+        // Robust project ID resolution
+        const pid = strId(j.projectId?._id || j.projectId || j.project || j.rootProjectId);
         if (!pid || !projectIdSet.has(pid)) return;
+        
         add(j.assignedTo);
+        add(j.leadWorkerId); // Check leadWorkerId as well
+        add(j.workerId);
+        add(j.foremanId);
+        add(j.subcontractorId);
     });
     (tasks || []).forEach((t) => {
-        const pid = strId(t.projectId?._id || t.projectId || t.project);
+        const pid = strId(t.projectId?._id || t.projectId || t.project || t.rootProjectId);
         if (!pid || !projectIdSet.has(pid)) return;
+        
         add(t.assignedTo);
+        add(t.workerId);
+        add(t.foremanId);
     });
     return out;
 }
 
 /**
- * User ids present on the project document (stakeholders + optional team lists from API).
- * Includes people on the project even when they have no job/task yet.
+ * Collects everyone who is a stakeholder on managed projects.
  */
-export function collectUserIdsFromProjectRecord(project) {
-    const out = new Set();
-    const add = (v) => {
-        if (v == null) return;
-        if (Array.isArray(v)) {
-            v.forEach((x) => add(x));
-            return;
-        }
-        const id = strId(v);
-        if (id) out.add(id);
-    };
-
-    if (!project) return out;
-
-    add(project.pmId);
-    add(project.clientId);
-    add(project.foremanId);
-    add(project.assignedTo);
-    add(project.supervisorId);
-
-    const listKeys = [
-        'teamMembers', 'members', 'team', 'workers', 'assignedUsers', 'crew',
-        'subcontractors', 'fieldStaff', 'siteTeam', 'assignedTeam',
-    ];
-    listKeys.forEach((key) => {
-        const v = project[key];
-        if (v == null) return;
-        if (Array.isArray(v)) v.forEach((x) => add(x));
-        else add(v);
-    });
-
-    return out;
-}
-
-function collectStakeholderUserIdsOnManagedProjects(projects, managed) {
+function collectStakeholderUserIdsOnManagedProjects(projects, managedProjectIds) {
     const out = new Set();
     (projects || []).forEach((p) => {
-        const pid = strId(p);
-        if (!pid || !managed.has(pid)) return;
-        collectUserIdsFromProjectRecord(p).forEach((id) => out.add(id));
+        if (managedProjectIds.has(strId(p))) {
+            collectUserIdsFromProjectRecord(p).forEach((id) => out.add(id));
+        }
     });
     return out;
 }
 
 /**
- * User ids (workers/assignees) on the PM’s projects — allowed DM peers for that PM.
- * @returns {Set<string>|null} null = not PM (no filter)
+ * Main Direct-Message scoping logic for PMs.
  */
 export function getAllowedDmPeerIdsForPm(projects, jobs, tasks, user) {
     if (user?.role !== 'PM') return null;
+    
+    const uid = strId(user);
+    const uname = (user?.fullName || user?.name || '').toLowerCase();
+    
+    // 1. Get projects where PM is explicitly assigned
     const managed = getManagedProjectIdsForPm(projects, user);
-    if (!managed || managed.size === 0) return new Set();
+    
+    // 2. Dynamic discovery: Include projects where PM has assigned jobs
+    (jobs || []).forEach(j => {
+        const jpm = (j.projectManager || '').toLowerCase();
+        const jpmId = strId(j.projectManagerId || j.pmId);
+        if ((jpm && jpm === uname) || (jpmId && jpmId === uid)) {
+            const pid = strId(j.projectId?._id || j.projectId || j.project);
+            if (pid) managed.add(pid);
+        }
+    });
+
+    if (managed.size === 0) return new Set();
+
+    // 3. Collect everyone assigned to these projects
     const fromWork = collectAssigneeUserIdsOnProjects(jobs, tasks, managed);
     const fromProjects = collectStakeholderUserIdsOnManagedProjects(projects, managed);
+    
     return new Set([...fromWork, ...fromProjects]);
 }
 
 /**
- * PM direct-message peers for a single managed project (stakeholders on that project + job/task assignees for that project).
- * @param {string} projectId
+ * Internal staff direct-message peers (Worker, Subcontractor, Foreman).
+ * They only see other internal members based on strict role-based site rules.
+ */
+export function getAllowedDmPeerIdsForInternalStaff(projects, jobs, tasks, user, teamMembers) {
+    const role = user?.role;
+    if (['PM', 'ADMIN', 'COMPANY_OWNER'].includes(role)) return null;
+
+    const uid = strId(user);
+    if (!uid) return new Set();
+
+    const myProjects = new Set();
+    const checkAssignment = (v) => {
+        if (!v) return false;
+        if (Array.isArray(v)) return v.some(x => strId(x) === uid);
+        return strId(v) === uid;
+    };
+
+    (jobs || []).forEach(j => {
+        if (checkAssignment(j.assignedTo)) {
+            const pid = strId(j.projectId?._id || j.projectId || j.project);
+            if (pid) myProjects.add(pid);
+        }
+    });
+    (tasks || []).forEach(t => {
+        if (checkAssignment(t.assignedTo)) {
+            const pid = strId(t.projectId?._id || t.projectId || t.project);
+            if (pid) myProjects.add(pid);
+        }
+    });
+
+    const peerIds = new Set();
+    const known = new Map((teamMembers || []).map((m) => [strId(m), m]));
+    const myRole = user?.role;
+
+    const addIfAllowed = (uId) => {
+        const sid = strId(uId);
+        if (!sid || sid === uid) return;
+        const m = known.get(sid);
+        if (!m) {
+            // Default to allowing potential PMs
+            peerIds.add(sid);
+            return;
+        }
+
+        const targetRole = m.role;
+        if (myRole === 'FOREMAN' || myRole === 'SUBCONTRACTOR') {
+            // Foreman/Subcontractor: see PMs and Workers
+            if (['PM', 'ADMIN', 'COMPANY_OWNER', 'WORKER'].includes(targetRole)) peerIds.add(sid);
+        } else if (myRole === 'WORKER') {
+            // Worker: see PMs
+            if (['PM', 'ADMIN', 'COMPANY_OWNER'].includes(targetRole)) peerIds.add(sid);
+        }
+    };
+
+    (jobs || []).forEach(j => {
+        if (myProjects.has(strId(j.projectId?._id || j.projectId || j.project))) {
+            addIfAllowed(j.assignedTo);
+            addIfAllowed(j.workerId);
+            addIfAllowed(j.leadWorkerId);
+            addIfAllowed(j.foremanId);
+        }
+    });
+    (tasks || []).forEach(t => {
+        if (myProjects.has(strId(t.projectId?._id || t.projectId || t.project))) {
+            addIfAllowed(t.assignedTo);
+            addIfAllowed(t.workerId);
+            addIfAllowed(t.foremanId);
+        }
+    });
+    (projects || []).forEach(p => {
+        if (myProjects.has(strId(p))) {
+            addIfAllowed(p.pmId);
+            addIfAllowed(p.projectManagerId);
+            if (p.projectManager && typeof p.projectManager === 'object') addIfAllowed(p.projectManager);
+        }
+    });
+
+    return { projectIds: myProjects, peerIds: peerIds };
+}
+
+/**
+ * PM direct-message peers for a single managed project.
  */
 export function getDmPeerIdsForPmScopedToProject(projects, jobs, tasks, user, projectId) {
-    if (user?.role !== 'PM' || !projectId) return new Set();
-    const managed = getManagedProjectIdsForPm(projects, user);
+    if (user?.role !== 'PM') return null;
     const key = strId(projectId);
-    if (!managed || !managed.has(key)) return new Set();
     const one = new Set([key]);
+
     const fromWork = collectAssigneeUserIdsOnProjects(jobs, tasks, one);
-    const p = (projects || []).find((x) => strId(x) === key);
-    const fromRec = p ? collectUserIdsFromProjectRecord(p) : new Set();
-    return new Set([...fromWork, ...fromRec]);
+    const fromProjects = collectStakeholderUserIdsOnManagedProjects(projects, one);
+    
+    return new Set([...fromWork, ...fromProjects]);
 }

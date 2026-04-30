@@ -7,9 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 2) Known production host candidates (auto-failover)
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
-    'https://construction-backend-production.up.railway.app',
-    'https://constructionbackend-production.up.railway.app',
+    // 'https://construction-production-b18f.up.railway.app',
     'https://constuctionbackend-production.up.railway.app',
+    // 'http://localhost:8080/api',
 ].filter(Boolean);
 
 let currentBaseIndex = 0;
@@ -75,13 +75,17 @@ api.interceptors.response.use(
         // Automatic host failover for network failures and Railway "Application not found" responses.
         if (shouldRetryOnNextHost && moveToNextBaseUrl()) {
             const nextAttempt = (error.config.__hostFailoverAttempt || 0) + 1;
+            const failingUrl = error.config.baseURL;
+            const nextUrl = getApiBaseUrl();
+            
+            console.warn(`[api] FAILOVER: ${failingUrl} failed with 404/Network. Attempt ${nextAttempt} using ${nextUrl}`);
+            
             const retryConfig = {
                 ...error.config,
                 __hostFailoverAttempt: nextAttempt,
-                baseURL: getApiBaseUrl(),
+                baseURL: nextUrl,
             };
-            api.defaults.baseURL = getApiBaseUrl();
-            console.warn(`[api] Request failover attempt ${nextAttempt}: retrying with ${getActiveBaseUrl()}`);
+            api.defaults.baseURL = nextUrl;
             return api.request(retryConfig);
         }
 
@@ -101,7 +105,8 @@ api.interceptors.response.use(
 
 export const getServerUrl = (path) => {
     if (!path) return '';
-    if (path.startsWith('http')) return path;
+    if (path.startsWith('http') || path.startsWith('https') || path.startsWith('file://')) return path;
+    if (path.startsWith('//')) return `https:${path}`;
     const baseUrl = getActiveBaseUrl();
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 };

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions, StatusBar, SafeAreaView, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 
 const { width } = Dimensions.get('window');
+const RFI_CATEGORIES = ['design', 'structural', 'mechanical', 'electrical', 'civil', 'safety', 'material', 'other'];
 
 const RFIScreen = ({ navigation }) => {
     const { user, projects } = useApp();
@@ -17,11 +20,22 @@ const RFIScreen = ({ navigation }) => {
     // Create RFI Modal
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [isSelectingProject, setIsSelectingProject] = useState(false);
+    const [isSelectingCategory, setIsSelectingCategory] = useState(false);
+    const [isSelectingAssignee, setIsSelectingAssignee] = useState(false);
+    const [assignableUsers, setAssignableUsers] = useState([]);
+    const [files, setFiles] = useState([]);
+    const [showIOSDatePicker, setShowIOSDatePicker] = useState(false);
+    const [dueDateValue, setDueDateValue] = useState(null);
     const [form, setForm] = useState({
         projectId: '',
         subject: '',
         description: '',
-        priority: 'medium'
+        location: '',
+        category: 'other',
+        priority: 'medium',
+        assignedTo: '',
+        dueDate: ''
     });
 
     const fetchData = async () => {
@@ -41,9 +55,95 @@ const RFIScreen = ({ navigation }) => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        const fetchAssignableUsers = async () => {
+            try {
+                const res = await api.get('/auth/users');
+                const users = (Array.isArray(res.data) ? res.data : []).filter(u =>
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                );
+                setAssignableUsers(users);
+            } catch (e) {
+                setAssignableUsers([]);
+            }
+        };
+        fetchAssignableUsers();
+    }, []);
+
+    const resetCreateForm = () => {
+        setForm({
+            projectId: '',
+            subject: '',
+            description: '',
+            location: '',
+            category: 'other',
+            priority: 'medium',
+            assignedTo: '',
+            dueDate: ''
+        });
+        setFiles([]);
+        setDueDateValue(null);
+        setShowIOSDatePicker(false);
+    };
+
     const onRefresh = () => {
         setRefreshing(true);
         fetchData();
+    };
+
+    const openCreateModal = () => {
+        resetCreateForm();
+        setShowCreateModal(true);
+    };
+
+    const closeCreateModal = () => {
+        setShowCreateModal(false);
+        resetCreateForm();
+    };
+
+    const pickFiles = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                multiple: true,
+                copyToCacheDirectory: true
+            });
+            if (result.canceled || !result.assets?.length) return;
+            setFiles(prev => [...prev, ...result.assets]);
+        } catch (e) {
+            Alert.alert('Error', 'Could not pick files');
+        }
+    };
+
+    const removeFile = (index) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const formatDueDate = (value) => {
+        if (!value) return 'dd/mm/yyyy';
+        return new Date(value).toLocaleDateString();
+    };
+
+    const applyDueDate = (dateObj) => {
+        if (!dateObj) return;
+        setDueDateValue(dateObj);
+        setForm(prev => ({ ...prev, dueDate: dateObj.toISOString() }));
+    };
+
+    const openDueDatePicker = () => {
+        const current = dueDateValue || new Date();
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                mode: 'date',
+                value: current,
+                minimumDate: new Date(),
+                onChange: (_, selectedDate) => {
+                    if (selectedDate) applyDueDate(selectedDate);
+                }
+            });
+            return;
+        }
+        setShowIOSDatePicker(true);
     };
 
     const handleCreateRFI = async () => {
@@ -53,9 +153,21 @@ const RFIScreen = ({ navigation }) => {
         }
         try {
             setSubmitting(true);
-            await api.post('/rfis', form);
-            setShowCreateModal(false);
-            setForm({ projectId: '', subject: '', description: '', priority: 'medium' });
+            const payload = new FormData();
+            Object.entries(form).forEach(([key, value]) => {
+                if (value !== '' && value != null) payload.append(key, value);
+            });
+            files.forEach((file, index) => {
+                payload.append('files', {
+                    uri: file.uri,
+                    name: file.name || `attachment-${index + 1}`,
+                    type: file.mimeType || 'application/octet-stream'
+                });
+            });
+            await api.post('/rfis', payload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            closeCreateModal();
             fetchData();
             Alert.alert('Success', 'RFI submitted successfully');
         } catch (e) {
@@ -165,7 +277,7 @@ const RFIScreen = ({ navigation }) => {
                         <Text style={styles.mainTitle}>RFI Console</Text>
                         <Text style={styles.mainSubtitle}>Monitoring information requests across jobs</Text>
                     </View>
-                    <TouchableOpacity style={styles.newBtn} onPress={() => setShowCreateModal(true)}>
+                    <TouchableOpacity style={styles.newBtn} onPress={openCreateModal}>
                         <MaterialCommunityIcons name="plus-circle" size={18} color="#fff" />
                         <Text style={styles.newBtnText}>NEW RFI</Text>
                     </TouchableOpacity>
@@ -249,34 +361,29 @@ const RFIScreen = ({ navigation }) => {
                                 <Text style={styles.modalTitle}>New RFI</Text>
                                 <Text style={styles.modalSubtitle}>Submit a Request for Information</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                            <TouchableOpacity onPress={closeCreateModal}>
                                 <MaterialCommunityIcons name="close" size={24} color="#64748B" />
                             </TouchableOpacity>
                         </View>
 
                         <ScrollView
                             showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 20 }}
-                            keyboardShouldPersistTaps="always"
+                            contentContainerStyle={{ paddingBottom: 26 }}
+                            keyboardShouldPersistTaps="handled"
                             keyboardDismissMode="none"
                         >
-                            <Text style={styles.inputLabel}>Select Project *</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList}>
-                                {(projects || []).map((p, idx) => (
-                                    <TouchableOpacity
-                                        key={p._id ? `proj-chip-${p._id}` : `proj-chip-idx-${idx}`}
-                                        style={[styles.chip, form.projectId === p._id && styles.chipActive]}
-                                        onPress={() => setForm({ ...form, projectId: p._id })}
-                                    >
-                                        <Text style={[styles.chipTxt, form.projectId === p._id && styles.chipTxtActive]}>{p.name}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
+                            <Text style={styles.inputLabel}>Project *</Text>
+                            <TouchableOpacity style={styles.dropdownField} onPress={() => setIsSelectingProject(true)}>
+                                <Text style={[styles.dropdownFieldText, !form.projectId && styles.dropdownPlaceholder]} numberOfLines={1}>
+                                    {projects.find(p => (p._id || p.id) === form.projectId)?.name || 'Select Project...'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                            </TouchableOpacity>
 
                             <Text style={styles.inputLabel}>Subject *</Text>
                             <TextInput
                                 style={styles.modalInput}
-                                placeholder="Brief title of the request..."
+                                placeholder="Brief description of the request..."
                                 placeholderTextColor="#94A3B8"
                                 value={form.subject}
                                 onChangeText={t => setForm({ ...form, subject: t })}
@@ -286,42 +393,217 @@ const RFIScreen = ({ navigation }) => {
                             <TextInput
                                 style={[styles.modalInput, { height: 90, textAlignVertical: 'top' }]}
                                 multiline
-                                placeholder="Detailed description of the information needed..."
+                                placeholder="Detailed description of the information requested..."
                                 placeholderTextColor="#94A3B8"
                                 value={form.description}
                                 onChangeText={t => setForm({ ...form, description: t })}
                             />
 
-                            <Text style={styles.inputLabel}>Priority</Text>
-                            <View style={styles.priorityRow}>
-                                {[['low', '#10B981'], ['medium', '#F59E0B'], ['high', '#EF4444']].map(([p, color]) => (
-                                    <TouchableOpacity
-                                        key={p}
-                                        style={[styles.priorityBtn, form.priority === p && { backgroundColor: color, borderColor: color }]}
-                                        onPress={() => setForm({ ...form, priority: p })}
-                                    >
-                                        <Text style={[styles.priorityBtnTxt, form.priority === p && { color: '#fff' }]}>
-                                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                            <View style={styles.rowTwoCols}>
+                                <View style={styles.rowCol}>
+                                    <Text style={styles.inputLabel}>Location (Optional)</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="e.g. Level 3, Grid B-4"
+                                        placeholderTextColor="#94A3B8"
+                                        value={form.location}
+                                        onChangeText={t => setForm({ ...form, location: t })}
+                                    />
+                                </View>
+                                <View style={styles.rowCol}>
+                                    <Text style={styles.inputLabel}>Category (Optional)</Text>
+                                    <TouchableOpacity style={styles.dropdownField} onPress={() => setIsSelectingCategory(true)}>
+                                        <Text style={styles.dropdownFieldText}>
+                                            {form.category.charAt(0).toUpperCase() + form.category.slice(1)}
                                         </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
                                     </TouchableOpacity>
-                                ))}
+                                </View>
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-                                onPress={handleCreateRFI}
-                                disabled={submitting}
-                            >
-                                {submitting
-                                    ? <ActivityIndicator color="#fff" />
-                                    : <Text style={styles.submitBtnTxt}>SUBMIT RFI</Text>
-                                }
+                            <View style={styles.rowThreeCols}>
+                                <View style={styles.rowCol}>
+                                    <Text style={styles.inputLabel}>Priority</Text>
+                                    <View style={styles.priorityRow}>
+                                        {[['low', '#64748B'], ['medium', '#F59E0B'], ['high', '#EF4444']].map(([p, color]) => (
+                                            <TouchableOpacity
+                                                key={p}
+                                                style={[styles.priorityBtn, form.priority === p && { backgroundColor: color, borderColor: color }]}
+                                                onPress={() => setForm({ ...form, priority: p })}
+                                            >
+                                                <Text style={[styles.priorityBtnTxt, form.priority === p && { color: '#fff' }]}>
+                                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                                <View style={styles.rowCol}>
+                                    <Text style={styles.inputLabel}>Assign To</Text>
+                                    <TouchableOpacity style={styles.dropdownField} onPress={() => setIsSelectingAssignee(true)}>
+                                        <Text style={[styles.dropdownFieldText, !form.assignedTo && styles.dropdownPlaceholder]} numberOfLines={1}>
+                                            {form.assignedTo
+                                                ? (assignableUsers.find(u => u._id === form.assignedTo)?.fullName || 'Assigned user')
+                                                : 'Unassigned'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.rowCol}>
+                                    <Text style={styles.inputLabel}>Due Date</Text>
+                                    <TouchableOpacity style={styles.dropdownField} onPress={openDueDatePicker}>
+                                        <Text style={[styles.dropdownFieldText, !form.dueDate && styles.dropdownPlaceholder]}>
+                                            {formatDueDate(form.dueDate)}
+                                        </Text>
+                                        <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <Text style={styles.inputLabel}>Attachments</Text>
+                            <TouchableOpacity style={styles.attachDropzone} onPress={pickFiles}>
+                                <MaterialCommunityIcons name="upload" size={22} color="#94A3B8" />
+                                <Text style={styles.attachTitle}>Click to upload files</Text>
+                                <Text style={styles.attachSub}>PDF, DWG, Images, etc.</Text>
                             </TouchableOpacity>
+                            {files.length > 0 ? (
+                                <View style={{ marginTop: 10, gap: 8 }}>
+                                    {files.map((file, idx) => (
+                                        <View key={`${file.uri}-${idx}`} style={styles.fileRow}>
+                                            <Text style={styles.fileName} numberOfLines={1}>{file.name || `Attachment ${idx + 1}`}</Text>
+                                            <TouchableOpacity onPress={() => removeFile(idx)}>
+                                                <MaterialCommunityIcons name="close" size={16} color="#64748B" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : null}
+
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={styles.modalCancelBtn}
+                                    onPress={closeCreateModal}
+                                    disabled={submitting}
+                                >
+                                    <Text style={styles.modalCancelTxt}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                                    onPress={handleCreateRFI}
+                                    disabled={submitting}
+                                >
+                                    {submitting
+                                        ? <ActivityIndicator color="#fff" />
+                                        : <Text style={styles.submitBtnTxt}>Submit RFI</Text>
+                                    }
+                                </TouchableOpacity>
+                            </View>
                         </ScrollView>
                     </View>
                     </KeyboardAvoidingView>
                 </View>
             </Modal>
+
+            <Modal visible={isSelectingProject} transparent animationType="fade" onRequestClose={() => setIsSelectingProject(false)}>
+                <View style={styles.selectModalBack}>
+                    <View style={styles.selectModalCard}>
+                        <Text style={styles.selectModalTitle}>Select Project</Text>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {(projects || []).map((project, idx) => (
+                                <TouchableOpacity
+                                    key={project._id ? `rfi-project-${project._id}` : `rfi-project-${idx}`}
+                                    style={[styles.selectOption, form.projectId === (project._id || project.id) && styles.selectOptionActive]}
+                                    onPress={() => {
+                                        setForm(prev => ({ ...prev, projectId: project._id || project.id }));
+                                        setIsSelectingProject(false);
+                                    }}
+                                >
+                                    <Text style={styles.selectOptionText}>{project.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingProject(false)}>
+                            <Text style={styles.selectCloseText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal visible={isSelectingCategory} transparent animationType="fade" onRequestClose={() => setIsSelectingCategory(false)}>
+                <View style={styles.selectModalBack}>
+                    <View style={styles.selectModalCard}>
+                        <Text style={styles.selectModalTitle}>Select Category</Text>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {RFI_CATEGORIES.map((category) => (
+                                <TouchableOpacity
+                                    key={category}
+                                    style={[styles.selectOption, form.category === category && styles.selectOptionActive]}
+                                    onPress={() => {
+                                        setForm(prev => ({ ...prev, category }));
+                                        setIsSelectingCategory(false);
+                                    }}
+                                >
+                                    <Text style={styles.selectOptionText}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingCategory(false)}>
+                            <Text style={styles.selectCloseText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal visible={isSelectingAssignee} transparent animationType="fade" onRequestClose={() => setIsSelectingAssignee(false)}>
+                <View style={styles.selectModalBack}>
+                    <View style={styles.selectModalCard}>
+                        <Text style={styles.selectModalTitle}>Assign To</Text>
+                        <TouchableOpacity
+                            style={[styles.selectOption, !form.assignedTo && styles.selectOptionActive]}
+                            onPress={() => {
+                                setForm(prev => ({ ...prev, assignedTo: '' }));
+                                setIsSelectingAssignee(false);
+                            }}
+                        >
+                            <Text style={styles.selectOptionText}>Unassigned</Text>
+                        </TouchableOpacity>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {assignableUsers.map((member) => (
+                                <TouchableOpacity
+                                    key={member._id}
+                                    style={[styles.selectOption, form.assignedTo === member._id && styles.selectOptionActive]}
+                                    onPress={() => {
+                                        setForm(prev => ({ ...prev, assignedTo: member._id }));
+                                        setIsSelectingAssignee(false);
+                                    }}
+                                >
+                                    <Text style={styles.selectOptionText}>{member.fullName} ({member.role})</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingAssignee(false)}>
+                            <Text style={styles.selectCloseText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {Platform.OS === 'ios' && showIOSDatePicker ? (
+                <View style={styles.iosDateWrap}>
+                    <DateTimePicker
+                        value={dueDateValue || new Date()}
+                        mode="date"
+                        display="spinner"
+                        minimumDate={new Date()}
+                        onChange={(_, selectedDate) => {
+                            if (selectedDate) applyDueDate(selectedDate);
+                        }}
+                    />
+                    <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowIOSDatePicker(false)}>
+                        <Text style={styles.iosDateDoneTxt}>Done</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
         </SafeAreaView>
     );
 };
@@ -372,24 +654,76 @@ const styles = StyleSheet.create({
     footerLinkSub: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '800', marginTop: 4 },
 
     // Create Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.7)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
     modalKeyboardWrap: { width: '100%' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '85%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-    modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     modalSubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
     inputLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 16, marginBottom: 8 },
     modalInput: { backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontWeight: '700', color: '#1E293B' },
-    chipList: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
-    chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    chipTxt: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-    chipTxtActive: { color: '#fff' },
+    dropdownField: {
+        minHeight: 50,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
+    dropdownFieldText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B', marginRight: 8 },
+    dropdownPlaceholder: { color: '#94A3B8', fontWeight: '600' },
+    rowTwoCols: { flexDirection: width < 700 ? 'column' : 'row', gap: 10 },
+    rowThreeCols: { flexDirection: width < 700 ? 'column' : 'row', gap: 10 },
+    rowCol: { flex: 1, minWidth: 0 },
     priorityRow: { flexDirection: 'row', gap: 10 },
     priorityBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    priorityBtnTxt: { fontSize: 13, fontWeight: '900', color: '#64748B' },
-    submitBtn: { height: 58, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 28 },
-    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    priorityBtnTxt: { fontSize: 12, fontWeight: '900', color: '#64748B', textTransform: 'uppercase' },
+    attachDropzone: {
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderColor: '#CBD5E1',
+        borderRadius: 14,
+        minHeight: 110,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 14,
+        marginTop: 2
+    },
+    attachTitle: { fontSize: 13, fontWeight: '800', color: '#475569', marginTop: 8 },
+    attachSub: { fontSize: 11, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
+    fileRow: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10
+    },
+    fileName: { flex: 1, fontSize: 12, color: '#334155', fontWeight: '700' },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 24, alignItems: 'center' },
+    modalCancelBtn: { flex: 1, height: 56, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+    modalCancelTxt: { color: '#475569', fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
+    submitBtn: { flex: 1.25, height: 56, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
+    selectModalBack: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 24 },
+    selectModalCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, maxHeight: '70%' },
+    selectModalTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
+    selectOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    selectOptionActive: { backgroundColor: '#EFF6FF' },
+    selectOptionText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+    selectCloseBtn: { marginTop: 16, height: 48, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+    selectCloseText: { color: '#475569', fontWeight: '900', fontSize: 12, textTransform: 'uppercase' },
+    iosDateWrap: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 10 },
+    iosDateDoneTxt: { color: '#2563EB', fontSize: 16, fontWeight: '800' },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 100 },
     emptyTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', marginTop: 16 },
     emptySubtitle: { fontSize: 14, fontWeight: '600', color: '#64748B', textAlign: 'center', marginTop: 8 },

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scale, verticalScale, moderateScale, isSmallPhone } from '../utils/responsive';
 
 const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBranding = true, showRight = true, rightComponent = null }) => {
-    const { user, projects, notifications, markNotificationAsRead, unreadChatCount, selectedProject, setSelectedProject } = useApp();
+    const { user, projects, notifications, markNotificationAsRead, markAllNotificationsAsRead, unreadChatCount, selectedProject, setSelectedProject } = useApp();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -77,8 +77,13 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                                         if (drawerFound && parent) {
                                             if (typeof parent.openDrawer === 'function') parent.openDrawer();
                                             else parent.toggleDrawer();
-                                        } else if (navigation.canGoBack()) {
-                                            navigation.goBack();
+                                        } else {
+                                            // Fallback: If no drawer and we can actually go back, do it. 
+                                            // But for root screens, just don't do anything to avoid the 'GO_BACK' error.
+                                            const state = navigation.getState();
+                                            if (state && state.index > 0) {
+                                                navigation.goBack();
+                                            }
                                         }
                                     } catch (e) {
                                         console.warn('-- DRAWER ACTION FAILED --', e.message);
@@ -196,11 +201,20 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                                             else if (type === 'photo' || title.includes('photo') || msg.includes('photo')) navigation.navigate('Photos');
                                         }}
                                     >
-                                        <View style={[styles.notifIcon, { backgroundColor: n.type === 'alert' ? '#FEF2F2' : '#EFF6FF', width: scale(36), height: scale(36) }]}>
+                                        <View style={[styles.notifIcon, { backgroundColor: ['financial'].includes((n.type || '').toLowerCase()) ? '#ECFDF3' : (['task', 'rfi', 'project'].includes((n.type || '').toLowerCase()) ? '#EFF6FF' : '#FEF2F2'), width: scale(36), height: scale(36) }]}>
                                             <MaterialCommunityIcons
-                                                name={n.type === 'alert' ? 'alert-circle' : 'information'}
+                                                name={
+                                                    (n.type || '').toLowerCase() === 'chat' ? 'message-text-outline'
+                                                        : (n.type || '').toLowerCase() === 'task' ? 'clipboard-check-outline'
+                                                            : (n.type || '').toLowerCase() === 'rfi' ? 'file-question-outline'
+                                                                : (n.type || '').toLowerCase() === 'financial' ? 'currency-usd'
+                                                                    : (n.type || '').toLowerCase() === 'project' ? 'office-building'
+                                                                        : (n.type || '').toLowerCase() === 'photo' ? 'image-outline'
+                                                                            : (n.type || '').toLowerCase() === 'clock-out' || (n.type || '').toLowerCase() === 'clock-in' ? 'clock-outline'
+                                                                                : 'information'
+                                                }
                                                 size={moderateScale(18)}
-                                                color={n.type === 'alert' ? '#EF4444' : '#3B82F6'}
+                                                color={['financial'].includes((n.type || '').toLowerCase()) ? '#059669' : (['task', 'rfi', 'project', 'chat'].includes((n.type || '').toLowerCase()) ? '#3B82F6' : '#EF4444')}
                                             />
                                         </View>
                                         <View style={{ flex: 1, marginLeft: scale(12) }}>
@@ -214,6 +228,16 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                             )}
                             <View style={{ height: 40 }} />
                         </ScrollView>
+                        {unreadCount > 0 && (
+                            <TouchableOpacity
+                                style={styles.viewAllBtn}
+                                onPress={async () => {
+                                    await markAllNotificationsAsRead();
+                                }}
+                            >
+                                <Text style={styles.viewAllBtnText}>Mark all as read</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </Modal>

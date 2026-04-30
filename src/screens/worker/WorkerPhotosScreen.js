@@ -32,8 +32,12 @@ const WorkerPhotosScreen = () => {
     const [tempImage, setTempImage] = useState(null);
     const [description, setDescription] = useState('');
     const [targetProjectId, setTargetProjectId] = useState(null);
+    const [selVisible, setSelVisible] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const selectedTargetProjectLabel =
+        projects.find((p) => (p._id || p.id) === targetProjectId)?.name || 'Select Project';
 
     const fetchPhotos = async () => {
         try {
@@ -242,19 +246,18 @@ const WorkerPhotosScreen = () => {
                         <Image source={{ uri: tempImage }} style={[styles.previewThumb, { height: verticalScale(180), borderRadius: moderateScale(20), marginBottom: verticalScale(20) }]} />
 
                         <Text style={[styles.inputLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>SELECT PROJECT</Text>
-                        <View style={styles.pickerContainer}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: verticalScale(15) }}>
-                                {projects.map(p => (
-                                    <TouchableOpacity 
-                                        key={p._id || p.id}
-                                        style={[styles.projChip, targetProjectId === (p._id || p.id) && styles.projChipActive, { paddingHorizontal: scale(15), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), marginRight: scale(10) }]}
-                                        onPress={() => setTargetProjectId(p._id || p.id)}
-                                    >
-                                        <Text style={[styles.projChipText, targetProjectId === (p._id || p.id) && styles.projChipActiveText, { fontSize: moderateScale(12) }]}>{p.name}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.projectDropdown, { borderRadius: moderateScale(12), paddingHorizontal: scale(14), height: verticalScale(50), marginBottom: verticalScale(20) }]}
+                            onPress={() => setSelVisible(true)}
+                        >
+                            <View style={styles.projectDropdownLeft}>
+                                <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
+                                <Text style={[styles.projectDropdownText, { fontSize: moderateScale(13) }]} numberOfLines={1}>
+                                    {selectedTargetProjectLabel}
+                                </Text>
+                            </View>
+                            <MaterialCommunityIcons name="chevron-down" size={moderateScale(16)} color="#64748B" />
+                        </TouchableOpacity>
 
                         <Text style={[styles.inputLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>DESCRIPTION / NOTES</Text>
                         <TextInput 
@@ -274,6 +277,34 @@ const WorkerPhotosScreen = () => {
                         </TouchableOpacity>
                     </View>
                 </View>
+            </Modal>
+
+            {/* PROJECT SELECTOR MODAL */}
+            <Modal visible={selVisible} transparent animationType="fade">
+                <TouchableOpacity style={styles.selOverlayModal} activeOpacity={1} onPress={() => setSelVisible(false)}>
+                    <View style={[styles.selBox, { width: isTablet ? 420 : '86%', borderRadius: moderateScale(24), padding: scale(20) }]}>
+                        <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>SELECT PROJECT</Text>
+                        <ScrollView style={{ maxHeight: verticalScale(300) }}>
+                            {projects.map((p) => {
+                                const pid = p._id || p.id;
+                                const selected = targetProjectId === pid;
+                                return (
+                                    <TouchableOpacity
+                                        key={pid}
+                                        style={[styles.selItem, selected && styles.selItemActive, { paddingVertical: verticalScale(12) }]}
+                                        onPress={() => {
+                                            setTargetProjectId(pid);
+                                            setSelVisible(false);
+                                        }}
+                                    >
+                                        <MaterialCommunityIcons name="office-building" size={moderateScale(17)} color={selected ? '#2563EB' : '#94A3B8'} style={{ marginRight: scale(12) }} />
+                                        <Text style={[styles.selLabelText, selected && styles.selLabelTextActive, { fontSize: moderateScale(13) }]}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </TouchableOpacity>
             </Modal>
 
             {/* PREVIEW MODAL */}
@@ -332,10 +363,20 @@ const styles = StyleSheet.create({
     modalTitle: { fontWeight: '900', color: '#0F172A' },
     previewThumb: { width: '100%' },
     inputLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
+    projectDropdown: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    projectDropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
+    projectDropdownText: { fontWeight: '800', color: '#1E293B', flex: 1 },
     projChip: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
     projChipActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
     projChipText: { fontWeight: '700', color: '#64748B' },
     projChipActiveText: { color: '#2563EB' },
+    selOverlayModal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'center', alignItems: 'center' },
+    selBox: { backgroundColor: '#fff' },
+    selTitle: { fontWeight: '900', color: '#0F172A', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1.2 },
+    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    selItemActive: { backgroundColor: '#EFF6FF' },
+    selLabelText: { fontWeight: '700', color: '#334155' },
+    selLabelTextActive: { color: '#2563EB' },
     input: { backgroundColor: '#F8FAFC', color: '#0F172A', textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 5 },
     mainUploadBtn: { backgroundColor: '#2563EB', alignItems: 'center', ...SHADOWS.small },
     mainUploadBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 0.5 },

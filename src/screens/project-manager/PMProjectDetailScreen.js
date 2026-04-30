@@ -4,24 +4,38 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 const { width } = Dimensions.get('window');
 
 const PMProjectDetailScreen = ({ route, navigation }) => {
     const { projectId } = route.params;
-    const { projects, jobs: allJobs, refreshData, teamMembers, addJob } = useApp();
+    const { projects, jobs: allJobs, refreshData, teamMembers, addJob, user, setSelectedProject } = useApp();
     const [loading, setLoading] = useState(false);
     const [isCreatingJob, setIsCreatingJob] = useState(false);
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
     // Create Job states
-    const [jobTitle, setJobTitle] = useState('Demo Project job');
-    const [jobCode, setJobCode] = useState('123 selevt option');
-    const [jobBudget, setJobBudget] = useState('1200');
-    const [leadWorker, setLeadWorker] = useState('Worker');
+    const [jobName, setJobName] = useState('');
+    const [jobLocation, setJobLocation] = useState('');
+    const [jobBudget, setJobBudget] = useState('');
+    const [jobStatus, setJobStatus] = useState('planning');
+    const [jobDescription, setJobDescription] = useState('');
+    const [jobStartDate, setJobStartDate] = useState('');
+    const [jobEndDate, setJobEndDate] = useState('');
+    const [assignRole, setAssignRole] = useState('ALL');
+    const [leadWorker, setLeadWorker] = useState('');
+    const [leadWorkerId, setLeadWorkerId] = useState(null);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('All');
+
+    // Selection states
+    const [isSelectingWorker, setIsSelectingWorker] = useState(false);
+    const [isSelectingRole, setIsSelectingRole] = useState(false);
+    const [isSelectingJobStatus, setIsSelectingJobStatus] = useState(false);
+    const [datePickerField, setDatePickerField] = useState(null);
+    const [filteredStaff, setFilteredStaff] = useState([]);
 
     const project = (projects || []).find(p => p._id === projectId || p.id === projectId) || {
         name: 'Demo two',
@@ -66,9 +80,61 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
     }, [navigation]);
 
     const handleBack = () => navigation.goBack();
+    const focusCurrentProject = () => {
+        if (!projectId) return;
+        setSelectedProject?.({ _id: projectId, id: projectId, name: project?.name || '' });
+    };
+    const roleOptions = [
+        { label: 'All Roles', value: 'ALL' },
+        ...Array.from(
+            new Set(
+                (teamMembers || [])
+                    .map(m => String(m.role || '').toUpperCase().trim())
+                    .filter(Boolean)
+            )
+        ).map(role => ({ label: role.replace('_', ' '), value: role }))
+    ];
+    const jobStatusOptions = [
+        { label: 'Planning', value: 'planning' },
+        { label: 'Active', value: 'active' },
+        { label: 'On Hold', value: 'on-hold' },
+        { label: 'Completed', value: 'completed' }
+    ];
+    const parsePickerDate = (value) => {
+        if (!value || typeof value !== 'string') return new Date();
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) {
+            const y = Number(m[1]);
+            const mo = Number(m[2]) - 1;
+            const d = Number(m[3]);
+            return new Date(y, mo, d);
+        }
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return new Date();
+        return parsed;
+    };
+    const formatDateLocal = (dateObj) => {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+    const openAndroidDatePicker = (field) => {
+        DateTimePickerAndroid.open({
+            value: parsePickerDate(field === 'startDate' ? jobStartDate : jobEndDate),
+            mode: 'date',
+            is24Hour: true,
+            onChange: (event, selectedDate) => {
+                if (event.type !== 'set' || !selectedDate) return;
+                const dateStr = formatDateLocal(selectedDate);
+                if (field === 'startDate') setJobStartDate(dateStr);
+                if (field === 'endDate') setJobEndDate(dateStr);
+            }
+        });
+    };
 
     const handleCreateJob = async () => {
-        if (!jobTitle.trim()) {
+        if (!jobName.trim()) {
             Alert.alert('Required', 'Job title is required');
             return;
         }
@@ -76,24 +142,38 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
         try {
             setIsCreatingJob(true);
             const payload = {
-                name: jobTitle,
-                jobCode: jobCode,
+                name: jobName.trim(),
+                location: jobLocation.trim(),
                 budget: Number(jobBudget) || 0,
-                status: 'planning',
+                status: jobStatus || 'planning',
                 progress: 0,
                 projectId: projectId,
-                leadWorker: leadWorker,
-                projectManager: project.projectManager || 'p m',
-                startDate: '2026-04-09',
-                endDate: '2026-04-22'
+                leadWorker: leadWorker || undefined,
+                assignedTo: leadWorkerId, // Primary field for chat scoping
+                leadWorkerId: leadWorkerId, // Redundant field for backend/scoping coverage
+                workerId: leadWorkerId, // Fallback field
+                foremanId: leadWorkerId || undefined,
+                projectManager: user?.fullName || user?.name || project.projectManager || 'p m',
+                projectManagerId: user?._id || user?.id,
+                startDate: jobStartDate || undefined,
+                endDate: jobEndDate || undefined,
+                description: jobDescription.trim(),
+                assignedRoleType: assignRole === 'ALL' ? undefined : assignRole
             };
 
             const res = await addJob(payload);
             if (res.success) {
                 setIsCreateModalVisible(false);
-                setJobTitle('Demo Project job');
-                setJobCode('123 selevt option');
-                setJobBudget('1200');
+                setJobName('');
+                setJobLocation('');
+                setJobBudget('');
+                setJobStatus('planning');
+                setJobDescription('');
+                setJobStartDate('');
+                setJobEndDate('');
+                setAssignRole('ALL');
+                setLeadWorker('');
+                setLeadWorkerId(null);
                 refreshData();
                 Alert.alert('Success', 'Job created successfully');
             } else {
@@ -164,66 +244,63 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                 icon: 'floor-plan',
                 label: 'View Drawings',
                 color: '#6366F1',
-                onPress: () => navigation.navigate('Drawings', { projectId, projectName: project.name }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('Drawings', { projectId, projectName: project.name });
+                },
             },
             {
-                key: 'client-update',
-                icon: 'update',
-                label: 'Client Update',
+                key: 'client-updates',
+                icon: 'bullhorn-outline',
+                label: 'Client Updates',
                 color: '#10B981',
-                onPress: () => navigation.navigate('Reports', { projectId, projectName: project.name, source: 'client-update' }),
-            },
-            {
-                key: 'create',
-                icon: 'plus-circle',
-                label: 'Create',
-                color: '#F59E0B',
-                onPress: () => setIsCreateModalVisible(true),
-            },
-            {
-                key: 'overview',
-                icon: 'view-dashboard-outline',
-                label: 'Overview',
-                color: '#3B82F6',
-                onPress: () => navigation.navigate('ProjectDetails', { projectId }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('Reports', { projectId, projectName: project.name, source: 'client-updates' });
+                },
             },
             {
                 key: 'purchase-orders',
                 icon: 'cart-outline',
                 label: 'Purchase Orders',
                 color: '#EF4444',
-                onPress: () => navigation.navigate('PurchaseOrders', { projectId, projectName: project.name }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('PurchaseOrders', { projectId, projectName: project.name });
+                },
             },
             {
                 key: 'tasks',
                 icon: 'clipboard-list-outline',
                 label: 'Tasks',
                 color: '#8B5CF6',
-                onPress: () => navigation.navigate('MainTabs', {
-                    screen: 'Tasks',
-                    params: { projectId, projectName: project.name }
-                }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('MainTabs', {
+                        screen: 'Tasks',
+                        params: { projectId, projectName: project.name }
+                    });
+                },
             },
             {
                 key: 'deficiencies',
                 icon: 'alert-circle-outline',
                 label: 'Deficiencies',
                 color: '#F43F5E',
-                onPress: () => navigation.navigate('ForemanIssues', { projectId, projectName: project.name }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('ForemanIssues', { projectId, projectName: project.name });
+                },
             },
             {
                 key: 'contacts',
                 icon: 'contacts-outline',
                 label: 'Contacts',
                 color: '#14B8A6',
-                onPress: () => navigation.navigate('CrewClock', { projectId, projectName: project.name }),
-            },
-            {
-                key: 'client-updates',
-                icon: 'bullhorn-outline',
-                label: 'Client Updates',
-                color: '#F97316',
-                onPress: () => navigation.navigate('Reports', { projectId, projectName: project.name, source: 'client-updates' }),
+                onPress: () => {
+                    focusCurrentProject();
+                    navigation.navigate('CrewClock', { projectId, projectName: project.name });
+                },
             },
         ];
 
@@ -305,12 +382,25 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
         </View>
     );
 
+    const formatJobDateRange = (startDate, endDate) => {
+        if (!startDate && !endDate) return 'Dates not set';
+        const fmt = (d) => {
+            if (!d) return '--';
+            const parsed = new Date(d);
+            if (Number.isNaN(parsed.getTime())) return '--';
+            return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+        return `${fmt(startDate)} \u2192 ${fmt(endDate)}`;
+    };
+
     const renderJobCard = (job) => (
         <TouchableOpacity key={job._id || job.id} style={styles.jobCard}>
             <View style={styles.jobCardHeader}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.jobTitle}>{job.name || job.title || 'Untitled Job'}</Text>
-                    <Text style={styles.jobSubtitle}>{job.jobCode || '123 select option'}</Text>
+                    <Text style={styles.jobSubtitle}>
+                        {job.location || job.description || 'No location/notes added'}
+                    </Text>
                 </View>
                 <View style={styles.jobStatusWrap}>
                     <View style={[styles.jobStatusBadge, { backgroundColor: (job.status === 'on_hold' || job.status === 'on-hold') ? '#FEFCE8' : '#EFF6FF' }]}>
@@ -359,7 +449,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
             <View style={styles.jobFooter}>
                 <View style={styles.footerItem}>
                     <MaterialCommunityIcons name="calendar-range" size={14} color="#64748B" />
-                    <Text style={styles.footerText}>Apr 9 → Apr 22, 2026</Text>
+                    <Text style={styles.footerText}>{formatJobDateRange(job.startDate, job.endDate)}</Text>
                 </View>
                 <View style={styles.footerItem}>
                     <MaterialCommunityIcons name="currency-usd" size={14} color="#10B981" />
@@ -413,39 +503,259 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                             </TouchableOpacity>
                         </View>
                         <ScrollView
-                            style={{ maxHeight: 500 }}
+                            style={styles.modalFormScroll}
+                            contentContainerStyle={styles.modalFormScrollContent}
+                            showsVerticalScrollIndicator={false}
+                            nestedScrollEnabled
                             keyboardShouldPersistTaps="always"
                             keyboardDismissMode="none"
                         >
                             <View style={styles.inputGroup}>
                                 <Text style={styles.inputLabel}>Job Title</Text>
-                                <TextInput style={styles.modalInput} value={jobTitle} onChangeText={setJobTitle} placeholder="Job Title" />
+                                <TextInput style={styles.modalInput} value={jobName} onChangeText={setJobName} placeholder="Job Title" />
                             </View>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Job Code / Option</Text>
-                                <TextInput style={styles.modalInput} value={jobCode} onChangeText={setJobCode} placeholder="123 select option" />
+                                <Text style={styles.inputLabel}>Location / Address</Text>
+                                <TextInput style={styles.modalInput} value={jobLocation} onChangeText={setJobLocation} placeholder="Site block, level or full address" />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
+                                <TouchableOpacity
+                                    style={[styles.modalInput, styles.dropdownField]}
+                                    onPress={() => {
+                                        if (Platform.OS === 'android') openAndroidDatePicker('startDate');
+                                        else setDatePickerField('startDate');
+                                    }}
+                                >
+                                    <Text style={[styles.modalInputText, { color: jobStartDate ? '#1E293B' : '#94A3B8' }]}>
+                                        {jobStartDate || 'Select start date'}
+                                    </Text>
+                                    <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>End Date (YYYY-MM-DD)</Text>
+                                <TouchableOpacity
+                                    style={[styles.modalInput, styles.dropdownField]}
+                                    onPress={() => {
+                                        if (Platform.OS === 'android') openAndroidDatePicker('endDate');
+                                        else setDatePickerField('endDate');
+                                    }}
+                                >
+                                    <Text style={[styles.modalInputText, { color: jobEndDate ? '#1E293B' : '#94A3B8' }]}>
+                                        {jobEndDate || 'Select end date'}
+                                    </Text>
+                                    <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                                </TouchableOpacity>
                             </View>
                             <View style={styles.inputGroup}>
                                 <Text style={styles.inputLabel}>Budget ($)</Text>
                                 <TextInput style={styles.modalInput} value={jobBudget} onChangeText={setJobBudget} placeholder="Budget" keyboardType="numeric" />
                             </View>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Lead Worker</Text>
-                                <TextInput style={styles.modalInput} value={leadWorker} onChangeText={setLeadWorker} placeholder="Lead Worker" />
+                                <Text style={styles.inputLabel}>Job Status</Text>
+                                <TouchableOpacity
+                                    style={[styles.modalInput, styles.dropdownField]}
+                                    onPress={() => setIsSelectingJobStatus(true)}
+                                >
+                                    <Text style={styles.modalInputText}>
+                                        {jobStatusOptions.find(s => s.value === jobStatus)?.label || 'Planning'}
+                                    </Text>
+                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Assign Role</Text>
+                                <TouchableOpacity
+                                    style={[styles.modalInput, styles.dropdownField]}
+                                    onPress={() => setIsSelectingRole(true)}
+                                >
+                                    <Text style={styles.modalInputText}>
+                                        {roleOptions.find(r => r.value === assignRole)?.label || 'All Roles'}
+                                    </Text>
+                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>{assignRole === 'ALL' ? 'Lead Worker' : 'Select Identity'}</Text>
+                                <TouchableOpacity 
+                                    style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
+                                    onPress={() => {
+                                        const staff = (teamMembers || []).filter(m => 
+                                            assignRole === 'ALL'
+                                                ? ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(m.role)
+                                                : m.role === assignRole
+                                        );
+                                        setFilteredStaff(staff);
+                                        setIsSelectingWorker(true);
+                                    }}
+                                >
+                                    <Text style={[styles.modalInputText, { color: leadWorker ? '#1E293B' : '#94A3B8' }]}>
+                                        {leadWorker || (assignRole === 'ALL' ? 'Select Lead Staff...' : 'Select User...')}
+                                    </Text>
+                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Description / Notes</Text>
+                                <TextInput
+                                    style={[styles.modalInput, styles.modalInputArea]}
+                                    value={jobDescription}
+                                    onChangeText={setJobDescription}
+                                    placeholder="Describe scope, notes, or instructions..."
+                                    multiline
+                                    textAlignVertical="top"
+                                />
                             </View>
 
-                            <TouchableOpacity 
-                                style={[styles.saveBtn, { backgroundColor: '#0F172A', marginTop: 20 }]} 
-                                onPress={handleCreateJob}
-                                disabled={isCreatingJob}
-                            >
-                                {isCreatingJob ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Job</Text>}
-                            </TouchableOpacity>
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={styles.modalCancelBtn}
+                                    onPress={() => setIsCreateModalVisible(false)}
+                                    disabled={isCreatingJob}
+                                >
+                                    <Text style={styles.modalCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.saveBtn, { backgroundColor: '#0F172A' }]} 
+                                    onPress={handleCreateJob}
+                                    disabled={isCreatingJob}
+                                >
+                                    {isCreatingJob ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Job</Text>}
+                                </TouchableOpacity>
+                            </View>
                         </ScrollView>
                     </View>
                     </KeyboardAvoidingView>
                 </View>
             </Modal>
+
+            {/* Staff Selection Modal */}
+            <Modal visible={isSelectingWorker} transparent animationType="fade">
+                <View style={styles.selOverlay}>
+                    <View style={styles.selBox}>
+                        <Text style={styles.selTitle}>Select Lead Staff</Text>
+                        <ScrollView style={{ maxHeight: 350 }}>
+                            {filteredStaff.map((m, i) => (
+                                <TouchableOpacity 
+                                    key={i} 
+                                    style={styles.selItem} 
+                                    onPress={() => {
+                                        setLeadWorker(m.fullName || m.name);
+                                        setLeadWorkerId(m._id || m.id);
+                                        setIsSelectingWorker(false);
+                                    }}
+                                >
+                                    <View>
+                                        <Text style={styles.selLabel}>{m.fullName || m.name}</Text>
+                                        <Text style={styles.selSubLabel}>{m.role}</Text>
+                                    </View>
+                                    {String(leadWorkerId || '') === String(m._id || m.id) ? (
+                                        <MaterialCommunityIcons name="check-circle" size={20} color="#2563EB" />
+                                    ) : null}
+                                </TouchableOpacity>
+                            ))}
+                            {filteredStaff.length === 0 && (
+                                <Text style={{ textAlign: 'center', padding: 20, color: '#94A3B8' }}>No eligible staff found.</Text>
+                            )}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selClose} onPress={() => setIsSelectingWorker(false)}>
+                            <Text style={styles.selCloseText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Role Selection Modal */}
+            <Modal visible={isSelectingRole} transparent animationType="fade">
+                <View style={styles.selOverlay}>
+                    <View style={styles.selBox}>
+                        <Text style={styles.selTitle}>Select Role</Text>
+                        <ScrollView style={{ maxHeight: 350 }}>
+                            {roleOptions.map((role, i) => (
+                                <TouchableOpacity
+                                    key={`${role.value}-${i}`}
+                                    style={styles.selItem}
+                                    onPress={() => {
+                                        setAssignRole(role.value);
+                                        setLeadWorker('');
+                                        setLeadWorkerId(null);
+                                        setIsSelectingRole(false);
+                                    }}
+                                >
+                                    <View>
+                                        <Text style={styles.selLabel}>{role.label}</Text>
+                                    </View>
+                                    {assignRole === role.value ? (
+                                        <MaterialCommunityIcons
+                                            name="check-circle"
+                                            size={20}
+                                            color="#2563EB"
+                                        />
+                                    ) : null}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selClose} onPress={() => setIsSelectingRole(false)}>
+                            <Text style={styles.selCloseText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Job Status Selection Modal */}
+            <Modal visible={isSelectingJobStatus} transparent animationType="fade">
+                <View style={styles.selOverlay}>
+                    <View style={styles.selBox}>
+                        <Text style={styles.selTitle}>Select Job Status</Text>
+                        <ScrollView style={{ maxHeight: 350 }}>
+                            {jobStatusOptions.map((status, i) => (
+                                <TouchableOpacity
+                                    key={`${status.value}-${i}`}
+                                    style={styles.selItem}
+                                    onPress={() => {
+                                        setJobStatus(status.value);
+                                        setIsSelectingJobStatus(false);
+                                    }}
+                                >
+                                    <View>
+                                        <Text style={styles.selLabel}>{status.label}</Text>
+                                    </View>
+                                    {jobStatus === status.value ? (
+                                        <MaterialCommunityIcons
+                                            name="check-circle"
+                                            size={20}
+                                            color="#2563EB"
+                                        />
+                                    ) : null}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selClose} onPress={() => setIsSelectingJobStatus(false)}>
+                            <Text style={styles.selCloseText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {Platform.OS === 'ios' && datePickerField ? (
+                <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                    <DateTimePicker
+                        value={parsePickerDate(datePickerField === 'startDate' ? jobStartDate : jobEndDate)}
+                        mode="date"
+                        display="spinner"
+                        onChange={(event, selectedDate) => {
+                            if (!selectedDate) return;
+                            const dateStr = formatDateLocal(selectedDate);
+                            if (datePickerField === 'startDate') setJobStartDate(dateStr);
+                            if (datePickerField === 'endDate') setJobEndDate(dateStr);
+                        }}
+                    />
+                    <TouchableOpacity style={styles.pickerDoneBtn} onPress={() => setDatePickerField(null)}>
+                        <Text style={styles.pickerDoneText}>Done</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
 
             {/* Bottom Nav Simulation */}
             <View style={styles.bottomNav}>
@@ -453,7 +763,10 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                     <MaterialCommunityIcons name="view-dashboard" size={24} color="#2563EB" />
                     <Text style={[styles.navText, { color: '#2563EB' }]}>Dashboard</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem}>
+                <TouchableOpacity
+                    style={styles.navItem}
+                    onPress={() => navigation.navigate('ForemanIssues', { projectId, projectName: project?.name })}
+                >
                     <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#64748B" />
                     <Text style={styles.navText}>Punch List</Text>
                 </TouchableOpacity>
@@ -534,16 +847,23 @@ const styles = StyleSheet.create({
     emptyJobsTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginTop: 12 },
     emptyJobsSub: { fontSize: 13, fontWeight: '600', color: '#94A3B8', marginTop: 4 },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' },
     modalKeyboardWrap: { width: '100%' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalFormScroll: { flexGrow: 0 },
+    modalFormScrollContent: { paddingBottom: 26 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     inputGroup: { marginBottom: 16 },
     inputLabel: { fontSize: 12, fontWeight: '900', color: '#64748B', marginBottom: 8, textTransform: 'uppercase' },
     modalInput: { backgroundColor: '#F8FAFC', borderRadius: 12, height: 48, paddingHorizontal: 16, fontSize: 14, fontWeight: '600', color: '#1E293B', borderWidth: 1, borderColor: '#E2E8F0' },
-    saveBtn: { height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+    modalInputArea: { minHeight: 90, height: 90, paddingTop: 12 },
+    dropdownField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
+    modalCancelBtn: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 16, alignItems: 'center', justifyContent: 'center', height: 56 },
+    modalCancelText: { color: '#475569', fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
+    saveBtn: { flex: 1.25, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
 
     jobCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
     jobCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
@@ -593,7 +913,19 @@ const styles = StyleSheet.create({
         borderTopColor: '#F1F5F9'
     },
     navItem: { alignItems: 'center' },
-    navText: { fontSize: 10, fontWeight: '800', color: '#64748B', marginTop: 4 }
+    navText: { fontSize: 10, fontWeight: '800', color: '#64748B', marginTop: 4 },
+
+    modalInputText: { fontSize: 14, fontWeight: '600' },
+    selOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'center', alignItems: 'center' },
+    selBox: { width: '85%', backgroundColor: '#fff', borderRadius: 24, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
+    selTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 20, textAlign: 'center' },
+    selItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    selLabel: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+    selSubLabel: { fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: 2 },
+    selClose: { marginTop: 20, paddingVertical: 12, alignItems: 'center' },
+    selCloseText: { fontSize: 14, fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
+    pickerDoneBtn: { paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    pickerDoneText: { color: '#2563EB', fontWeight: '800', fontSize: 14 }
 });
 
 export default PMProjectDetailScreen;

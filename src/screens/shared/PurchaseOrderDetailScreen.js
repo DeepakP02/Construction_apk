@@ -60,6 +60,10 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
         po?.projectName ||
         '—';
     const vendorDisplay = po?.vendorName || (typeof po?.vendorId === 'object' ? po?.vendorId?.name : null) || '—';
+    const jobName =
+        (typeof po?.jobId === 'object' && po?.jobId?.name) ||
+        po?.jobName ||
+        '—';
     const createdBy =
         (typeof po?.createdBy === 'object' && (po?.createdBy?.fullName || po?.createdBy?.name)) || '—';
 
@@ -106,13 +110,9 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
                     </View>
 
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Amounts</Text>
-                        <Row icon="calculator-variant-outline" label="Subtotal" value={`$${fmtMoney(po?.subtotal)}`} />
-                        <Row icon="percent-outline" label="Tax" value={`$${fmtMoney(po?.tax)}`} />
-                        <View style={styles.totalRow}>
-                            <Text style={styles.totalLabel}>Total</Text>
-                            <Text style={styles.totalValue}>${fmtMoney(po?.totalAmount)}</Text>
-                        </View>
+                        <Text style={styles.cardTitle}>Basic details</Text>
+                        <Row icon="briefcase-outline" label="Project" value={projectName} />
+                        <Row icon="hammer-wrench" label="Job (optional)" value={jobName} />
                     </View>
 
                     <View style={styles.card}>
@@ -143,10 +143,9 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
                                             </Text>
                                         ) : null}
                                         <Text style={styles.lineMeta}>
-                                            Qty {line.quantity ?? '—'} × ${fmtMoney(line.unitPrice)} 
+                                            Qty {line.quantity ?? '—'}
                                         </Text>
                                     </View>
-                                    <Text style={styles.lineTotal}>${fmtMoney(line.total)}</Text>
                                 </View>
                             ))}
                         </View>
@@ -154,7 +153,7 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
 
                     {(po?.notesToVendor || po?.internalNotes) ? (
                         <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Notes</Text>
+                            <Text style={styles.cardTitle}>Quick notes</Text>
                             {po.notesToVendor ? (
                                 <View style={styles.noteBlock}>
                                     <Text style={styles.noteLabel}>To vendor</Text>
@@ -229,17 +228,6 @@ const styles = StyleSheet.create({
     rowText: { flex: 1, minWidth: 0 },
     rowLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', marginBottom: 2 },
     rowValue: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
-    totalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-    },
-    totalLabel: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
-    totalValue: { fontSize: 18, fontWeight: '900', color: '#2563EB' },
     lineRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -252,7 +240,6 @@ const styles = StyleSheet.create({
     lineName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
     lineDesc: { fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: '600' },
     lineMeta: { fontSize: 12, color: '#94A3B8', marginTop: 6, fontWeight: '700' },
-    lineTotal: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
     noteBlock: { marginBottom: 12 },
     noteLabel: { fontSize: 11, fontWeight: '900', color: '#94A3B8', marginBottom: 4 },
     noteBody: { fontSize: 14, color: '#475569', fontWeight: '600', lineHeight: 20 },

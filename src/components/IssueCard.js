@@ -21,7 +21,12 @@ const IssueCard = ({ issue }) => {
         return att.url || att.imageUrl || att.uri || null;
     };
 
-    const firstPhoto = issue.attachments && issue.attachments.length > 0 ? getAttachmentUrl(issue.attachments[0]) : null;
+    const photoArray = [
+        ...(issue.attachments || []),
+        ...(issue.images || []),
+        ...(issue.photoIds || [])
+    ];
+    const firstPhoto = photoArray.length > 0 ? getAttachmentUrl(photoArray[0]) : null;
     const hasImage = !!firstPhoto;
 
     return (

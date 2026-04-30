@@ -64,6 +64,8 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import DashboardScreen from '../screens/shared/DashboardScreen';
 import ProjectDetailsScreen from '../screens/shared/ProjectDetailsScreen';
 import TasksScreen from '../screens/shared/TasksScreen';
+import TaskHierarchyDetailScreen from '../screens/shared/TaskHierarchyDetailScreen';
+import TaskCreateScreen from '../screens/shared/TaskCreateScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import EquipmentScreen from '../screens/shared/EquipmentScreen';
 import RFIScreen from '../screens/shared/RFIScreen';
@@ -1083,6 +1085,8 @@ const AppNavigation = () => {
                         <Stack.Screen name="Chatboard" component={WorkerChatboard} />
                         <Stack.Screen name="JobTasks" component={WorkerJobTasksScreen} />
                         <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+                        <Stack.Screen name="TaskHierarchyDetail" component={TaskHierarchyDetailScreen} />
+                        <Stack.Screen name="TaskCreate" component={TaskCreateScreen} />
                         <Stack.Screen name="ClientJobs" component={ClientJobsScreen} />
                         <Stack.Screen name="Drawings" component={WorkerDrawingsScreen} />
                         <Stack.Screen name="ForemanTasks" component={ForemanTasksScreen} />

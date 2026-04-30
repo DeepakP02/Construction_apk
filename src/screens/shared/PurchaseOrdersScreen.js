@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SHADOWS } from '../../constants/theme';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import api from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -45,12 +46,19 @@ const PurchaseOrdersScreen = ({ navigation }) => {
     // Create PO State
     const [createVisible, setCreateVisible] = useState(false);
     const [formProject, setFormProject] = useState(null);
+    const [formJob, setFormJob] = useState(null);
     const [formVendor, setFormVendor] = useState('');
     const [formEmail, setFormEmail] = useState('');
     const [formNotes, setFormNotes] = useState('');
-    const [items, setItems] = useState([{ id: Date.now(), itemName: '', description: '', quantity: '1', unitPrice: '0' }]);
+    const [items, setItems] = useState([{ id: Date.now(), itemName: '', description: '', quantity: '1' }]);
     const [submitting, setSubmitting] = useState(false);
     const [selProjectVisible, setSelProjectVisible] = useState(false);
+    const [selJobVisible, setSelJobVisible] = useState(false);
+    const [jobs, setJobs] = useState([]);
+    const [poDate, setPoDate] = useState(new Date());
+    const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(null);
+    const [datePickerTarget, setDatePickerTarget] = useState(null);
+    const [showIOSDatePicker, setShowIOSDatePicker] = useState(false);
 
     const fetchPOs = async () => {
         try {
@@ -68,16 +76,8 @@ const PurchaseOrdersScreen = ({ navigation }) => {
         fetchPOs();
     }, []);
 
-    // Summary Calculations
-    const poSummary = useMemo(() => {
-        const subtotal = items.reduce((acc, it) => acc + (parseFloat(it.quantity) || 0) * (parseFloat(it.unitPrice) || 0), 0);
-        const tax = subtotal * 0.15;
-        const total = subtotal + tax;
-        return { subtotal, tax, total };
-    }, [items]);
-
     const handleAddItem = () => {
-        setItems([...items, { id: Date.now(), itemName: '', description: '', quantity: '1', unitPrice: '0' }]);
+        setItems([...items, { id: Date.now(), itemName: '', description: '', quantity: '1' }]);
     };
 
     const handleUpdateItem = (id, field, val) => {
@@ -91,8 +91,17 @@ const PurchaseOrdersScreen = ({ navigation }) => {
     };
 
     const handleCreatePO = async () => {
-        if (!formProject || !formVendor || !formEmail || items.some(it => !it.itemName)) {
-            Alert.alert('Required Fields', 'Please fill in Project, Vendor details and at least one item name.');
+        const validItems = items
+            .filter(it => (it.itemName || '').trim() !== '')
+            .map(it => ({
+                itemName: (it.itemName || '').trim(),
+                description: (it.description || '').trim(),
+                quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
+                unitPrice: 0
+            }));
+
+        if (!formProject || !formVendor.trim() || !formEmail.trim() || validItems.length === 0) {
+            Alert.alert('Required Fields', 'Please fill in Project, Vendor details and at least one line item.');
             return;
         }
 
@@ -100,18 +109,12 @@ const PurchaseOrdersScreen = ({ navigation }) => {
             setSubmitting(true);
             const payload = {
                 projectId: formProject._id || formProject.id,
-                vendorName: formVendor,
-                vendorEmail: formEmail,
-                items: items.map(it => ({
-                    itemName: it.itemName,
-                    description: it.description,
-                    quantity: parseInt(it.quantity) || 0,
-                    unitPrice: parseFloat(it.unitPrice) || 0
-                })),
-                notes: formNotes,
-                poNumber: `PO-${Math.floor(100000 + Math.random() * 900000)}`,
-                status: 'Pending Approval',
-                expectedDeliveryDate: new Date()
+                jobId: formJob?._id || formJob?.id || null,
+                vendorName: formVendor.trim(),
+                vendorEmail: formEmail.trim(),
+                items: validItems,
+                notesToVendor: formNotes,
+                expectedDeliveryDate: expectedDeliveryDate ? expectedDeliveryDate.toISOString() : null
             };
 
             await api.post('/purchase-orders', payload);
@@ -128,10 +131,79 @@ const PurchaseOrdersScreen = ({ navigation }) => {
 
     const resetForm = () => {
         setFormProject(null);
+        setFormJob(null);
         setFormVendor('');
         setFormEmail('');
         setFormNotes('');
-        setItems([{ id: Date.now(), itemName: '', description: '', quantity: '1', unitPrice: '0' }]);
+        setItems([{ id: Date.now(), itemName: '', description: '', quantity: '1' }]);
+        setJobs([]);
+        setPoDate(new Date());
+        setExpectedDeliveryDate(null);
+        setDatePickerTarget(null);
+        setShowIOSDatePicker(false);
+    };
+
+    const openCreateModal = () => {
+        resetForm();
+        setCreateVisible(true);
+    };
+
+    const closeCreateModal = () => {
+        setCreateVisible(false);
+        resetForm();
+    };
+
+    useEffect(() => {
+        const projectId = formProject?._id || formProject?.id;
+        if (!projectId) {
+            setJobs([]);
+            setFormJob(null);
+            return;
+        }
+
+        let mounted = true;
+        const fetchJobs = async () => {
+            try {
+                const res = await api.get(`/jobs?projectId=${projectId}`);
+                if (mounted) {
+                    setJobs(Array.isArray(res.data) ? res.data : []);
+                }
+            } catch (e) {
+                if (mounted) setJobs([]);
+            }
+        };
+
+        setFormJob(null);
+        fetchJobs();
+        return () => {
+            mounted = false;
+        };
+    }, [formProject]);
+
+    const formatDate = (dateValue) => {
+        if (!dateValue) return 'dd/mm/yyyy';
+        return new Date(dateValue).toLocaleDateString();
+    };
+
+    const applyDateValue = (target, value) => {
+        if (target === 'poDate') setPoDate(value);
+        if (target === 'expectedDeliveryDate') setExpectedDeliveryDate(value);
+    };
+
+    const openDatePicker = (target) => {
+        const currentValue = target === 'poDate' ? poDate : (expectedDeliveryDate || new Date());
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                mode: 'date',
+                value: currentValue,
+                onChange: (_, selectedDate) => {
+                    if (selectedDate) applyDateValue(target, selectedDate);
+                }
+            });
+            return;
+        }
+        setDatePickerTarget(target);
+        setShowIOSDatePicker(true);
     };
 
     const projectPickerRows = useMemo(() => {
@@ -226,14 +298,16 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                             <View style={[styles.vendorAvatar, { backgroundColor: '#F8FAFC', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' }]}>
                                 <Text style={styles.vendorAvatarTxt}>{item.vendorName?.charAt(0) || 'V'}</Text>
                             </View>
-                            <Text style={styles.vendorNameTxt}>{item.vendorName || 'Unknown'}</Text>
+                            <Text style={styles.vendorNameTxt} numberOfLines={1}>{item.vendorName || 'Unknown'}</Text>
                         </View>
                     </View>
                     
                     <View style={styles.poCardBottom}>
-                        <View style={styles.poAmountWrap}>
-                            <Text style={styles.poAmountLabel}>TOTAL REQUISITION</Text>
-                            <Text style={[styles.poAmountVal, { color: statusColor }]}>${item.totalAmount?.toLocaleString() || '0'}</Text>
+                        <View style={styles.poMetaWrap}>
+                            <Text style={styles.poMetaLabel}>PO DATE</Text>
+                            <Text style={[styles.poMetaVal, { color: statusColor }]}>
+                                {new Date(item.createdAt || Date.now()).toLocaleDateString()}
+                            </Text>
                         </View>
                         <View style={styles.poStatusWrap}>
                             <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
@@ -241,7 +315,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                     {item.status?.toUpperCase() || 'PENDING'}
                                 </Text>
                             </View>
-                            <Text style={styles.poDateTxt}>{new Date(item.createdAt || Date.now()).toLocaleDateString()}</Text>
+                            <Text style={styles.poDateTxt} numberOfLines={1}>{item.vendorEmail || 'No vendor email'}</Text>
                         </View>
                         <View style={styles.detailsBtn} pointerEvents="none">
                             <MaterialCommunityIcons name="chevron-right-circle-outline" size={24} color="#CBD5E1" />
@@ -262,7 +336,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                     <Text style={styles.mainTitle}>Purchase Orders</Text>
                     <Text style={styles.mainSubtitle}>Procurement Management</Text>
                 </View>
-                <TouchableOpacity style={styles.addBtn} onPress={() => setCreateVisible(true)}>
+                <TouchableOpacity style={styles.addBtn} onPress={openCreateModal}>
                     <MaterialCommunityIcons name="plus" size={18} color="#fff" />
                     <Text style={styles.addBtnText}>Raise PO</Text>
                 </TouchableOpacity>
@@ -298,9 +372,6 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                             </Text>
                             <MaterialCommunityIcons name="chevron-down" size={16} color="#64748B" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.toolBtnIcon} onPress={clearListFilters}>
-                            <MaterialCommunityIcons name="filter-variant" size={18} color="#64748B" />
-                        </TouchableOpacity>
                     </ScrollView>
             </View>
 
@@ -332,18 +403,13 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                     (item.id != null && String(item.id) === String(projectFilterId));
                                 return (
                                     <TouchableOpacity
-                                        style={styles.selItem}
+                                        style={[styles.selItem, selected && styles.selItemActive]}
                                         onPress={() => {
                                             setProjectFilterId(item.id);
                                             setProjectFilterVisible(false);
                                         }}
                                     >
                                         <Text style={styles.selItemTxt} numberOfLines={2}>{item.name}</Text>
-                                        {selected ? (
-                                            <MaterialCommunityIcons name="check-circle" size={22} color="#2563EB" />
-                                        ) : (
-                                            <View style={{ width: 22 }} />
-                                        )}
                                     </TouchableOpacity>
                                 );
                             }}
@@ -367,18 +433,13 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                 const selected = statusFilter === item.value;
                                 return (
                                     <TouchableOpacity
-                                        style={styles.selItem}
+                                        style={[styles.selItem, selected && styles.selItemActive]}
                                         onPress={() => {
                                             setStatusFilter(item.value);
                                             setStatusFilterVisible(false);
                                         }}
                                     >
                                         <Text style={styles.selItemTxt}>{item.label}</Text>
-                                        {selected ? (
-                                            <MaterialCommunityIcons name="check-circle" size={22} color="#2563EB" />
-                                        ) : (
-                                            <View style={{ width: 22 }} />
-                                        )}
                                     </TouchableOpacity>
                                 );
                             }}
@@ -390,13 +451,16 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                 </View>
             </Modal>
 
-            {/* FULL SCREEN CREATE PO MODAL */}
-            <Modal visible={createVisible} animationType="slide" transparent={false}>
-                <SafeAreaView style={styles.createMain}>
+            {/* CREATE PO MODAL */}
+            <Modal visible={createVisible} animationType="slide" transparent onRequestClose={closeCreateModal}>
+                <View style={styles.createOverlay}>
+                    <KeyboardAvoidingView
+                        style={styles.createKeyboard}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
+                    <View style={styles.createSheet}>
                     <View style={styles.createHeader}>
-                        <TouchableOpacity onPress={() => setCreateVisible(false)} style={styles.backBtnModal}>
-                            <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
-                        </TouchableOpacity>
                         <View style={styles.createHeaderText}>
                             <Text style={styles.createTitle} numberOfLines={2}>Create Purchase Order</Text>
                             <View style={styles.createSubWrap}>
@@ -404,13 +468,11 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                 <Text style={styles.createSub}>Submitting requisition</Text>
                             </View>
                         </View>
+                        <TouchableOpacity onPress={closeCreateModal} style={styles.closeBtnModal}>
+                            <MaterialCommunityIcons name="close" size={24} color="#64748B" />
+                        </TouchableOpacity>
                     </View>
 
-                    <KeyboardAvoidingView
-                        style={styles.createKeyboard}
-                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-                    >
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.createScroll}
@@ -428,6 +490,24 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                     <TouchableOpacity style={styles.modalSelector} onPress={() => setSelProjectVisible(true)} activeOpacity={0.7}>
                                         <Text style={[styles.selText, !formProject && styles.selTextPlaceholder]} numberOfLines={1}>
                                             {formProject?.name || 'Select project'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={22} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.formField}>
+                                    <View style={styles.labelGrp}>
+                                        <MaterialCommunityIcons name="briefcase-outline" size={16} color="#2563EB" />
+                                        <Text style={styles.formLabel}>Job (optional)</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.modalSelector}
+                                        onPress={() => setSelJobVisible(true)}
+                                        activeOpacity={0.7}
+                                        disabled={!formProject}
+                                    >
+                                        <Text style={[styles.selText, !formJob && styles.selTextPlaceholder]} numberOfLines={1}>
+                                            {formJob?.name || (formProject ? 'Select job' : 'Select project first')}
                                         </Text>
                                         <MaterialCommunityIcons name="chevron-down" size={22} color="#64748B" />
                                     </TouchableOpacity>
@@ -467,12 +547,25 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                 <View style={styles.formField}>
                                     <View style={styles.labelGrp}>
                                         <MaterialCommunityIcons name="calendar-outline" size={16} color="#2563EB" />
-                                        <Text style={styles.formLabel}>Request date</Text>
+                                        <Text style={styles.formLabel}>Date</Text>
                                     </View>
-                                    <View style={styles.formInpBox}>
-                                        <Text style={styles.inpValTxt}>{new Date().toLocaleDateString()}</Text>
+                                    <TouchableOpacity style={styles.formInpBox} onPress={() => openDatePicker('poDate')} activeOpacity={0.8}>
+                                        <Text style={styles.inpValTxt}>{formatDate(poDate)}</Text>
                                         <MaterialCommunityIcons name="calendar-check" size={22} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.formField}>
+                                    <View style={styles.labelGrp}>
+                                        <MaterialCommunityIcons name="calendar-month-outline" size={16} color="#2563EB" />
+                                        <Text style={styles.formLabel}>Expected delivery</Text>
                                     </View>
+                                    <TouchableOpacity style={styles.formInpBox} onPress={() => openDatePicker('expectedDeliveryDate')} activeOpacity={0.8}>
+                                        <Text style={[styles.inpValTxt, !expectedDeliveryDate && styles.selTextPlaceholder]}>
+                                            {formatDate(expectedDeliveryDate)}
+                                        </Text>
+                                        <MaterialCommunityIcons name="calendar-check" size={22} color="#64748B" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         </View>
@@ -524,49 +617,18 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                                 onChangeText={v => handleUpdateItem(it.id, 'quantity', v)}
                                             />
                                         </View>
-                                        <View style={styles.calcBox}>
-                                            <Text style={styles.calcLab}>Unit price</Text>
-                                            <TextInput
-                                                keyboardType="decimal-pad"
-                                                style={styles.calcInp}
-                                                placeholder="0.00"
-                                                placeholderTextColor="#94A3B8"
-                                                value={it.unitPrice}
-                                                onChangeText={v => handleUpdateItem(it.id, 'unitPrice', v)}
-                                            />
-                                        </View>
-                                        <View style={[styles.calcBox, styles.calcBoxTotal]}>
-                                            <Text style={styles.calcLab}>Line total</Text>
-                                            <Text style={styles.calcTotalText} numberOfLines={1}>
-                                                ${((parseFloat(it.quantity) || 0) * (parseFloat(it.unitPrice) || 0)).toFixed(2)}
-                                            </Text>
-                                        </View>
                                     </View>
                                 </View>
                             ))}
                         </View>
 
-                        {/* SUMMARY & NOTES */}
+                        {/* QUICK NOTES */}
                         <View style={styles.sidebarSection}>
                             <View style={[styles.summaryCard, SHADOWS.large]}>
-                                <Text style={styles.summaryTitle}>Requisition summary</Text>
-                                <View style={styles.summaryRow}>
-                                    <Text style={styles.summaryLab}>Subtotal</Text>
-                                    <Text style={styles.summaryVal}>${poSummary.subtotal.toFixed(2)}</Text>
-                                </View>
-                                <View style={styles.summaryRow}>
-                                    <Text style={styles.summaryLab}>Tax (15%)</Text>
-                                    <Text style={styles.summaryVal}>${poSummary.tax.toFixed(2)}</Text>
-                                </View>
-                                <View style={styles.summaryTotalRow}>
-                                    <Text style={styles.totalLab}>Estimated total</Text>
-                                    <Text style={styles.totalVal}>${poSummary.total.toFixed(2)}</Text>
-                                </View>
-
-                                <Text style={styles.summaryTitleNotes}>Notes</Text>
+                                <Text style={styles.summaryTitleNotes}>Quick notes</Text>
                                 <TextInput
                                     style={styles.notesInp}
-                                    placeholder="Notes for procurement…"
+                                    placeholder="Notes for vendor..."
                                     placeholderTextColor="#64748B"
                                     multiline
                                     value={formNotes}
@@ -582,14 +644,15 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                     )}
                                 </TouchableOpacity>
 
-                                <TouchableOpacity onPress={() => setCreateVisible(false)} style={styles.discardBtn} activeOpacity={0.7}>
-                                    <Text style={styles.discardTxt}>Discard</Text>
+                                <TouchableOpacity onPress={closeCreateModal} style={styles.discardBtn} activeOpacity={0.7} disabled={submitting}>
+                                    <Text style={styles.discardTxt}>Cancel</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                         </ScrollView>
+                    </View>
                     </KeyboardAvoidingView>
-                </SafeAreaView>
+                </View>
 
                 {/* Project Select Nested Modal */}
                 <Modal visible={selProjectVisible} transparent animationType="fade">
@@ -600,9 +663,14 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                                 data={projects}
                                 keyExtractor={p => p._id || p.id}
                                 renderItem={({ item }) => (
-                                    <TouchableOpacity style={styles.selItem} onPress={() => { setFormProject(item); setSelProjectVisible(false); }}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.selItem,
+                                            (formProject?._id || formProject?.id) === (item._id || item.id) && styles.selItemActive
+                                        ]}
+                                        onPress={() => { setFormProject(item); setSelProjectVisible(false); }}
+                                    >
                                         <Text style={styles.selItemTxt}>{item.name}</Text>
-                                        <MaterialCommunityIcons name="check-circle" size={20} color="#2563EB" />
                                     </TouchableOpacity>
                                 )}
                              />
@@ -612,6 +680,47 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                         </View>
                     </View>
                 </Modal>
+                <Modal visible={selJobVisible} transparent animationType="fade" onRequestClose={() => setSelJobVisible(false)}>
+                    <View style={styles.selBack}>
+                        <View style={styles.selCard}>
+                             <Text style={styles.selTitle}>Select Job</Text>
+                             <FlatList
+                                data={jobs}
+                                keyExtractor={j => j._id || j.id}
+                                ListEmptyComponent={<Text style={styles.emptyHint}>No jobs found</Text>}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.selItem,
+                                            (formJob?._id || formJob?.id) === (item._id || item.id) && styles.selItemActive
+                                        ]}
+                                        onPress={() => { setFormJob(item); setSelJobVisible(false); }}
+                                    >
+                                        <Text style={styles.selItemTxt}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                )}
+                             />
+                             <TouchableOpacity onPress={() => setSelJobVisible(false)} style={styles.selClose}>
+                                <Text style={styles.selCloseTxt}>CANCEL</Text>
+                             </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+                {Platform.OS === 'ios' && showIOSDatePicker ? (
+                    <View style={styles.iosDatePickerWrap}>
+                        <DateTimePicker
+                            value={datePickerTarget === 'poDate' ? poDate : (expectedDeliveryDate || new Date())}
+                            mode="date"
+                            display="spinner"
+                            onChange={(_, selectedDate) => {
+                                if (selectedDate && datePickerTarget) applyDateValue(datePickerTarget, selectedDate);
+                            }}
+                        />
+                        <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowIOSDatePicker(false)}>
+                            <Text style={styles.iosDateDoneTxt}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
             </Modal>
         </SafeAreaView>
     );
@@ -619,12 +728,12 @@ const PurchaseOrdersScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
-    pageHeader: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    pageHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTextContainer: { flex: 1, marginRight: 12 },
-    mainTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
+    mainTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.7 },
     mainSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '800', marginTop: 4 },
-    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4 },
-    addBtnText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, gap: 6 },
+    addBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 
     filterSection: { paddingHorizontal: 20, marginBottom: 12, gap: 12 },
     searchBox: { height: 52, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
@@ -634,48 +743,52 @@ const styles = StyleSheet.create({
     toolBtnTxt: { fontSize: 10, fontWeight: '900', color: '#64748B' },
     toolBtnIcon: { width: 40, height: 40, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
     listArea: { padding: 16, paddingBottom: 100 },
-    poCard: { backgroundColor: '#fff', borderRadius: 28, marginBottom: 16, overflow: 'hidden', flexDirection: 'row' },
+    poCard: { backgroundColor: '#fff', borderRadius: 24, marginBottom: 14, overflow: 'hidden', flexDirection: 'row' },
     statusAccent: { width: 6 },
-    poCardInfo: { flex: 1, padding: 20 },
-    poCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-    poNumWrap: { flexDirection: 'row', gap: 12 },
+    poCardInfo: { flex: 1, padding: 16 },
+    poCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+    poNumWrap: { flexDirection: 'row', gap: 10, flex: 1, minWidth: 0, marginRight: 8 },
     hashBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    poNumberTxt: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
-    poProjectTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', marginTop: 2, width: 140 },
+    poNumberTxt: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
+    poProjectTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', marginTop: 2, flexShrink: 1 },
     poProjectSub: { fontSize: 8, fontWeight: '900', color: '#CBD5E1', letterSpacing: 0.5 },
-    vendorWrap: { alignItems: 'flex-end', gap: 6 },
+    vendorWrap: { alignItems: 'flex-end', gap: 6, width: 84 },
     vendorAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
     vendorAvatarTxt: { fontSize: 12, fontWeight: '900', color: '#2563EB' },
-    vendorNameTxt: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
-    poCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
-    poAmountWrap: { flex: 1 },
-    poAmountLabel: { fontSize: 8, fontWeight: '900', color: '#CBD5E1', letterSpacing: 0.5 },
-    poAmountVal: { fontSize: 18, fontWeight: '900' },
-    poStatusWrap: { alignItems: 'flex-end', gap: 6 },
+    vendorNameTxt: { fontSize: 12, fontWeight: '800', color: '#1E293B', maxWidth: 84, textAlign: 'right' },
+    poCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
+    poMetaWrap: { flex: 1 },
+    poMetaLabel: { fontSize: 8, fontWeight: '900', color: '#CBD5E1', letterSpacing: 0.5 },
+    poMetaVal: { fontSize: 14, fontWeight: '900' },
+    poStatusWrap: { alignItems: 'flex-end', gap: 6, width: 116 },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     statusText: { fontSize: 9, fontWeight: '900' },
-    poDateTxt: { fontSize: 10, fontWeight: '800', color: '#94A3B8' },
-    detailsBtn: { padding: 4, marginLeft: 15 },
+    poDateTxt: { fontSize: 10, fontWeight: '800', color: '#94A3B8', maxWidth: 116 },
+    detailsBtn: { padding: 2, marginLeft: 10, marginBottom: 2 },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     // Modal Create PO
-    createMain: { flex: 1, backgroundColor: '#F8FAFC' },
-    createKeyboard: { flex: 1 },
+    createOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
+    createKeyboard: { width: '100%' },
+    createSheet: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '92%' },
     createHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
         paddingVertical: 14,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
     },
-    backBtnModal: { marginRight: 12, padding: 4 },
+    closeBtnModal: { padding: 4, marginLeft: 10 },
     createHeaderText: { flex: 1, minWidth: 0 },
     createTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     createSubWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
     createSub: { fontSize: 12, fontWeight: '700', color: '#2563EB' },
-    createScroll: { padding: 16, paddingBottom: 40 },
+    createScroll: { padding: 16, paddingBottom: 28 },
     sectionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
     sectionTitle: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 0.8, marginBottom: 14, textTransform: 'uppercase' },
     sectionTitleInline: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 0.8, textTransform: 'uppercase' },
@@ -756,7 +869,6 @@ const styles = StyleSheet.create({
     },
     lineItemCalcRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     calcBox: { flex: 1, minWidth: 0 },
-    calcBoxTotal: { alignItems: 'flex-end' },
     calcLab: { fontSize: 10, fontWeight: '900', color: '#64748B', marginBottom: 6, letterSpacing: 0.3 },
     calcInp: {
         width: '100%',
@@ -771,25 +883,9 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#0F172A',
     },
-    calcTotalText: { fontSize: 15, fontWeight: '900', color: '#0F172A', paddingVertical: 10, paddingHorizontal: 4 },
     sidebarSection: { marginBottom: 24 },
     summaryCard: { backgroundColor: '#0F172A', borderRadius: 20, padding: 20 },
-    summaryTitle: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 16, textTransform: 'uppercase' },
-    summaryTitleNotes: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginTop: 20, marginBottom: 10, textTransform: 'uppercase' },
-    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    summaryLab: { fontSize: 14, color: '#E2E8F0', fontWeight: '600' },
-    summaryVal: { fontSize: 14, color: '#F8FAFC', fontWeight: '800' },
-    summaryTotalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(148, 163, 184, 0.35)',
-    },
-    totalLab: { fontSize: 12, fontWeight: '900', color: '#93C5FD', letterSpacing: 0.5 },
-    totalVal: { fontSize: 22, fontWeight: '900', color: '#60A5FA' },
+    summaryTitleNotes: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },
     notesInp: {
         backgroundColor: '#1E293B',
         borderRadius: 12,
@@ -818,15 +914,20 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     btnSubmitFinalTxt: { color: '#fff', fontSize: 15, fontWeight: '900' },
-    discardBtn: { alignItems: 'center', paddingVertical: 14 },
-    discardTxt: { color: '#94A3B8', fontSize: 14, fontWeight: '700' },
+    discardBtn: { alignItems: 'center', paddingVertical: 14, backgroundColor: '#0F172A', borderRadius: 12 },
+    discardTxt: { color: '#E2E8F0', fontSize: 14, fontWeight: '700' },
     selBack: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 25 },
     selCard: { backgroundColor: '#fff', borderRadius: 32, padding: 25, maxHeight: '60%' },
     selTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 20 },
     selItem: { paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    selItemActive: { backgroundColor: '#EFF6FF' },
     selItemTxt: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
     selClose: { marginTop: 20, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 16 },
-    selCloseTxt: { color: '#64748B', fontWeight: '900', fontSize: 12, letterSpacing: 1 }
+    selCloseTxt: { color: '#64748B', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+    emptyHint: { textAlign: 'center', color: '#94A3B8', fontWeight: '700', paddingVertical: 20 },
+    iosDatePickerWrap: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 10 },
+    iosDateDoneTxt: { color: '#2563EB', fontSize: 16, fontWeight: '800' }
 });
 
 export default PurchaseOrdersScreen;

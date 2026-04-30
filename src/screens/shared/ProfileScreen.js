@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -200,11 +200,16 @@ const ProfileScreen = ({ navigation }) => {
             {/* Edit Profile Modal */}
             <Modal
                 visible={isEditModalVisible}
-                animationType="fade"
+                animationType="slide"
                 transparent={true}
                 onRequestClose={() => setIsEditModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView
+                        style={styles.modalKeyboardWrap}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Edit Profile</Text>
                         <TextInput
@@ -231,17 +236,23 @@ const ProfileScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
                     </View>
+                    </KeyboardAvoidingView>
                 </View>
             </Modal>
 
             {/* Password Modal */}
             <Modal
                 visible={isPasswordModalVisible}
-                animationType="fade"
+                animationType="slide"
                 transparent={true}
                 onRequestClose={() => setIsPasswordModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView
+                        style={styles.modalKeyboardWrap}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Change Password</Text>
                         <TextInput
@@ -277,6 +288,7 @@ const ProfileScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
                     </View>
+                    </KeyboardAvoidingView>
                 </View>
             </Modal>
         </View>
@@ -313,13 +325,14 @@ const styles = StyleSheet.create({
     profileItemRight: { flexDirection: 'row', alignItems: 'center' },
     profileItemValue: { fontSize: 14, marginRight: 6, fontWeight: '700', color: COLORS.textSecondary },
     versionText: { textAlign: 'center', fontSize: 12, color: COLORS.textMuted, fontWeight: '700' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 24, padding: 24 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 20 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
+    modalKeyboardWrap: { width: '100%' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 12, letterSpacing: -0.4 },
     input: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', color: '#000' },
-    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 10 },
-    modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-    btnText: { color: '#fff', fontWeight: '800' }
+    modalButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    modalBtn: { flex: 1, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    btnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', fontSize: 14 }
 });
 
 export default ProfileScreen;

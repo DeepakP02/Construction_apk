@@ -1,113 +1,127 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator } from 'react-native';
 import { COLORS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-    getManagedProjectIdsForPm,
-    getAllowedDmPeerIdsForPm,
-    getDmPeerIdsForPmScopedToProject,
-} from '../../utils/siteChatScope';
-
-const { width } = Dimensions.get('window');
+import api from '../../utils/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 const ChatScreen = ({ navigation }) => {
-    const { messages, projects, teamMembers, user, loading, jobs, tasks, resolveUser } = useApp();
+    const { user, loading, chatRooms } = useApp();
     const [search, setSearch] = useState('');
-    const [pmDmFilter, setPmDmFilter] = useState('all');
+    const [roomList, setRoomList] = useState([]);
+    const [chatUsers, setChatUsers] = useState([]);
 
-    const pmProjectIds = useMemo(() => getManagedProjectIdsForPm(projects, user), [projects, user]);
-
-    const allowedDmIds = useMemo(() => {
-        if (user?.role !== 'PM') return null;
-        if (pmDmFilter === 'all') {
-            return getAllowedDmPeerIdsForPm(projects, jobs, tasks, user);
+    const loadCommunications = useCallback(async () => {
+        try {
+            const [roomsRes, usersRes] = await Promise.all([
+                api.get('/chat/rooms'),
+                api.get('/chat/users')
+            ]);
+            setRoomList(Array.isArray(roomsRes.data) ? roomsRes.data : []);
+            setChatUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+        } catch (e) {
+            setRoomList([]);
+            setChatUsers([]);
         }
-        return getDmPeerIdsForPmScopedToProject(projects, jobs, tasks, user, pmDmFilter);
-    }, [user, projects, jobs, tasks, pmDmFilter]);
+    }, []);
 
-    const managedProjectsChips = useMemo(() => {
-        if (user?.role !== 'PM' || !pmProjectIds) return [];
-        return (projects || [])
-            .filter((p) => pmProjectIds.has(String(p._id || p.id)))
-            .map((p) => ({ id: String(p._id || p.id), name: p.name || 'Project' }));
-    }, [user, projects, pmProjectIds]);
+    useEffect(() => {
+        if (!user?._id) return undefined;
+        loadCommunications();
+    }, [user?._id, loadCommunications]);
 
-    const pmMemberRows = useMemo(() => {
-        if (user?.role !== 'PM' || !allowedDmIds) return [];
-        const known = new Map((teamMembers || []).map((m) => [String(m._id || m.id), m]));
-        const rows = [];
-        allowedDmIds.forEach((id) => {
-            const sid = String(id);
-            if (sid === String(user?._id)) return;
-            const m = known.get(sid);
-            if (m) {
-                rows.push(m);
-            } else {
-                const r = resolveUser(sid);
-                rows.push({ _id: id, name: r.fullName, fullName: r.fullName });
-            }
-        });
-        return rows;
-    }, [user, allowedDmIds, teamMembers, resolveUser]);
+    useEffect(() => {
+        if (!Array.isArray(chatRooms) || chatRooms.length === 0) return;
+        setRoomList(chatRooms);
+    }, [chatRooms]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (user?._id) loadCommunications();
+        }, [user?._id, loadCommunications])
+    );
 
     const listSections = useMemo(() => {
-        const isPm = user?.role === 'PM';
+        const msgToTime = (raw) => {
+            if (!raw) return 0;
+            const t = new Date(raw).getTime();
+            return Number.isFinite(t) ? t : 0;
+        };
 
-        const projectPool = isPm
-            ? (projects || []).filter((p) => {
-                const id = p._id || p.id;
-                return id && pmProjectIds && pmProjectIds.has(String(id));
+        const projectPool = (roomList || [])
+            .filter((room) => room.roomType === 'PROJECT_GROUP')
+            .map((room) => ({
+                _id: room.projectId || room.id,
+                name: room.projectName || room.name || 'Project Room',
+                type: 'project',
+                __lastActivityAt: msgToTime(room?.lastMessage?.time || room?.updatedAt)
+            }))
+            .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
+
+        const directRooms = (roomList || []).filter((room) => room.roomType === 'DIRECT');
+        const directByUser = new Map();
+        directRooms.forEach((room) => {
+            const uid = String(room.otherUserId || '');
+            if (!uid) return;
+            const previous = directByUser.get(uid);
+            const currentTime = msgToTime(room?.lastMessage?.time || room?.updatedAt);
+            const previousTime = msgToTime(previous?.lastMessage?.time || previous?.updatedAt);
+            if (!previous || currentTime > previousTime) directByUser.set(uid, room);
+        });
+
+        const memberPool = (chatUsers || [])
+            .map((u) => {
+                const uid = String(u._id || u.id);
+                const room = directByUser.get(uid);
+                return {
+                    ...u,
+                    _id: u._id || u.id,
+                    name: u.fullName || u.name || 'Team Member',
+                    type: 'private',
+                    __lastActivityAt: msgToTime(room?.lastMessage?.time || room?.updatedAt)
+                };
             })
-            : (projects || []);
+            .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
 
-        const memberPool = isPm
-            ? pmMemberRows
-            : (teamMembers || []).filter((m) => m._id !== user?._id);
-
-        const filteredProjects = projectPool.filter((p) => p.name?.toLowerCase().includes(search.toLowerCase()));
+        const filteredProjects = projectPool.filter((p) => (p.name || '').toLowerCase().includes(search.toLowerCase()));
         const filteredMembers = memberPool.filter((m) =>
             (m.fullName || m.name || '').toLowerCase().includes(search.toLowerCase())
         );
 
         const sections = [];
 
-        if (!isPm) {
+        if (filteredProjects.length > 0) {
             sections.push({
-                title: 'COMPANY CHANNELS',
-                data: [{ _id: 'GENERAL_COMPANY', name: 'Global Site Discussion', type: 'general', icon: 'earth' }],
+                title: 'PROJECT ROOMS',
+                data: filteredProjects.map((p) => ({ ...p, type: 'project' })),
             });
         }
 
-        sections.push({
-            title: 'PROJECT ROOMS',
-            data: filteredProjects.map((p) => ({ ...p, type: 'project' })),
-        });
-        sections.push({
-            title: 'DIRECT MESSAGES',
-            data: filteredMembers.map((m) => ({ ...m, name: m.fullName || m.name, type: 'private' })),
-        });
+        if (filteredMembers.length > 0) {
+            sections.push({
+                title: 'DIRECT MESSAGES',
+                data: filteredMembers,
+            });
+        }
 
         return sections;
-    }, [user, projects, teamMembers, search, pmProjectIds, pmMemberRows]);
+    }, [user, roomList, chatUsers, search]);
 
     const renderChatMember = ({ item }) => {
-        let lastMsg = null;
-        if (item.type === 'general') {
-            lastMsg = (messages || []).find((m) => !m.projectId && !m.receiverId);
-        } else if (item.type === 'project') {
-            lastMsg = (messages || []).find((m) => m.projectId === (item._id || item.id));
-        } else {
-            lastMsg = (messages || []).find(
-                (m) =>
-                    (m.sender?._id === item._id ||
-                        m.sender === item._id ||
-                        m.senderId === item._id ||
-                        m.receiverId === item._id) &&
-                    !m.projectId
-            );
-        }
+        const itemId = String(item._id || item.id || '');
+        const roomMeta =
+            item.type === 'private'
+                ? (roomList || []).find((r) => r.roomType === 'DIRECT' && String(r.otherUserId || '') === itemId)
+                : item.type === 'project'
+                    ? (roomList || []).find((r) => r.roomType === 'PROJECT_GROUP' && String(r.projectId || '') === itemId)
+                    : null;
+
+        const effectiveTime = roomMeta?.lastMessage?.time || roomMeta?.updatedAt || null;
+        const previewSender = roomMeta?.lastMessage?.sender || null;
+        const previewText = roomMeta?.lastMessage?.text || 'Start a new conversation...';
+        const unreadCount = Number(roomMeta?.unreadCount || 0);
 
         const initial = (item.name || 'U').charAt(0).toUpperCase();
 
@@ -116,7 +130,7 @@ const ChatScreen = ({ navigation }) => {
             project: { bg: '#ECFDF5', iconColor: '#10B981', icon: 'office-building' },
             private: { bg: '#F5F3FF', iconColor: '#8B5CF6', icon: 'account' },
         };
-        const config = typeConfig[item.type];
+        const config = typeConfig[item.type] || typeConfig.private;
 
         return (
             <TouchableOpacity
@@ -135,6 +149,11 @@ const ChatScreen = ({ navigation }) => {
                 <View style={[styles.avatarBox, { backgroundColor: config.bg }]}>
                     <Text style={[styles.avatarInitial, { color: config.iconColor }]}>{initial}</Text>
                     <View style={styles.statusDot} />
+                    {unreadCount > 0 && (
+                        <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : String(unreadCount)}</Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.chatInfo}>
@@ -143,15 +162,21 @@ const ChatScreen = ({ navigation }) => {
                             {item.name}
                         </Text>
                         <Text style={styles.chatTime}>
-                            {lastMsg
-                                ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            {effectiveTime
+                                ? new Date(effectiveTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                 : ''}
                         </Text>
                     </View>
                     <View style={styles.msgRow}>
-                        <MaterialCommunityIcons name={config.icon} size={14} color="#94A3B8" style={{ marginRight: 6 }} />
-                        <Text style={styles.lastMsg} numberOfLines={1}>
-                            {lastMsg ? lastMsg.message || lastMsg.text : 'Start a new conversation...'}
+                        {previewSender ? (
+                            <Text style={styles.senderChip} numberOfLines={1}>
+                                {previewSender}
+                            </Text>
+                        ) : (
+                            <MaterialCommunityIcons name={config.icon} size={14} color="#94A3B8" style={{ marginRight: 6 }} />
+                        )}
+                        <Text style={[styles.lastMsg, unreadCount > 0 && styles.lastMsgUnread]} numberOfLines={1}>
+                            {previewText}
                         </Text>
                     </View>
                 </View>
@@ -186,34 +211,6 @@ const ChatScreen = ({ navigation }) => {
                     />
                 </View>
             </View>
-
-            {user?.role === 'PM' && managedProjectsChips.length > 0 && (
-                <View style={styles.pmFilterSection}>
-                    <Text style={styles.pmFilterLabel}>Message list by project (optional)</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pmChipScroll}>
-                        <TouchableOpacity
-                            style={[styles.pmChip, pmDmFilter === 'all' && styles.pmChipActive]}
-                            onPress={() => setPmDmFilter('all')}
-                        >
-                            <Text style={[styles.pmChipText, pmDmFilter === 'all' && styles.pmChipTextActive]}>All contacts</Text>
-                        </TouchableOpacity>
-                        {managedProjectsChips.map((p) => (
-                            <TouchableOpacity
-                                key={p.id}
-                                style={[styles.pmChip, pmDmFilter === p.id && styles.pmChipActive]}
-                                onPress={() => setPmDmFilter(p.id)}
-                            >
-                                <Text
-                                    style={[styles.pmChipText, pmDmFilter === p.id && styles.pmChipTextActive]}
-                                    numberOfLines={1}
-                                >
-                                    {p.name}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
 
             <SectionList
                 sections={listSections}
@@ -256,23 +253,6 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
     },
     searchInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#1E293B' },
-
-    pmFilterSection: { paddingLeft: 20, paddingBottom: 8, backgroundColor: '#FFFFFF' },
-    pmFilterLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 8 },
-    pmChipScroll: { flexDirection: 'row', alignItems: 'center', paddingRight: 20 },
-    pmChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#F1F5F9',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        maxWidth: width * 0.55,
-        marginRight: 8,
-    },
-    pmChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    pmChipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
-    pmChipTextActive: { color: '#FFFFFF' },
 
     list: { paddingBottom: 100 },
     sectionHeader: {
@@ -320,6 +300,25 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFFFFF',
     },
+    unreadBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        minWidth: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#EF4444',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    unreadBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '900',
+    },
 
     chatInfo: { flex: 1, marginLeft: 18 },
     nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
@@ -327,7 +326,20 @@ const styles = StyleSheet.create({
     chatTime: { fontSize: 11, color: '#94A3B8', fontWeight: '800' },
 
     msgRow: { flexDirection: 'row', alignItems: 'center' },
+    senderChip: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#2563EB',
+        backgroundColor: '#EAF1FF',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        marginRight: 8,
+        maxWidth: 90,
+        overflow: 'hidden',
+    },
     lastMsg: { fontSize: 13, color: '#64748B', fontWeight: '600', flex: 1 },
+    lastMsgUnread: { color: '#334155', fontWeight: '800' },
 });
 
 export default ChatScreen;

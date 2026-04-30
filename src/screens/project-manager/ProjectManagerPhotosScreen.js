@@ -371,27 +371,29 @@ const ProjectManagerPhotosScreen = () => {
                                             : `Will save under: ${uploadTargetLabel || 'project'}`}
                                     </Text>
                                 </View>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.projectScroll, { marginBottom: verticalScale(24) }]}>
-                                    <TouchableOpacity
-                                        style={[styles.projectItem, uploadProjectId === 'none' && styles.projectItemActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), marginRight: scale(8) }]}
-                                        onPress={() => setUploadProjectId('none')}
-                                    >
-                                        <Text style={[styles.projectItemText, uploadProjectId === 'none' && styles.projectItemTextActive, { fontSize: moderateScale(13) }]}>General / None</Text>
-                                    </TouchableOpacity>
-                                    {projects?.map((p) => {
-                                        const pid = projectIdFromDoc(p);
-                                        const selected = uploadProjectId !== 'none' && idKey(uploadProjectId) === pid;
-                                        return (
-                                            <TouchableOpacity
-                                                key={pid}
-                                                style={[styles.projectItem, selected && styles.projectItemActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), marginRight: scale(8) }]}
-                                                onPress={() => setUploadProjectId(pid)}
-                                            >
-                                                <Text style={[styles.projectItemText, selected && styles.projectItemTextActive, { fontSize: moderateScale(13) }]}>{p.name}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
+                                <TouchableOpacity
+                                    style={[styles.customDropdownBtn, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(12), marginBottom: verticalScale(24) }]}
+                                    onPress={() => openDropdown(
+                                        'Select Upload Project',
+                                        [
+                                            { label: 'General / None', value: 'none', icon: 'link-off' },
+                                            ...projects.map((p) => ({
+                                                label: p.name,
+                                                value: projectIdFromDoc(p),
+                                                icon: 'office-building'
+                                            }))
+                                        ],
+                                        (opt) => setUploadProjectId(opt.value === 'none' ? 'none' : idKey(opt.value))
+                                    )}
+                                >
+                                    <View style={styles.dropdownLeft}>
+                                        <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
+                                        <Text style={[styles.dropdownValueText, { fontSize: moderateScale(12) }]} numberOfLines={1}>
+                                            {uploadProjectId === 'none' ? 'General / None' : (uploadTargetLabel || 'Select Project')}
+                                        </Text>
+                                    </View>
+                                    <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
+                                </TouchableOpacity>
 
                                 <TouchableOpacity 
                                     style={[styles.submitBtn, uploading && { opacity: 0.7 }, { height: verticalScale(52), borderRadius: moderateScale(14) }]} 
