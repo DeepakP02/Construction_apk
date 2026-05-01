@@ -19,13 +19,25 @@ const AppHeader = ({ title, showBack = false, showRight = true, showLogo = false
         // because the 'user' state becomes null.
     };
 
+    const safeGoBack = () => {
+        try {
+            if (navigation?.canGoBack?.()) {
+                navigation.goBack();
+                return;
+            }
+            navigation.navigate('Main');
+        } catch (e) {
+            try { navigation.navigate('Main'); } catch (_) {}
+        }
+    };
+
     return (
         <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 20) }]}>
             <View style={styles.headerContainer}>
                 <View style={styles.leftSection}>
                      {showBack ? (
                         <View style={styles.backWrapper}>
-                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+                            <TouchableOpacity onPress={safeGoBack} style={styles.iconBtn}>
                                 <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.primary} />
                             </TouchableOpacity>
                         </View>

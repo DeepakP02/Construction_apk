@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Platform, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import api from '../../utils/api';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,8 +12,16 @@ const TaskCreateScreen = ({ route, navigation }) => {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isCompact = width < 390;
-    const { parentTaskId, projectId: projectIdFromRoute, isChild } = route.params || {};
-    const { addTask, addChildTask, tasks, projects, teamMembers, fetchTeamMembers, selectedProject } = useApp();
+    const {
+        parentTaskId,
+        parentSubTaskId: parentSubTaskIdFromRoute,
+        rootTaskId: rootTaskIdFromRoute,
+        parentTitle: parentTitleFromRoute,
+        isSubTaskParent = false,
+        projectId: projectIdFromRoute,
+        isChild
+    } = route.params || {};
+    const { addTask, addChildTask, tasks, projects, jobs, teamMembers, fetchTeamMembers, selectedProject, refreshData } = useApp();
     const [saving, setSaving] = useState(false);
     const [selVisible, setSelVisible] = useState(false);
     const [selTitle, setSelTitle] = useState('');
@@ -22,6 +31,8 @@ const TaskCreateScreen = ({ route, navigation }) => {
     const [form, setForm] = useState({
         title: '',
         description: '',
+        projectId: '',
+        jobId: '',
         category: 'TASK',
         status: 'todo',
         assignedRoleType: '',
@@ -44,6 +55,8 @@ const TaskCreateScreen = ({ route, navigation }) => {
         return (tasks || []).find(t => String(t._id || t.id) === String(parentTaskId)) || null;
     }, [tasks, parentTaskId]);
     const normalizedParentTaskId = parentTaskId ? String(parentTaskId) : '';
+    const normalizedParentSubTaskId = parentSubTaskIdFromRoute ? String(parentSubTaskIdFromRoute) : '';
+    const normalizedRootTaskId = rootTaskIdFromRoute ? String(rootTaskIdFromRoute) : '';
     const isChildMode = Boolean(isChild || normalizedParentTaskId);
 
     const resolvedProjectId = useMemo(() => {
@@ -68,6 +81,24 @@ const TaskCreateScreen = ({ route, navigation }) => {
         const fromList = (projects || []).find(p => String(p._id || p.id) === pid);
         return fromList?.name || parentTask?.projectId?.name || selectedProject?.name || 'Project';
     }, [projects, resolvedProjectId, parentTask, selectedProject]);
+
+    const resolvedParentTitle = useMemo(() => {
+        return parentTitleFromRoute || parentTask?.title || '';
+    }, [parentTitleFromRoute, parentTask]);
+
+    useEffect(() => {
+        setForm((prev) => {
+            const nextProjectId = prev.projectId || resolvedProjectId || '';
+            if (prev.projectId === nextProjectId) return prev;
+            return { ...prev, projectId: nextProjectId };
+        });
+    }, [resolvedProjectId]);
+
+    const projectScopedJobs = useMemo(() => {
+        const pid = String((isChildMode ? resolvedProjectId : form.projectId) || '');
+        if (!pid) return [];
+        return (jobs || []).filter((j) => String(j?.projectId?._id || j?.projectId || '') === pid);
+    }, [jobs, form.projectId, isChildMode, resolvedProjectId]);
 
     const filteredTeamByRole = useMemo(() => {
         if (!form.assignedRoleType) return teamMembers || [];
@@ -102,7 +133,8 @@ const TaskCreateScreen = ({ route, navigation }) => {
             Alert.alert('Validation', 'Task title is required.');
             return;
         }
-        if (!resolvedProjectId) {
+        const effectiveProjectId = isChildMode ? resolvedProjectId : form.projectId;
+        if (!effectiveProjectId) {
             Alert.alert('Validation', 'Project not found for this task.');
             return;
         }
@@ -110,11 +142,14 @@ const TaskCreateScreen = ({ route, navigation }) => {
             Alert.alert('Validation', 'Child task requires a parent task. Please use Add Child from the parent task.');
             return;
         }
-        if (isChildMode && !parentTask) {
+        if (isChildMode && !isSubTaskParent && !parentTask) {
             Alert.alert('Validation', 'Parent task not found. Please reopen hierarchy and try again.');
             return;
         }
-
+        if (isChildMode && isSubTaskParent && (!normalizedRootTaskId || !normalizedParentSubTaskId)) {
+            Alert.alert('Validation', 'Subtask parent metadata missing. Please reopen hierarchy and try again.');
+            return;
+        }
         setSaving(true);
         const payload = {
             title: form.title.trim(),
@@ -126,14 +161,51 @@ const TaskCreateScreen = ({ route, navigation }) => {
             startDate: normalizeDateInput(form.startDate) || undefined,
             dueDate: normalizeDateInput(form.dueDate) || undefined,
             assignedTo: form.assignedTo || undefined,
-            projectId: resolvedProjectId,
+            projectId: effectiveProjectId,
+            jobId: !isChildMode ? (form.jobId || undefined) : undefined,
             parentTaskId: normalizedParentTaskId || undefined,
             isChild: isChildMode
         };
 
-        const success = isChildMode
-            ? await addChildTask(normalizedParentTaskId, payload)
-            : await addTask(payload);
+        let success = false;
+        if (isChildMode) {
+            if (isSubTaskParent) {
+                try {
+                    await api.post(`/tasks/${normalizedRootTaskId}/subtasks`, {
+                        title: payload.title,
+                        assignedTo: payload.assignedTo || undefined,
+                        startDate: payload.startDate || undefined,
+                        dueDate: payload.dueDate || undefined,
+                        remarks: payload.description || '',
+                        priority: payload.priority || 'Medium',
+                        parentSubTaskId: normalizedParentSubTaskId
+                    });
+                    success = true;
+                    await refreshData?.();
+                } catch (e) {
+                    success = false;
+                }
+            } else if (parentTask?.isJobTask) {
+                try {
+                    await api.post(`/tasks/${normalizedParentTaskId}/subtasks`, {
+                        title: payload.title,
+                        assignedTo: payload.assignedTo || undefined,
+                        startDate: payload.startDate || undefined,
+                        dueDate: payload.dueDate || undefined,
+                        remarks: payload.description || '',
+                        priority: payload.priority || 'Medium'
+                    });
+                    success = true;
+                    await refreshData?.();
+                } catch (e) {
+                    success = false;
+                }
+            } else {
+                success = await addChildTask(normalizedParentTaskId, payload);
+            }
+        } else {
+            success = await addTask(payload);
+        }
         setSaving(false);
 
         if (!success) {
@@ -192,11 +264,11 @@ const TaskCreateScreen = ({ route, navigation }) => {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.infoCard}>
                     <Text style={styles.infoLabel}>PROJECT</Text>
-                    <Text style={styles.infoValue}>{resolvedProjectName}</Text>
-                    {parentTask ? (
+                    <Text style={styles.infoValue}>{isChildMode ? resolvedProjectName : ((projects || []).find(p => String(p._id || p.id) === String(form.projectId || ''))?.name || 'Select Project')}</Text>
+                    {resolvedParentTitle ? (
                         <>
-                            <Text style={[styles.infoLabel, { marginTop: 8 }]}>PARENT TASK</Text>
-                            <Text style={styles.infoValue}>{parentTask.title}</Text>
+                            <Text style={[styles.infoLabel, { marginTop: 8 }]}>{isSubTaskParent ? 'PARENT SUBTASK' : 'PARENT TASK'}</Text>
+                            <Text style={styles.infoValue}>{resolvedParentTitle}</Text>
                         </>
                     ) : null}
                 </View>
@@ -218,6 +290,44 @@ const TaskCreateScreen = ({ route, navigation }) => {
                         multiline
                         onChangeText={(v) => setForm(prev => ({ ...prev, description: v }))}
                     />
+
+                    {!isChildMode ? (
+                        <>
+                            <Text style={styles.label}>Project</Text>
+                            <TouchableOpacity
+                                style={styles.dropdownField}
+                                onPress={() =>
+                                    openDropdown(
+                                        'Project',
+                                        (projects || []).map((p) => ({ label: p.name || 'Project', value: p._id || p.id })),
+                                        (value) => setForm((prev) => ({ ...prev, projectId: value, jobId: '' }))
+                                    )
+                                }
+                            >
+                                <Text style={styles.dropdownValue}>
+                                    {(projects || []).find(p => String(p._id || p.id) === String(form.projectId || ''))?.name || 'Select Project'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={16} color="#3B82F6" />
+                            </TouchableOpacity>
+
+                            <Text style={styles.label}>Job (Optional)</Text>
+                            <TouchableOpacity
+                                style={styles.dropdownField}
+                                onPress={() =>
+                                    openDropdown(
+                                        'Job',
+                                        [{ label: 'NO JOB', value: '' }, ...projectScopedJobs.map((j) => ({ label: j.name || j.title || 'Job', value: j._id || j.id }))],
+                                        (value) => setForm((prev) => ({ ...prev, jobId: value }))
+                                    )
+                                }
+                            >
+                                <Text style={styles.dropdownValue}>
+                                    {projectScopedJobs.find(j => String(j._id || j.id) === String(form.jobId || ''))?.name || 'No Job'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={16} color="#3B82F6" />
+                            </TouchableOpacity>
+                        </>
+                    ) : null}
 
                     <Text style={styles.label}>Category</Text>
                     <TouchableOpacity

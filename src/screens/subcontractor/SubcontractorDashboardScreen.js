@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, Animated, StyleSheet, StatusBar, Modal, TouchableOpacity, Text, Alert, FlatList } from 'react-native';
+import { View, ScrollView, Animated, StyleSheet, StatusBar, Modal, TouchableOpacity, Text, Alert, FlatList, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -7,6 +7,8 @@ import WorkerHeader from '../../components/WorkerHeader';
 import SubcontractorDashboard from './SubcontractorDashboard';
 
 const SubcontractorDashboardScreen = ({ navigation }) => {
+    const { width } = useWindowDimensions();
+    const isTabletWidth = width >= 768;
     const { refreshData, isClockedIn, toggleClock, getWorkDuration, projects } = useApp();
     const [timer, setTimer] = useState('00:00:00');
     const [clockModal, setClockModal] = useState(false);
@@ -69,7 +71,15 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
             <Animated.ScrollView 
                 style={[styles.scroll, { opacity: fadeAnim }]} 
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    {
+                        paddingHorizontal: isTabletWidth ? 28 : 16,
+                        alignSelf: 'center',
+                        width: '100%',
+                        maxWidth: 980
+                    }
+                ]}
             >
                 <SubcontractorDashboard 
                     navigation={navigation}

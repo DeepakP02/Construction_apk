@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     View, Text, StyleSheet, FlatList, TouchableOpacity, 
-    TextInput, Animated, ActivityIndicator, Dimensions, 
+    TextInput, Animated, ActivityIndicator, 
     SafeAreaView, StatusBar, ScrollView, Modal, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,8 +9,13 @@ import { SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 
-const { width } = Dimensions.get('window');
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions } from 'react-native';
+
 const SubcontractorTasksScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
+    const isCompact = width < 380;
     const { tasks, addTask, updateTask, refreshData, user, projects, teamMembers } = useApp();
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -52,12 +57,43 @@ const SubcontractorTasksScreen = ({ navigation }) => {
         return acc;
     }, { overdue: 0, active: 0, done: 0 });
 
+    const statusValueMap = {
+        'All Statuses': '',
+        'To Do': 'todo',
+        'In Progress': 'in_progress',
+        'Completed': 'completed'
+    };
+
+    const normalizeTaskType = (task) => {
+        const raw = String(task?.category || '').toLowerCase();
+        if (!raw) return 'task';
+        if (raw.includes('safety')) return 'safety';
+        if (raw.includes('material')) return 'material';
+        return 'task';
+    };
+
+    const normalizeTaskRole = (task) => {
+        const explicitRole = String(task?.assignedRoleType || '').toUpperCase();
+        if (explicitRole) return explicitRole;
+        const assigned = Array.isArray(task?.assignedTo) ? task.assignedTo[0] : task?.assignedTo;
+        const assignedRole = String(assigned?.role || '').toUpperCase();
+        if (assignedRole) return assignedRole;
+        const assignedId = assigned?._id || assigned?.id || assigned;
+        const member = (teamMembers || []).find((m) => String(m._id || m.id) === String(assignedId || ''));
+        return String(member?.role || '').toUpperCase();
+    };
+
     const filteredTasks = (tasks || []).filter(t => {
         const matchesSearch = t.title?.toLowerCase().includes(search.toLowerCase()) || 
                              (t.projectId?.name || '').toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = selStatus === 'All Statuses' || t.status === selStatus.toLowerCase().replace(' ', '_');
+        const selectedStatus = statusValueMap[selStatus] || '';
+        const matchesStatus = !selectedStatus || String(t.status || '').toLowerCase() === selectedStatus;
         const matchesProject = selProject === 'All Projects' || (t.projectId?._id === selProject || t.projectId === selProject);
-        return matchesSearch && matchesStatus && matchesProject;
+        const selectedType = selType === 'All Types' ? '' : selType.toLowerCase();
+        const matchesType = !selectedType || normalizeTaskType(t) === selectedType;
+        const selectedRole = selRole === 'All Roles' ? '' : selRole.toUpperCase();
+        const matchesRole = !selectedRole || normalizeTaskRole(t) === selectedRole;
+        return matchesSearch && matchesStatus && matchesProject && matchesType && matchesRole;
     });
 
     const openSelector = (target) => {
@@ -198,15 +234,15 @@ const SubcontractorTasksScreen = ({ navigation }) => {
         <View style={styles.container}>
             <WorkerHeader title="Tasks" navigation={navigation} />
             
-            <View style={styles.topSection}>
+            <View style={[styles.topSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 14 : 20 }]}>
                 <View style={styles.headerTopRow}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Task Command Center</Text>
+                        <Text style={[styles.headerTitle, { fontSize: isCompact ? 18 : 20 }]}>Task Command Center</Text>
                         <Text style={styles.headerSubtitle}>MODULE TRACKING</Text>
                     </View>
-                    <TouchableOpacity style={styles.plusBtn} onPress={() => setIsCreateModalVisible(true)}>
+                    <TouchableOpacity style={[styles.plusBtn, { paddingHorizontal: isCompact ? 10 : 12 }]} onPress={() => setIsCreateModalVisible(true)}>
                         <MaterialCommunityIcons name="plus-circle" size={18} color="#fff" />
-                        <Text style={styles.plusBtnTxt}>Add Task</Text>
+                        <Text style={[styles.plusBtnTxt, { fontSize: isCompact ? 10 : 11 }]}>Add Task</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -239,11 +275,15 @@ const SubcontractorTasksScreen = ({ navigation }) => {
                 )}
             </View>
 
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={{ flex: 1 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 24), maxWidth: width >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }}
+            >
 
 
                 {loading ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} /> : (
-                    <View style={{ paddingHorizontal: 20 }}>
+                    <View style={{ paddingHorizontal: isCompact ? 14 : 20 }}>
                         {filteredTasks.length > 0 ? (
                             filteredTasks.map(item => <View key={item._id || item.id}>{renderTaskCard({ item })}</View>)
                         ) : (
@@ -251,7 +291,7 @@ const SubcontractorTasksScreen = ({ navigation }) => {
                         )}
                     </View>
                 )}
-                <View style={{ height: 80 }} />
+                <View style={{ height: Math.max(insets.bottom + 60, 80) }} />
             </ScrollView>
 
             {/* CREATE TASK MODAL (Software-Style) */}
@@ -406,7 +446,7 @@ const styles = StyleSheet.create({
     filtersGrid: { marginTop: 15, gap: 10 },
     row: { flexDirection: 'row', gap: 10 },
     col: { flex: 1 },
-    filterBtnSmall: { height: 38, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+    filterBtnSmall: { minHeight: 44, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
     filterBtnSmallTxt: { fontSize: 11, fontWeight: '700', color: '#475569' },
     statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20, paddingBottom: 20 },
     statItem: { width: '31.5%', minWidth: 100, padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     ScrollView, StatusBar, SafeAreaView, TextInput, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform
@@ -10,7 +10,7 @@ import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
 
 const RFIListScreen = ({ navigation }) => {
-    const { rfis, projects, teamMembers, user, addRFI, refreshData } = useApp();
+    const { rfis, projects, teamMembers, user, refreshData } = useApp();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProject, setSelectedProject] = useState('all');
@@ -19,6 +19,7 @@ const RFIListScreen = ({ navigation }) => {
     const [showFilterModal, setShowFilterModal] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [assignableUsers, setAssignableUsers] = useState([]);
     const [formData, setFormData] = useState({
         projectId: '',
         subject: '',
@@ -31,6 +32,22 @@ const RFIListScreen = ({ navigation }) => {
     });
 
     const canManage = user?.role === 'COMPANY_OWNER' || user?.role === 'PM';
+
+    useEffect(() => {
+        const fetchAssignableUsers = async () => {
+            if (!canManage) return;
+            try {
+                const res = await api.get('/auth/users');
+                const users = (Array.isArray(res.data) ? res.data : []).filter(u =>
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                );
+                setAssignableUsers(users);
+            } catch (e) {
+                setAssignableUsers([]);
+            }
+        };
+        fetchAssignableUsers();
+    }, [canManage]);
 
     const filteredRFIs = useMemo(() => {
         return (rfis || []).filter(r => {
@@ -50,11 +67,25 @@ const RFIListScreen = ({ navigation }) => {
             return;
         }
         setSubmitting(true);
-        const success = await addRFI(formData);
-        setSubmitting(false);
-        if (success) {
+        try {
+            await api.post('/rfis', formData);
+            await refreshData?.();
             setShowCreateModal(false);
-            setFormData({ projectId: '', subject: '', description: '', location: '', category: 'other', priority: 'medium', assignedTo: '', dueDate: '' });
+            setFormData({
+                projectId: '',
+                subject: '',
+                description: '',
+                location: '',
+                category: 'other',
+                priority: 'medium',
+                assignedTo: '',
+                dueDate: ''
+            });
+            Alert.alert('Success', 'RFI submitted successfully');
+        } catch (e) {
+            Alert.alert('Error', 'Failed to submit RFI');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -339,6 +370,22 @@ const RFIListScreen = ({ navigation }) => {
                                 onChangeText={t => setFormData({ ...formData, description: t })}
                             />
 
+                            <Text style={styles.inputLabel}>Location (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Level 3, Grid B-4"
+                                value={formData.location}
+                                onChangeText={t => setFormData({ ...formData, location: t })}
+                            />
+
+                            <Text style={styles.inputLabel}>Category (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. design / structural / material"
+                                value={formData.category}
+                                onChangeText={t => setFormData({ ...formData, category: t.toLowerCase() })}
+                            />
+
                             <Text style={styles.inputLabel}>Priority</Text>
                             <View style={styles.selectorRow}>
                                 {['low', 'medium', 'high'].map(p => {
@@ -354,6 +401,35 @@ const RFIListScreen = ({ navigation }) => {
                                     );
                                 })}
                             </View>
+
+                            <Text style={styles.inputLabel}>Assign To</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList}>
+                                <TouchableOpacity
+                                    style={[styles.chip, !formData.assignedTo && styles.chipActive]}
+                                    onPress={() => setFormData({ ...formData, assignedTo: '' })}
+                                >
+                                    <Text style={[styles.chipTxt, !formData.assignedTo && styles.chipTxtActive]}>Unassigned</Text>
+                                </TouchableOpacity>
+                                {assignableUsers.map(u => (
+                                    <TouchableOpacity
+                                        key={u._id || u.id}
+                                        style={[styles.chip, formData.assignedTo === (u._id || u.id) && styles.chipActive]}
+                                        onPress={() => setFormData({ ...formData, assignedTo: u._id || u.id })}
+                                    >
+                                        <Text style={[styles.chipTxt, formData.assignedTo === (u._id || u.id) && styles.chipTxtActive]}>
+                                            {u.fullName}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            <Text style={styles.inputLabel}>Due Date (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="YYYY-MM-DD"
+                                value={formData.dueDate}
+                                onChangeText={t => setFormData({ ...formData, dueDate: t })}
+                            />
 
                             <TouchableOpacity
                                 style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
@@ -441,8 +517,8 @@ const styles = StyleSheet.create({
     searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, height: 44, gap: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10 },
     searchInput: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B' },
     filterChips: { flexDirection: 'row', gap: 8 },
-    filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-    filterDropdownTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', maxWidth: 100 },
+    filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 12, minHeight: 44, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+    filterDropdownTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', maxWidth: 160, flexShrink: 1 },
 
     countRow: { paddingHorizontal: 20, paddingVertical: 10 },
     countText: { fontSize: 12, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },

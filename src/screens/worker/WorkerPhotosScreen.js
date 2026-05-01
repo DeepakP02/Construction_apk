@@ -163,18 +163,18 @@ const WorkerPhotosScreen = () => {
             
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterBar, { paddingVertical: verticalScale(5) }]}>
                 <TouchableOpacity 
-                    style={[styles.filterChip, activeFilter === 'All' && styles.filterChipActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(8), borderRadius: moderateScale(20), marginRight: scale(8) }]}
+                    style={[styles.filterChip, activeFilter === 'All' && styles.filterChipActive, { marginRight: scale(8) }]}
                     onPress={() => setActiveFilter('All')}
                 >
-                    <Text style={[styles.filterText, activeFilter === 'All' && styles.filterTextActive, { fontSize: moderateScale(13) }]}>All Projects</Text>
+                    <Text style={[styles.filterText, activeFilter === 'All' && styles.filterTextActive]}>All Projects</Text>
                 </TouchableOpacity>
                 {projects.map(p => (
                     <TouchableOpacity 
                         key={p._id || p.id}
-                        style={[styles.filterChip, activeFilter === (p._id || p.id) && styles.filterChipActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(8), borderRadius: moderateScale(20), marginRight: scale(8) }]}
+                        style={[styles.filterChip, activeFilter === (p._id || p.id) && styles.filterChipActive, { marginRight: scale(8) }]}
                         onPress={() => setActiveFilter(p._id || p.id)}
                     >
-                        <Text style={[styles.filterText, activeFilter === (p._id || p.id) && styles.filterTextActive, { fontSize: moderateScale(13) }]}>{p.name}</Text>
+                        <Text style={[styles.filterText, activeFilter === (p._id || p.id) && styles.filterTextActive]}>{p.name}</Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
@@ -337,9 +337,9 @@ const styles = StyleSheet.create({
     headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
     headerLabel: { fontWeight: '900', color: '#2563EB', letterSpacing: 1.5 },
     filterBar: { },
-    filterChip: { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    filterChip: { minHeight: verticalScale(44), paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(22), backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
     filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    filterText: { fontWeight: '700', color: '#64748B' },
+    filterText: { fontWeight: '800', color: '#64748B', fontSize: moderateScale(12) },
     filterTextActive: { color: '#fff' },
     row: { justifyContent: 'space-between', paddingHorizontal: 16 },
     subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

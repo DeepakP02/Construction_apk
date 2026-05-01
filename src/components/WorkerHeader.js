@@ -46,6 +46,19 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
         }
     };
 
+    const safeGoBack = () => {
+        try {
+            if (navigation?.canGoBack?.()) {
+                navigation.goBack();
+                return;
+            }
+            // Root screens in drawer/tab stacks usually have no back history.
+            navigation.navigate('Main');
+        } catch (e) {
+            try { navigation.navigate('Main'); } catch (_) {}
+        }
+    };
+
     return (
         <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, verticalScale(20)) }]}>
             <View style={styles.topRow}>
@@ -54,7 +67,7 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                         <View style={styles.backWrapper}>
                             <TouchableOpacity
                                 style={[styles.menuBtn, { width: scale(36), height: scale(36), borderRadius: scale(18) }]}
-                                onPress={() => navigation.goBack()}
+                                onPress={safeGoBack}
                             >
                                 <MaterialCommunityIcons name="arrow-left" size={moderateScale(20)} color="#FFFFFF" />
                             </TouchableOpacity>
@@ -295,7 +308,19 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                                 </View>
                             )}
                         </ScrollView>
-                        <TouchableOpacity style={[styles.viewAllBtn, { paddingVertical: verticalScale(14) }]} onPress={() => { setIsSearching(false); setSearchQuery(''); const targetTab = (user?.role === 'SUBCONTRACTOR' || user?.role === 'CLIENT') ? 'Projects' : 'Jobs'; try { navigation.navigate('MainTabs', { screen: targetTab }); } catch (e) {} }}>
+                        <TouchableOpacity
+                            style={[styles.viewAllBtn, { paddingVertical: verticalScale(14) }]}
+                            onPress={() => {
+                                setIsSearching(false);
+                                setSearchQuery('');
+                                // "View all" must reset quick-select context, otherwise list screens stay filtered.
+                                setSelectedProject(null);
+                                const targetTab = (user?.role === 'SUBCONTRACTOR' || user?.role === 'CLIENT') ? 'Projects' : 'Jobs';
+                                try {
+                                    navigation.navigate('MainTabs', { screen: targetTab });
+                                } catch (e) {}
+                            }}
+                        >
                             <Text style={[styles.viewAllBtnText, { fontSize: moderateScale(10) }]}>VIEW ALL PROJECTS</Text>
                         </TouchableOpacity>
                     </View>

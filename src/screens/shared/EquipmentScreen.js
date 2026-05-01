@@ -7,10 +7,12 @@ import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EquipmentScreen = ({ navigation }) => {
     const { user } = useApp();
     const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const isCompact = width < 390;
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -222,29 +224,40 @@ const EquipmentScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Inventory & Fleet" showBranding={true} />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                    styles.scroll,
+                    {
+                        paddingBottom: Math.max(insets.bottom + 30, 40),
+                        maxWidth: width >= 900 ? 980 : undefined,
+                        alignSelf: 'center',
+                        width: '100%'
+                    }
+                ]}
+            >
                 {/* Header Branding */}
-                <View style={styles.pageHeader}>
+                <View style={[styles.pageHeader, { paddingHorizontal: isCompact ? 14 : 20 }]}>
                     <View style={styles.headerTextContainer}>
-                        <Text style={styles.mainTitle}>Inventory & Fleet</Text>
-                        <Text style={styles.mainSubtitle}>Equipment tracking</Text>
+                        <Text style={[styles.mainTitle, { fontSize: isCompact ? 22 : 26 }]}>Inventory & Fleet</Text>
+                        <Text style={[styles.mainSubtitle, { fontSize: isCompact ? 12 : 13 }]}>Equipment tracking</Text>
                     </View>
                     {canManage && (
-                        <TouchableOpacity style={styles.addBtn} onPress={() => handleOpenModal()}>
+                        <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: isCompact ? 10 : 12 }]} onPress={() => handleOpenModal()}>
                             <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-                            <Text style={styles.addBtnText}>Add Item</Text>
+                            <Text style={[styles.addBtnText, { fontSize: isCompact ? 11 : 12 }]}>Add Item</Text>
                         </TouchableOpacity>
                     )}
                 </View>
 
                 {/* Filters Section */}
-                <View style={styles.filterSection}>
-                    <View style={styles.searchBar}>
+                <View style={[styles.filterSection, { paddingHorizontal: isCompact ? 14 : 20 }]}>
+                    <View style={[styles.searchBar, { height: isCompact ? 48 : 52, borderRadius: isCompact ? 12 : 16 }]}>
                         <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
                         <TextInput 
                             placeholder="Search by name, type, or serial..."
                             placeholderTextColor="#94A3B8"
-                            style={styles.searchInput}
+                            style={[styles.searchInput, { fontSize: isCompact ? 13 : 14 }]}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
@@ -266,7 +279,7 @@ const EquipmentScreen = ({ navigation }) => {
                 </View>
 
                 {/* Asset List */}
-                <View style={styles.listContainer}>
+                <View style={[styles.listContainer, { paddingHorizontal: isCompact ? 14 : 20 }]}>
                     {loading ? (
                         <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 40 }} />
                     ) : filteredData.length === 0 ? (
@@ -361,7 +374,7 @@ const EquipmentScreen = ({ navigation }) => {
                     )}
                 </View>
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 8 }} />
             </ScrollView>
 
             {/* NEW/EDIT MODAL */}

@@ -227,14 +227,14 @@ const DailyLogsScreen = ({ navigation }) => {
 
                     <View style={styles.toolsRow}>
                         <TouchableOpacity 
-                            style={[styles.toolBtn, { height: verticalScale(40), borderRadius: moderateScale(12) }]}
+                            style={[styles.toolBtn, { minHeight: verticalScale(44), borderRadius: moderateScale(12) }]}
                             onPress={() => setFilterModalVisible(true)}
                         >
                             <MaterialCommunityIcons name="filter-variant" size={moderateScale(16)} color="#64748B" style={{marginRight: scale(6)}} />
                             <Text style={[styles.toolBtnText, { fontSize: moderateScale(12) }]} numberOfLines={1}>{selectedFilterProject?.name || 'All Projects'}</Text>
                         </TouchableOpacity>
                         
-                        <TouchableOpacity style={[styles.toolBtn, { height: verticalScale(40), borderRadius: moderateScale(12) }]}>
+                        <TouchableOpacity style={[styles.toolBtn, { minHeight: verticalScale(44), borderRadius: moderateScale(12) }]}>
                             <MaterialCommunityIcons name="calendar-range" size={moderateScale(16)} color="#64748B" />
                             <Text style={[styles.toolBtnText, { marginLeft: scale(6), fontSize: moderateScale(12) }]}>Range</Text>
                         </TouchableOpacity>
@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
     searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0' },
     searchInput: { flex: 1, marginLeft: 8, fontWeight: '600', color: '#1E293B' },
     toolsRow: { flexDirection: 'row', gap: 8 },
-    toolBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10 },
-    toolBtnText: { fontWeight: '800', color: '#64748B' },
+    toolBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, minHeight: verticalScale(44) },
+    toolBtnText: { fontWeight: '800', color: '#64748B', fontSize: moderateScale(12) },
     tableHeader: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: '#E2E8F0', paddingHorizontal: 4 },
     headerLabel: { fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5 },
     listContainer: { paddingBottom: 100 },

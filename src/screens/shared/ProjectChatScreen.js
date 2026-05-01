@@ -5,58 +5,20 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import AppHeader from '../../components/AppHeader';
-import { isUserPmOfProject, getAllowedDmPeerIdsForPm } from '../../utils/siteChatScope';
 
-const ProjectChatScreen = ({ route, navigation }) => {
+const ProjectChatScreen = ({ route }) => {
     const { project } = route.params;
-    const { messages, sendMessage, fetchMessages, ensureDirectChatRoom, user, uploadFile, projects, jobs, tasks } = useApp();
+    const { messages, sendMessage, fetchMessages, ensureDirectChatRoom, user, uploadFile } = useApp();
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [dmRoomId, setDmRoomId] = useState(null);
     const flatListRef = useRef();
-    const pmScopeAlertRef = useRef(false);
 
     const targetId = (project._id || project.id)?.toString();
     const isGeneral = targetId === 'GENERAL_COMPANY';
     const isPrivate = project.isPrivate || project.type === 'private';
     const myId = user?._id?.toString();
-
-    useEffect(() => {
-        if (user?.role !== 'PM' || pmScopeAlertRef.current) return;
-        if (isGeneral) {
-            pmScopeAlertRef.current = true;
-            Alert.alert(
-                'Site Communications',
-                'Company-wide channels are not part of your project workspace.',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
-            return;
-        }
-        if (isPrivate) {
-            const dataReady = (projects?.length > 0) || (jobs?.length > 0) || (tasks?.length > 0);
-            if (dataReady) {
-                const allowed = getAllowedDmPeerIdsForPm(projects, jobs, tasks, user);
-                if (allowed && !allowed.has(String(targetId))) {
-                    pmScopeAlertRef.current = true;
-                    Alert.alert(
-                        'Site Communications',
-                        'You can only message people assigned to your projects.',
-                        [{ text: 'OK', onPress: () => navigation.goBack() }]
-                    );
-                }
-            }
-            return;
-        }
-        if (project && (projects || []).length > 0 && !isUserPmOfProject(project, user)) {
-            pmScopeAlertRef.current = true;
-            Alert.alert(
-                'Site Communications',
-                'You can only open chats for projects you manage.',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
-        }
-    }, [user, project, isGeneral, isPrivate, targetId, projects, jobs, tasks, navigation]);
 
     useEffect(() => {
         let cancelled = false;

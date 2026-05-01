@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, StatusBar, Dimensions, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, StatusBar, Modal, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-
-const { width } = Dimensions.get('window');
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PMProjectDetailScreen = ({ route, navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { width: windowWidth } = useWindowDimensions();
+    const isCompact = windowWidth < 360;
     const { projectId } = route.params;
     const { projects, jobs: allJobs, refreshData, teamMembers, addJob, user, setSelectedProject } = useApp();
     const [loading, setLoading] = useState(false);
@@ -79,7 +81,13 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
         return unsubscribe;
     }, [navigation]);
 
-    const handleBack = () => navigation.goBack();
+    const handleBack = () => {
+        if (navigation?.canGoBack?.()) {
+            navigation.goBack();
+            return;
+        }
+        navigation.navigate('Main');
+    };
     const focusCurrentProject = () => {
         if (!projectId) return;
         setSelectedProject?.({ _id: projectId, id: projectId, name: project?.name || '' });
@@ -195,12 +203,12 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
     };
 
     const renderHeader = () => (
-        <View style={styles.header}>
+            <View style={[styles.header, { paddingHorizontal: isCompact ? 12 : 16 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                 <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>
-                <Text style={styles.headerTitle}>{project.name || 'Project Detail'}</Text>
+                <Text style={[styles.headerTitle, { fontSize: isCompact ? 16 : 18 }]} numberOfLines={1}>{project.name || 'Project Detail'}</Text>
                 <View style={styles.statusBadge}>
                     <View style={[styles.statusDot, { backgroundColor: '#F97316' }]} />
                     <Text style={styles.statusText}>{project.status?.toUpperCase() || 'PLANNING'}</Text>
@@ -471,7 +479,13 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
             {renderHeader()}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: Math.max(insets.bottom + 90, 100), maxWidth: windowWidth >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }
+                ]}
+            >
                 {renderProjectInfo()}
                 {renderQuickActions()}
                 {renderDatesAndStats()}
@@ -758,17 +772,17 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
             ) : null}
 
             {/* Bottom Nav Simulation */}
-            <View style={styles.bottomNav}>
+            <View style={[styles.bottomNav, { height: 60 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8) }]}>
                 <TouchableOpacity style={styles.navItem}>
                     <MaterialCommunityIcons name="view-dashboard" size={24} color="#2563EB" />
-                    <Text style={[styles.navText, { color: '#2563EB' }]}>Dashboard</Text>
+                    <Text style={[styles.navText, { color: '#2563EB', fontSize: isCompact ? 9 : 10 }]}>Dashboard</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.navItem}
                     onPress={() => navigation.navigate('ForemanIssues', { projectId, projectName: project?.name })}
                 >
                     <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#64748B" />
-                    <Text style={styles.navText}>Punch List</Text>
+                    <Text style={[styles.navText, { fontSize: isCompact ? 9 : 10 }]}>Punch List</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -838,9 +852,9 @@ const styles = StyleSheet.create({
     searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, height: 44, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0' },
     searchInput: { flex: 1, marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#1E293B' },
     filterChips: { gap: 8 },
-    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
+    filterChip: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
     filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    filterChipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    filterChipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
     filterChipTextActive: { color: '#FFFFFF' },
 
     emptyJobs: { alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: '#FFFFFF', marginHorizontal: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#E2E8F0' },

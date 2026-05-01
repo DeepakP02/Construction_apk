@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, StatusBar, SafeAreaView, TextInput,
-    Alert, Dimensions, Platform, Image, KeyboardAvoidingView
+    Alert, Dimensions, Platform, Image, KeyboardAvoidingView, Linking
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
@@ -15,16 +15,24 @@ const { width } = Dimensions.get('window');
 const RFIDetailScreen = ({ route, navigation }) => {
     const { rfiId } = route.params;
     const { user } = useApp();
+    const isAdmin = ['COMPANY_OWNER', 'PM'].includes(user?.role);
     const [rfi, setRfi] = useState(null);
     const [loading, setLoading] = useState(true);
     const [commentText, setCommentText] = useState('');
     const [submittingComment, setSubmittingComment] = useState(false);
+    const [officialResponse, setOfficialResponse] = useState('');
+    const [showResponseBox, setShowResponseBox] = useState(false);
+    const [users, setUsers] = useState([]);
+    const [reassignTo, setReassignTo] = useState('');
+    const [showReassign, setShowReassign] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const fetchData = async () => {
         try {
             setLoading(true);
             const res = await api.get(`/rfis/${rfiId}`);
             setRfi(res.data);
+            setOfficialResponse(res.data?.officialResponse || '');
         } catch (e) {
             console.error('Fetch RFI Detail error:', e);
             Alert.alert('Error', 'Failed to load RFI details');
@@ -36,6 +44,22 @@ const RFIDetailScreen = ({ route, navigation }) => {
     useEffect(() => {
         fetchData();
     }, [rfiId]);
+
+    useEffect(() => {
+        const fetchAssignableUsers = async () => {
+            if (!isAdmin) return;
+            try {
+                const res = await api.get('/auth/users');
+                const list = (Array.isArray(res.data) ? res.data : []).filter(u =>
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                );
+                setUsers(list);
+            } catch (e) {
+                setUsers([]);
+            }
+        };
+        fetchAssignableUsers();
+    }, [isAdmin]);
 
     const handleAddComment = async () => {
         if (!commentText.trim()) return;
@@ -67,6 +91,72 @@ const RFIDetailScreen = ({ route, navigation }) => {
             case 'medium': return { bg: '#FFFBEB', color: '#F59E0B', label: 'Medium Priority' };
             case 'low': return { bg: '#ECFDF5', color: '#10B981', label: 'Low Priority' };
             default: return { bg: '#F1F5F9', color: '#64748B', label: p };
+        }
+    };
+
+    const handleStatusChange = async (nextStatus) => {
+        if (!isAdmin) return;
+        try {
+            setActionLoading(true);
+            const res = await api.patch(`/rfis/${rfiId}`, { status: nextStatus });
+            setRfi(res.data);
+        } catch (e) {
+            Alert.alert('Error', 'Failed to update status');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSaveResponse = async () => {
+        if (!isAdmin) return;
+        try {
+            setActionLoading(true);
+            const payload = { officialResponse, status: 'answered' };
+            const res = await api.patch(`/rfis/${rfiId}`, payload);
+            setRfi(res.data);
+            setShowResponseBox(false);
+        } catch (e) {
+            Alert.alert('Error', 'Failed to save official response');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleReassign = async () => {
+        if (!isAdmin || !reassignTo) return;
+        try {
+            setActionLoading(true);
+            const res = await api.patch(`/rfis/${rfiId}`, { assignedTo: reassignTo });
+            setRfi(res.data);
+            setShowReassign(false);
+            setReassignTo('');
+        } catch (e) {
+            Alert.alert('Error', 'Failed to reassign RFI');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleCloseRFI = () => {
+        if (!isAdmin) return;
+        Alert.alert('Close RFI', 'Are you sure you want to close this RFI?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Close', style: 'destructive', onPress: () => handleStatusChange('closed') }
+        ]);
+    };
+
+    const openAttachment = async (file) => {
+        const url = getServerUrl(file?.url || file?.uri || '');
+        if (!url) return;
+        try {
+            const can = await Linking.canOpenURL(url);
+            if (!can) {
+                Alert.alert('Cannot open', 'Attachment URL is not supported on this device.');
+                return;
+            }
+            await Linking.openURL(url);
+        } catch (e) {
+            Alert.alert('Error', 'Failed to open attachment');
         }
     };
 
@@ -143,12 +233,40 @@ const RFIDetailScreen = ({ route, navigation }) => {
                 </View>
 
                 {/* OFFICIAL RESPONSE */}
-                {rfi.officialResponse && (
+                {(rfi.officialResponse || isAdmin) && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Official Response</Text>
-                        <View style={[styles.contentCard, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
-                            <Text style={[styles.descriptionText, { color: '#0369A1' }]}>{rfi.officialResponse}</Text>
-                        </View>
+                        {showResponseBox ? (
+                            <View style={[styles.contentCard, { backgroundColor: '#F8FAFC' }]}>
+                                <TextInput
+                                    style={[styles.commentInput, { minHeight: 90, maxHeight: 180 }]}
+                                    value={officialResponse}
+                                    onChangeText={setOfficialResponse}
+                                    multiline
+                                    placeholder="Type official response..."
+                                    placeholderTextColor="#94A3B8"
+                                />
+                                <View style={styles.actionsInline}>
+                                    <TouchableOpacity style={styles.ghostActionBtn} onPress={() => setShowResponseBox(false)}>
+                                        <Text style={styles.ghostActionText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.primaryActionBtn} onPress={handleSaveResponse} disabled={actionLoading}>
+                                        <Text style={styles.primaryActionText}>{actionLoading ? 'Saving...' : 'Save Response'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={[styles.contentCard, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                                <Text style={[styles.descriptionText, { color: '#0369A1' }]}>
+                                    {rfi.officialResponse || 'No official response yet.'}
+                                </Text>
+                                {isAdmin ? (
+                                    <TouchableOpacity style={[styles.ghostActionBtn, { marginTop: 10, alignSelf: 'flex-start' }]} onPress={() => setShowResponseBox(true)}>
+                                        <Text style={styles.ghostActionText}>{rfi.officialResponse ? 'Edit Response' : 'Add Response'}</Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -190,7 +308,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.sectionTitle}>Attachments ({rfi.attachments.length})</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachmentList}>
                             {rfi.attachments.map((file, idx) => (
-                                <TouchableOpacity key={idx} style={styles.attachmentCardSmall}>
+                                <TouchableOpacity key={idx} style={styles.attachmentCardSmall} onPress={() => openAttachment(file)}>
                                     <View style={styles.attachmentIcon}>
                                         <MaterialCommunityIcons name="file-document-outline" size={24} color="#2563EB" />
                                     </View>
@@ -254,6 +372,65 @@ const RFIDetailScreen = ({ route, navigation }) => {
                         ))}
                     </View>
                 </View>
+
+                {isAdmin ? (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Actions</Text>
+                        <View style={[styles.contentCard, { gap: 10 }]}>
+                            <View style={styles.statusActionsRow}>
+                                {[
+                                    { label: 'Open', value: 'open' },
+                                    { label: 'In Review', value: 'in_review' },
+                                    { label: 'Answered', value: 'answered' },
+                                    { label: 'Closed', value: 'closed' }
+                                ].map((s) => (
+                                    <TouchableOpacity
+                                        key={s.value}
+                                        style={[styles.statusActionBtn, rfi.status === s.value && styles.statusActionBtnActive]}
+                                        onPress={() => handleStatusChange(s.value)}
+                                        disabled={actionLoading || rfi.status === s.value}
+                                    >
+                                        <Text style={[styles.statusActionText, rfi.status === s.value && styles.statusActionTextActive]}>{s.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {showReassign ? (
+                                <View style={styles.reassignBox}>
+                                    <ScrollView style={{ maxHeight: 180 }}>
+                                        {users.map((member) => (
+                                            <TouchableOpacity
+                                                key={member._id || member.id}
+                                                style={[styles.selectOption, reassignTo === (member._id || member.id) && styles.selectOptionActive]}
+                                                onPress={() => setReassignTo(member._id || member.id)}
+                                            >
+                                                <Text style={styles.selectOptionText}>{member.fullName} ({member.role})</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                    <View style={styles.actionsInline}>
+                                        <TouchableOpacity style={styles.ghostActionBtn} onPress={() => { setShowReassign(false); setReassignTo(''); }}>
+                                            <Text style={styles.ghostActionText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.primaryActionBtn} onPress={handleReassign} disabled={!reassignTo || actionLoading}>
+                                            <Text style={styles.primaryActionText}>{actionLoading ? 'Updating...' : 'Confirm'}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ) : (
+                                <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => setShowReassign(true)}>
+                                    <Text style={styles.secondaryActionText}>Reassign RFI</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {rfi.status !== 'closed' ? (
+                                <TouchableOpacity style={styles.dangerActionBtn} onPress={handleCloseRFI} disabled={actionLoading}>
+                                    <Text style={styles.dangerActionText}>Close RFI</Text>
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+                    </View>
+                ) : null}
             </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -316,6 +493,21 @@ const styles = StyleSheet.create({
     roleBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     roleBadgeTxt: { fontSize: 9, fontWeight: '900', color: '#2563EB' },
     commentText: { fontSize: 14, color: '#475569', lineHeight: 20, fontWeight: '500' },
+    actionsInline: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    ghostActionBtn: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+    ghostActionText: { color: '#475569', fontWeight: '800', fontSize: 12 },
+    primaryActionBtn: { backgroundColor: '#2563EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+    primaryActionText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+    secondaryActionBtn: { backgroundColor: '#EFF6FF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
+    secondaryActionText: { color: '#2563EB', fontWeight: '800', fontSize: 12 },
+    dangerActionBtn: { backgroundColor: '#FEF2F2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
+    dangerActionText: { color: '#DC2626', fontWeight: '800', fontSize: 12 },
+    statusActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    statusActionBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+    statusActionBtnActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+    statusActionText: { color: '#64748B', fontSize: 11, fontWeight: '800' },
+    statusActionTextActive: { color: '#fff' },
+    reassignBox: { gap: 8 }
 });
 
 export default RFIDetailScreen;

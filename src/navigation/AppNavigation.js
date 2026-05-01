@@ -1035,7 +1035,7 @@ const MainTabs = () => {
 
 // Root Navigator
 const AppNavigation = () => {
-    const { user, loading } = useApp();
+    const { user, loading, syncStatus, dismissSyncStatus } = useApp();
 
     if (loading) {
         return (
@@ -1060,45 +1060,77 @@ const AppNavigation = () => {
 
     return (
         <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {!user ? (
-                    <>
-                        <Stack.Screen name="Login" component={LoginScreen} />
-                    </>
-                ) : (
-                    <>
-                        <Stack.Screen name="Main" component={MainTabs} />
-                        <Stack.Screen name="ClientProgress" component={ClientProgressScreen} />
-                        <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} />
-                        <Stack.Screen name="Equipment" component={EquipmentScreen} />
-                        <Stack.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} />
-                        <Stack.Screen name="PurchaseOrderDetail" component={PurchaseOrderDetailScreen} />
-                        <Stack.Screen name="Invoices" component={ClientInvoicesScreen} />
-                        <Stack.Screen name="Reports" component={ReportsScreen} />
-                        <Stack.Screen name="RFI" component={RFIScreen} />
-                        <Stack.Screen name="RFIList" component={RFIListScreen} />
-                        <Stack.Screen name="RFIDetail" component={RFIDetailScreen} />
-                        <Stack.Screen name="Settings" component={SettingsScreen} />
-                        <Stack.Screen name="Profile" component={ProfileScreen} />
-                        <Stack.Screen name="ProjectChat" component={ProjectChatScreen} />
-                        <Stack.Screen name="WorkerChat" component={WorkerChatScreen} />
-                        <Stack.Screen name="Chatboard" component={WorkerChatboard} />
-                        <Stack.Screen name="JobTasks" component={WorkerJobTasksScreen} />
-                        <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
-                        <Stack.Screen name="TaskHierarchyDetail" component={TaskHierarchyDetailScreen} />
-                        <Stack.Screen name="TaskCreate" component={TaskCreateScreen} />
-                        <Stack.Screen name="ClientJobs" component={ClientJobsScreen} />
-                        <Stack.Screen name="Drawings" component={WorkerDrawingsScreen} />
-                        <Stack.Screen name="ForemanTasks" component={ForemanTasksScreen} />
-                        <Stack.Screen name="CrewClock" component={CrewClockScreen} />
-                        <Stack.Screen name="Photos" component={ForemanPhotosScreen} />
-                        <Stack.Screen name="DailyLogs" component={DailyLogsScreen} />
-                        <Stack.Screen name="WorkerLogs" component={WorkerLogsScreen} />
-                    </>
-                )}
-            </Stack.Navigator>
+            <View style={{ flex: 1 }}>
+                {user && syncStatus?.level === 'warn' ? (
+                    <View style={styles.syncBanner}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.syncTitle}>Sync Warning</Text>
+                            <Text style={styles.syncMessage}>{syncStatus?.message || 'Data sync delayed.'}</Text>
+                            {syncStatus?.roleScope ? <Text style={styles.syncScope}>{syncStatus.roleScope}</Text> : null}
+                        </View>
+                        <TouchableOpacity onPress={dismissSyncStatus} style={styles.syncClose}>
+                            <MaterialCommunityIcons name="close" size={16} color="#FDE68A" />
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
+
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    {!user ? (
+                        <>
+                            <Stack.Screen name="Login" component={LoginScreen} />
+                        </>
+                    ) : (
+                        <>
+                            <Stack.Screen name="Main" component={MainTabs} />
+                            <Stack.Screen name="ClientProgress" component={ClientProgressScreen} />
+                            <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} />
+                            <Stack.Screen name="Equipment" component={EquipmentScreen} />
+                            <Stack.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} />
+                            <Stack.Screen name="PurchaseOrderDetail" component={PurchaseOrderDetailScreen} />
+                            <Stack.Screen name="Invoices" component={ClientInvoicesScreen} />
+                            <Stack.Screen name="Reports" component={ReportsScreen} />
+                            <Stack.Screen name="RFI" component={RFIScreen} />
+                            <Stack.Screen name="RFIList" component={RFIListScreen} />
+                            <Stack.Screen name="RFIDetail" component={RFIDetailScreen} />
+                            <Stack.Screen name="Settings" component={SettingsScreen} />
+                            <Stack.Screen name="Profile" component={ProfileScreen} />
+                            <Stack.Screen name="ProjectChat" component={ProjectChatScreen} />
+                            <Stack.Screen name="WorkerChat" component={WorkerChatScreen} />
+                            <Stack.Screen name="Chatboard" component={WorkerChatboard} />
+                            <Stack.Screen name="JobTasks" component={WorkerJobTasksScreen} />
+                            <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+                            <Stack.Screen name="TaskHierarchyDetail" component={TaskHierarchyDetailScreen} />
+                            <Stack.Screen name="TaskCreate" component={TaskCreateScreen} />
+                            <Stack.Screen name="ClientJobs" component={ClientJobsScreen} />
+                            <Stack.Screen name="Drawings" component={WorkerDrawingsScreen} />
+                            <Stack.Screen name="ForemanTasks" component={ForemanTasksScreen} />
+                            <Stack.Screen name="CrewClock" component={CrewClockScreen} />
+                            <Stack.Screen name="Photos" component={ForemanPhotosScreen} />
+                            <Stack.Screen name="DailyLogs" component={DailyLogsScreen} />
+                            <Stack.Screen name="WorkerLogs" component={WorkerLogsScreen} />
+                        </>
+                    )}
+                </Stack.Navigator>
+            </View>
         </NavigationContainer>
     );
 };
+
+const styles = StyleSheet.create({
+    syncBanner: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        backgroundColor: '#7C2D12',
+        borderBottomWidth: 1,
+        borderBottomColor: '#9A3412',
+        paddingHorizontal: 12,
+        paddingVertical: 10
+    },
+    syncTitle: { color: '#FDE68A', fontWeight: '900', fontSize: 12, textTransform: 'uppercase' },
+    syncMessage: { color: '#FFF7ED', fontWeight: '700', fontSize: 12, marginTop: 2 },
+    syncScope: { color: '#FED7AA', fontSize: 11, marginTop: 4, fontWeight: '700' },
+    syncClose: { padding: 4, marginTop: 2 }
+});
 
 export default AppNavigation;

@@ -13,7 +13,8 @@ import {
     ScrollView,
     Alert,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SHADOWS } from '../../constants/theme';
@@ -21,6 +22,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import api from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PO_STATUS_FILTERS = [
     { value: 'all', label: 'All status' },
@@ -34,6 +36,9 @@ const PO_STATUS_FILTERS = [
 ];
 
 const PurchaseOrdersScreen = ({ navigation }) => {
+    const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
+    const isCompact = width < 380;
     const { projects } = useApp();
     const [pos, setPos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -331,24 +336,24 @@ const PurchaseOrdersScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Purchase Orders" showBranding={true} />
             
-            <View style={styles.pageHeader}>
+            <View style={[styles.pageHeader, { paddingHorizontal: isCompact ? 14 : 20 }]}>
                 <View style={styles.headerTextContainer}>
-                    <Text style={styles.mainTitle}>Purchase Orders</Text>
-                    <Text style={styles.mainSubtitle}>Procurement Management</Text>
+                    <Text style={[styles.mainTitle, { fontSize: isCompact ? 19 : 22 }]}>Purchase Orders</Text>
+                    <Text style={[styles.mainSubtitle, { fontSize: isCompact ? 12 : 13 }]}>Procurement Management</Text>
                 </View>
-                <TouchableOpacity style={styles.addBtn} onPress={openCreateModal}>
+                <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: isCompact ? 10 : 14, paddingVertical: isCompact ? 8 : 10 }]} onPress={openCreateModal}>
                     <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-                    <Text style={styles.addBtnText}>Raise PO</Text>
+                    <Text style={[styles.addBtnText, { fontSize: isCompact ? 12 : 13 }]}>Raise PO</Text>
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.filterSection}>
-                    <View style={styles.searchBox}>
+            <View style={[styles.filterSection, { paddingHorizontal: isCompact ? 14 : 20 }]}>
+                    <View style={[styles.searchBox, { height: isCompact ? 48 : 52, borderRadius: isCompact ? 12 : 16 }]}>
                         <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
                         <TextInput 
                             placeholder="Search PO #, Vendor..."
                             placeholderTextColor="#94A3B8"
-                            style={styles.searchInput}
+                            style={[styles.searchInput, { fontSize: isCompact ? 12 : 13 }]}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
@@ -384,7 +389,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                     data={filteredPOs}
                     keyExtractor={p => p._id || p.id}
                     renderItem={renderPOItem}
-                    contentContainerStyle={styles.listArea}
+                    contentContainerStyle={[styles.listArea, { paddingHorizontal: isCompact ? 12 : 16, paddingBottom: Math.max(insets.bottom + 90, 100) }]}
                     showsVerticalScrollIndicator={false}
                 />
             )}
@@ -459,7 +464,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
                     >
-                    <View style={styles.createSheet}>
+                    <View style={[styles.createSheet, { width: '100%', alignSelf: 'center', maxWidth: 980 }]}>
                     <View style={styles.createHeader}>
                         <View style={styles.createHeaderText}>
                             <Text style={styles.createTitle} numberOfLines={2}>Create Purchase Order</Text>
@@ -739,8 +744,8 @@ const styles = StyleSheet.create({
     searchBox: { height: 52, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
     searchInput: { flex: 1, marginLeft: 12, fontSize: 13, fontWeight: '700', color: '#1E293B' },
     toolsRow: { gap: 10, paddingRight: 20 },
-    toolBtn: { height: 40, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: 8 },
-    toolBtnTxt: { fontSize: 10, fontWeight: '900', color: '#64748B' },
+    toolBtn: { minHeight: 44, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: 8, justifyContent: 'center' },
+    toolBtnTxt: { fontSize: 11, fontWeight: '800', color: '#64748B' },
     toolBtnIcon: { width: 40, height: 40, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
     listArea: { padding: 16, paddingBottom: 100 },
     poCard: { backgroundColor: '#fff', borderRadius: 24, marginBottom: 14, overflow: 'hidden', flexDirection: 'row' },

@@ -1,227 +1,573 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    useWindowDimensions,
+    TouchableOpacity,
+    SafeAreaView,
+    StatusBar,
+    ActivityIndicator,
+    RefreshControl
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
+import { SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
-
-const { width } = Dimensions.get('window');
+import api from '../../utils/api';
 
 const ReportsScreen = ({ navigation }) => {
-    const { projects, tasks, jobs } = useApp();
+    const { width } = useWindowDimensions();
+    const isCompact = width < 380;
+    const { projects, selectedProject } = useApp();
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [companyReport, setCompanyReport] = useState(null);
+    const [detailedProjectReport, setDetailedProjectReport] = useState(null);
+    const [activeMode, setActiveMode] = useState('site_metrics');
+    const [operationsView, setOperationsView] = useState('list');
+    const [selectedJobId, setSelectedJobId] = useState('');
+    const [expandedSections, setExpandedSections] = useState({
+        siteLogs: true,
+        deficiencies: true,
+        workers: false,
+        subcontractors: false,
+        quality: false,
+        materials: false,
+        equipment: false,
+        efficiencies: false,
+        hierarchy: false,
+        notes: false,
+        jobs: true,
+        operations: true
+    });
+
+    const activeProjectId = useMemo(() => {
+        const fromSelected = selectedProject?._id || selectedProject?.id;
+        const fromFirst = projects?.[0]?._id || projects?.[0]?.id;
+        return fromSelected || fromFirst || null;
+    }, [selectedProject, projects]);
+
+    const loadReports = useCallback(async ({ showLoader = true } = {}) => {
+        try {
+            if (showLoader) setLoading(true);
+            const companyRes = await api.get('/reports/company');
+            setCompanyReport(companyRes.data || null);
+
+            if (activeProjectId) {
+                const detailedRes = await api.get(`/reports/detailed/${activeProjectId}`);
+                setDetailedProjectReport(detailedRes.data || null);
+            } else {
+                setDetailedProjectReport(null);
+            }
+        } catch (e) {
+            console.error('Reports sync fetch failed', e?.response?.data || e?.message || e);
+        } finally {
+            if (showLoader) setLoading(false);
+        }
+    }, [activeProjectId]);
+
+    useEffect(() => {
+        loadReports({ showLoader: true });
+    }, [loadReports]);
+
+    useEffect(() => {
+        const firstJobId = detailedProjectReport?.jobs?.[0]?._id || '';
+        setSelectedJobId(firstJobId);
+    }, [detailedProjectReport?.jobs]);
+
+    useEffect(() => {
+        setOperationsView('list');
+    }, [activeMode, activeProjectId]);
 
     const stats = useMemo(() => {
-        // Find the gym-project (as per user's request example)
-        // If not found, use the first project or an empty state
-        const activeProject = projects.find(p => p.name?.toLowerCase().includes('gym')) || projects[0] || {};
-        
-        // Filter jobs and tasks for this project
-        const projectJobs = jobs.filter(j => j.projectId === activeProject._id || j.projectId?._id === activeProject._id);
-        const projectTasks = tasks.filter(t => t.projectId === activeProject._id || t.projectId?._id === activeProject._id);
+        const companyTasks = companyReport?.tasks || {};
+        const project = detailedProjectReport?.project || {};
+        const sortByDateDesc = (list, key) => [...list].sort((a, b) => new Date(b?.[key] || 0) - new Date(a?.[key] || 0));
+        const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        const sortByPriorityThenDate = (list) => [...list].sort((a, b) => {
+            const ap = priorityOrder[String(a?.priority || '').toLowerCase()] ?? 999;
+            const bp = priorityOrder[String(b?.priority || '').toLowerCase()] ?? 999;
+            if (ap !== bp) return ap - bp;
+            return new Date(b?.date || 0) - new Date(a?.date || 0);
+        });
 
-        const totalTasks = projectTasks.length;
-        const completedTasks = projectTasks.filter(t => t.status === 'completed' || t.status === 'closed').length;
-        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-        const totalSpend = projectJobs.reduce((acc, job) => acc + (job.cost || 0), 0);
-        const totalBudget = activeProject.totalBudget || 1500000; // Fallback to user's example budget
-        const budgetUsage = totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0;
-
-        // Deriving Worker/Labour Intel (Mocking hours for now, can be linked to timelogs if needed)
-        const activeWorkers = projectTasks.reduce((acc, t) => {
-            if (t.assignedTo) acc.add(t.assignedTo._id || t.assignedTo);
-            return acc;
-        }, new Set()).size;
+        const projectJobsRaw = Array.isArray(detailedProjectReport?.jobs) ? [...detailedProjectReport.jobs] : [];
+        const projectJobsSorted = projectJobsRaw.sort((a, b) => {
+            const aStart = new Date(a?.startDate || 0).getTime();
+            const bStart = new Date(b?.startDate || 0).getTime();
+            if (aStart !== bStart) return bStart - aStart;
+            return String(a?.jobName || '').localeCompare(String(b?.jobName || ''));
+        });
+        const budgetRaw = Number(project.budget || 0);
+        const spendRaw = Number(project.totalCost || 0);
+        const budgetUsageRaw = Number(project.budgetUsedPercent || 0);
+        const selectedName =
+            selectedProject?.name ||
+            projects?.find(p => String(p._id || p.id) === String(activeProjectId || ''))?.name;
 
         return {
-            projectName: activeProject.name || 'No Active Project',
-            progress,
-            completedTasks,
-            totalTasks,
-            totalSpend,
-            totalBudget,
-            budgetUsage,
-            workers: activeWorkers,
-            projectJobs
+            projectName: project.name || selectedName || 'No Active Project',
+            progress: Number(companyTasks.completionRate || 0),
+            completedTasks: Number(companyTasks.completed || 0),
+            totalTasks: Number(companyTasks.total || 0),
+            totalSpend: Number.isFinite(spendRaw) ? spendRaw : 0,
+            totalBudget: Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : 0,
+            budgetUsage: Number.isFinite(budgetUsageRaw) ? budgetUsageRaw : 0,
+            workers: Number(project.totalWorkers || 0),
+            projectDeficiencies: Array.isArray(project.deficiencies) ? sortByPriorityThenDate(project.deficiencies) : [],
+            projectDailyLogs: Array.isArray(project.recentDailyLogs) ? sortByDateDesc(project.recentDailyLogs, 'date') : [],
+            projectJobs: projectJobsSorted
         };
-    }, [projects, tasks, jobs]);
+    }, [companyReport, detailedProjectReport, selectedProject, projects, activeProjectId]);
 
-    const ProgressCircle = ({ percentage }) => (
-        <View style={styles.progressCircleContainer}>
-            <View style={[styles.progressCircle, { borderTopColor: '#2563EB', borderRightColor: percentage >= 25 ? '#2563EB' : '#F1F5F9', borderBottomColor: percentage >= 50 ? '#2563EB' : '#F1F5F9', borderLeftColor: percentage >= 75 ? '#2563EB' : '#F1F5F9' }]}>
-                <Text style={styles.progressText}>{percentage}%</Text>
-            </View>
-        </View>
-    );
+    const selectedJob = useMemo(() => {
+        return stats.projectJobs.find(j => String(j._id) === String(selectedJobId)) || stats.projectJobs[0] || null;
+    }, [stats.projectJobs, selectedJobId]);
 
-    const StatCard = ({ label, value, sub, icon, bg, color }) => (
-        <View style={[styles.statCard, SHADOWS.small]}>
-            <View style={[styles.iconContainer, { backgroundColor: bg }]}>
-                <MaterialCommunityIcons name={icon} size={22} color={color} />
-            </View>
-            <View style={styles.statContent}>
-                <Text style={styles.statLabel}>{label}</Text>
-                <Text style={styles.statValue}>{value}</Text>
-                {sub && <Text style={styles.statSub}>{sub}</Text>}
-            </View>
-        </View>
-    );
-
-    const formatCurrency = (amount) => {
-        return `$${amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const flattenTaskTree = (nodes = [], depth = 0) => {
+        const rows = [];
+        nodes.forEach((node) => {
+            rows.push({
+                _id: node._id,
+                title: node.title || 'Untitled Task',
+                status: node.status || 'pending',
+                assignedTo: Array.isArray(node.assignedTo) ? node.assignedTo?.[0]?.fullName : node.assignedTo?.fullName || 'Unassigned',
+                depth
+            });
+            if (Array.isArray(node.subtasks) && node.subtasks.length > 0) {
+                rows.push(...flattenTaskTree(node.subtasks, depth + 1));
+            }
+        });
+        return rows;
     };
+
+    const selectedJobData = useMemo(() => {
+        if (!selectedJob) return null;
+        const sortByDateDesc = (list, key) => [...list].sort((a, b) => new Date(b?.[key] || 0) - new Date(a?.[key] || 0));
+        const sortByName = (list, key) => [...list].sort((a, b) => String(a?.[key] || '').localeCompare(String(b?.[key] || '')));
+
+        return {
+            ...selectedJob,
+            workers: sortByName(Array.isArray(selectedJob.workers) ? selectedJob.workers : [], 'name'),
+            deficiencies: sortByDateDesc(Array.isArray(selectedJob.deficiencies) ? selectedJob.deficiencies : [], 'date'),
+            materials: sortByName(Array.isArray(selectedJob.materials) ? selectedJob.materials : [], 'itemName'),
+            equipment: sortByName(Array.isArray(selectedJob.equipment) ? selectedJob.equipment : [], 'name'),
+            subcontractors: sortByName(Array.isArray(selectedJob.subcontractors) ? selectedJob.subcontractors : [], 'name'),
+            notes: sortByDateDesc(Array.isArray(selectedJob.notes) ? selectedJob.notes : [], 'date')
+        };
+    }, [selectedJob]);
+
+    const hierarchyRows = useMemo(() => flattenTaskTree(selectedJobData?.tasks || []), [selectedJobData]);
+    const summaryCardStyle = useMemo(() => ({ width: isCompact ? '100%' : '48.5%' }), [isCompact]);
+    const compactHorizontalPadding = isCompact ? 14 : 20;
+
+    const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatDate = (value) => value ? new Date(value).toLocaleDateString('en-GB') : '—';
+
+    const renderSectionHeader = (icon, title, subtitle) => (
+        <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconWrap}>
+                <MaterialCommunityIcons name={icon} size={16} color="#2563EB" />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.sectionTitle}>{title}</Text>
+                {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+            </View>
+        </View>
+    );
+
+    const renderEmpty = (label) => (
+        <View style={styles.emptyRow}>
+            <MaterialCommunityIcons name="information-outline" size={14} color="#94A3B8" />
+            <Text style={styles.emptyText}>{label}</Text>
+        </View>
+    );
+
+    const toggleSection = (key) => {
+        setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadReports({ showLoader: false });
+        setRefreshing(false);
+    }, [loadReports]);
+
+    const SectionCard = ({ sectionKey, icon, title, subtitle, children }) => (
+        <View style={[styles.sectionCard, SHADOWS.small, { marginHorizontal: compactHorizontalPadding }]}>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => toggleSection(sectionKey)} style={styles.sectionHeaderTap}>
+                {renderSectionHeader(icon, title, subtitle)}
+                <MaterialCommunityIcons
+                    name={expandedSections[sectionKey] ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="#475569"
+                />
+            </TouchableOpacity>
+            {expandedSections[sectionKey] ? <View style={styles.sectionContent}>{children}</View> : null}
+        </View>
+    );
 
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Reports" showBranding={true} showBack={true} />
-            
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                {/* Dashboard Title Section */}
-                <View style={styles.header}>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.dashboardTitle}>Project Intelligence</Text>
-                        <Text style={styles.dashboardSubtitle} numberOfLines={1}>Analytics for {stats.projectName}</Text>
-                    </View>
-                    <TouchableOpacity style={styles.exportBtn}>
-                        <MaterialCommunityIcons name="file-export-outline" size={18} color="#2563EB" />
-                        <Text style={styles.exportText}>Export</Text>
-                    </TouchableOpacity>
-                </View>
 
-                {/* Primary Metrics Grid */}
-                <View style={styles.metricsGrid}>
-                    {/* Metrics removed as per request */}
+            {loading ? (
+                <View style={styles.loadingWrap}>
+                    <ActivityIndicator size="large" color="#2563EB" />
+                    <Text style={styles.loadingText}>Syncing reports...</Text>
                 </View>
-
-                {/* Job Cost Distribution (Visual Placeholder for Chart) */}
-                <View style={styles.sectionContainer}>
-                    <Text style={styles.sectionTitle}>Job Cost Distribution</Text>
-                    <View style={styles.chartPlaceholder}>
-                        <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { width: `${Math.min(stats.budgetUsage, 100)}%` }]} />
-                        </View>
-                        <View style={styles.chartLabels}>
-                            <Text style={styles.chartLabel}>Used: {formatCurrency(stats.totalSpend)}</Text>
-                            <Text style={styles.chartLabel}>Total: {formatCurrency(stats.totalBudget)}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Job-Wise Detailed Report */}
-                <View style={styles.sectionContainer}>
-                    <View style={styles.listHeader}>
-                        <Text style={styles.sectionTitle}>Job-Wise Detailed Report</Text>
-                        <View style={styles.countBadge}>
-                            <Text style={styles.countText}>{stats.projectJobs.length} Active Jobs</Text>
+            ) : (
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
+                >
+                    <View style={[styles.header, { paddingHorizontal: compactHorizontalPadding }]}>
+                        <View style={styles.headerTextContainer}>
+                            <Text style={[styles.dashboardTitle, isCompact && styles.dashboardTitleCompact]}>Intelligence Command Center</Text>
+                            <Text style={styles.dashboardSubtitle} numberOfLines={1}>{stats.projectName}</Text>
                         </View>
                     </View>
 
-                    {stats.projectJobs.map((job, index) => (
-                        <TouchableOpacity 
-                            key={job._id || index} 
-                            style={[styles.jobCard, SHADOWS.small]}
-                            onPress={() => navigation.navigate('JobTasks', { jobId: job._id })}
-                        >
-                            <View style={styles.jobHeader}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.jobName}>{job.name}</Text>
-                                    <Text style={styles.jobType}>{job.status?.toUpperCase() || 'ACTIVE'}</Text>
-                                </View>
-                                <View style={styles.progressRing}>
-                                    <View style={[styles.dot, { backgroundColor: job.status === 'completed' ? '#10B981' : '#F59E0B' }]} />
-                                    <Text style={styles.progressValue}>{job.progress || 0}%</Text>
-                                </View>
-                            </View>
+                    <View style={[styles.topControls, { paddingHorizontal: compactHorizontalPadding }]}>
+                        <View style={styles.modeTabs}>
+                            <TouchableOpacity
+                                style={[styles.modeBtn, activeMode === 'operations' && styles.modeBtnActive]}
+                                onPress={() => setActiveMode('operations')}
+                            >
+                                <Text style={[styles.modeText, activeMode === 'operations' && styles.modeTextActive]}>OPERATIONS</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modeBtn, activeMode === 'site_metrics' && styles.modeBtnActive]}
+                                onPress={() => setActiveMode('site_metrics')}
+                            >
+                                <Text style={[styles.modeText, activeMode === 'site_metrics' && styles.modeTextActive]}>SITE METRICS</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
-                            <View style={styles.jobTimeline}>
-                                <MaterialCommunityIcons name="calendar-range" size={14} color="#94A3B8" />
-                                <Text style={styles.timelineText}>
-                                    {job.startDate ? new Date(job.startDate).toLocaleDateString('en-GB') : 'N/A'} — {job.endDate ? new Date(job.endDate).toLocaleDateString('en-GB') : 'N/A'}
-                                </Text>
-                            </View>
+                    {activeMode === 'operations' ? (
+                        <>
+                            {operationsView === 'list' ? (
+                                <>
+                                    <SectionCard sectionKey="operations" icon="finance" title="OPERATIONS SNAPSHOT" subtitle="Budget and execution pulse">
+                                        <View style={styles.summaryGrid}>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Budget Used</Text>
+                                                <Text style={styles.summaryValue}>{stats.budgetUsage}%</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Total Cost</Text>
+                                                <Text style={styles.summaryValue}>{formatCurrency(stats.totalSpend)}</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Completed Tasks</Text>
+                                                <Text style={styles.summaryValue}>{stats.completedTasks}</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Total Workforce</Text>
+                                                <Text style={styles.summaryValue}>{stats.workers}</Text>
+                                            </View>
+                                        </View>
+                                    </SectionCard>
 
-                            <View style={styles.costSection}>
-                                <View style={styles.costInfo}>
-                                    <Text style={styles.costLabel}>Spent / Budget</Text>
-                                    <Text style={styles.costValue}>{formatCurrency(job.cost || 0)} / {formatCurrency(job.budget || 0)}</Text>
-                                </View>
-                                <View style={styles.costProgress}>
-                                    <View style={styles.miniBarBg}>
-                                        <View style={[styles.miniBarFill, { width: `${Math.min(((job.cost || 0) / (job.budget || 1)) * 100, 100)}%` }]} />
+                                    <View style={[styles.sectionCard, SHADOWS.small, { marginHorizontal: compactHorizontalPadding }]}>
+                                        <View style={styles.opsHeader}>
+                                            <Text style={styles.opsTitle}>ACTIVE WORK UNITS</Text>
+                                            <Text style={styles.opsBadge}>{stats.projectJobs.length} Phases Active</Text>
+                                        </View>
+                                        <Text style={styles.opsSubtitle}>Select a phase to view detailed job intelligence</Text>
+
+                                        {stats.projectJobs.length === 0 ? renderEmpty('No jobs available') : stats.projectJobs.map((job) => (
+                                            <TouchableOpacity
+                                                key={job._id}
+                                                style={styles.opsRow}
+                                                onPress={() => {
+                                                    setSelectedJobId(job._id);
+                                                    setOperationsView('detail');
+                                                }}
+                                            >
+                                                <View style={styles.opsRowTop}>
+                                                    <Text style={styles.opsJobName} numberOfLines={1}>{job.jobName || 'Untitled Job'}</Text>
+                                                    <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
+                                                </View>
+                                                <View style={styles.opsMetrics}>
+                                                    <Text style={styles.opsMetricText}>Progress: {Number(job.progress || 0)}%</Text>
+                                                    <Text style={styles.opsMetricText}>Labor: {formatCurrency(job.financials?.workerCost || 0)}</Text>
+                                                    <Text style={styles.opsMetricText}>Material: {formatCurrency(job.financials?.materialCost || 0)}</Text>
+                                                    <Text style={[styles.opsMetricText, styles.opsMetricTotal]}>Total: {formatCurrency(job.totalCost || 0)}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
                                     </View>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                    
-                    {stats.projectJobs.length === 0 && (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#CBD5E1" />
-                            <Text style={styles.emptyStateText}>No detailed job reports available</Text>
-                        </View>
-                    )}
-                </View>
+                                </>
+                            ) : (
+                                <>
+                                    <View style={[styles.sectionCard, SHADOWS.small, { marginHorizontal: compactHorizontalPadding }]}>
+                                        <View style={styles.opsDetailTop}>
+                                            <TouchableOpacity style={styles.backBtn} onPress={() => setOperationsView('list')}>
+                                                <MaterialCommunityIcons name="arrow-left" size={16} color="#1D4ED8" />
+                                                <Text style={styles.backBtnText}>Back to Work Units</Text>
+                                            </TouchableOpacity>
+                                            <Text style={styles.opsDetailName}>{selectedJobData?.jobName || 'Selected Job'}</Text>
+                                        </View>
+                                    </View>
 
-                <View style={{ height: 40 }} />
-            </ScrollView>
+                                    <SectionCard sectionKey="workers" icon="clipboard-account-outline" title="WORKER TIME TRACKING" subtitle={selectedJobData?.jobName || 'Selected job'}>
+                                        {!selectedJobData?.workers?.length ? renderEmpty('No worker logs available') : selectedJobData.workers.map((w, idx) => (
+                                            <View key={`${w.name}-${idx}`} style={styles.dataCard}>
+                                                <Text style={styles.cellMain}>{w.name || 'Unknown Worker'}</Text>
+                                                <Text style={styles.cellSub}>Role: {w.role || 'WORKER'} | Hours: {w.totalHours || 0}</Text>
+                                                <Text style={styles.cellSubStrong}>Cost: {formatCurrency(w.cost)}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="subcontractors" icon="account-group-outline" title="SUBCONTRACTOR LOGISTICS" subtitle="Subcontractor workforce and cost">
+                                        {!selectedJobData?.subcontractors?.length ? renderEmpty('No subcontractor records') : selectedJobData.subcontractors.map((s, idx) => (
+                                            <View key={`${s.name}-${idx}`} style={styles.dataCard}>
+                                                <Text style={styles.cellMain}>{s.name || 'Subcontractor'}</Text>
+                                                <Text style={styles.cellSub}>Work: {s.work || 'Contracted Services'} | Hours: {s.totalHours || 0}</Text>
+                                                <Text style={styles.cellSubStrong}>Cost: {formatCurrency(s.cost)}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="materials" icon="package-variant-closed" title="MATERIAL CONSUMPTION" subtitle="Purchase order driven quantities">
+                                        {!selectedJobData?.materials?.length ? renderEmpty('No material records') : selectedJobData.materials.map((m, idx) => (
+                                            <View key={`${m.itemName}-${idx}`} style={styles.dataCard}>
+                                                <Text style={styles.cellMain}>{m.itemName || 'Material'}</Text>
+                                                <Text style={styles.cellSub}>Qty: {m.quantity || 0}</Text>
+                                                <Text style={styles.cellSubStrong}>Cost: {formatCurrency(m.cost)}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="equipment" icon="excavator" title="EQUIPMENT USAGE" subtitle="Hours and machine-level cost">
+                                        {!selectedJobData?.equipment?.length ? renderEmpty('No equipment usage tracked') : selectedJobData.equipment.map((e, idx) => (
+                                            <View key={`${e.name}-${idx}`} style={styles.dataCard}>
+                                                <Text style={styles.cellMain}>{e.name || 'Equipment'}</Text>
+                                                <Text style={styles.cellSub}>Hours: {e.hoursUsed || 0}</Text>
+                                                <Text style={styles.cellSubStrong}>Cost: {formatCurrency(e.cost)}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="efficiencies" icon="chart-box-outline" title="OPERATIONAL EFFICIENCIES" subtitle="Task and cost mix analysis">
+                                        <View style={styles.summaryGrid}>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Total Tasks</Text>
+                                                <Text style={styles.summaryValue}>{selectedJobData?.summary?.totalTasks || 0}</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Completed</Text>
+                                                <Text style={styles.summaryValue}>{selectedJobData?.summary?.completedTasks || 0}</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Pending</Text>
+                                                <Text style={styles.summaryValue}>{selectedJobData?.summary?.pendingTasks || 0}</Text>
+                                            </View>
+                                            <View style={[styles.summaryItem, summaryCardStyle]}>
+                                                <Text style={styles.summaryLabel}>Job Cost</Text>
+                                                <Text style={styles.summaryValue}>{formatCurrency(selectedJobData?.totalCost)}</Text>
+                                            </View>
+                                        </View>
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="hierarchy" icon="sitemap-outline" title="EXECUTION HIERARCHY" subtitle="Task and nested subtask tree">
+                                        {hierarchyRows.length === 0 ? renderEmpty('No execution hierarchy available') : hierarchyRows.map((row, idx) => (
+                                            <View key={`${row._id}-${idx}`} style={[styles.dataCard, { marginLeft: row.depth * 12 }]}>
+                                                <Text style={styles.cellMain}>{row.title}</Text>
+                                                <Text style={styles.cellSub}>Status: {row.status} | Assigned: {row.assignedTo}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+
+                                    <SectionCard sectionKey="notes" icon="notebook-multiple-outline" title="INTELLIGENCE NOTES + LOGISTICS" subtitle="Job notes and field observations">
+                                        {!selectedJobData?.notes?.length ? renderEmpty('No intelligence notes yet') : selectedJobData.notes.map((note, idx) => (
+                                            <View key={`${note.date}-${idx}`} style={styles.dataCard}>
+                                                <Text style={styles.cellMain}>{note.content || 'No content'}</Text>
+                                                <Text style={styles.cellSub}>By: {note.author || 'System'} | {formatDate(note.date)}</Text>
+                                            </View>
+                                        ))}
+                                    </SectionCard>
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <SectionCard sectionKey="siteLogs" icon="timeline-clock-outline" title="CHRONOLOGICAL SITE LOGS" subtitle="Daily entries in time sequence">
+                                {stats.projectDailyLogs.length === 0 ? renderEmpty('No site logs found') : stats.projectDailyLogs.map((log, idx) => (
+                                    <View key={`${log.date}-${idx}`} style={styles.dataCard}>
+                                        <Text style={styles.cellDate}>{formatDate(log.date)}</Text>
+                                        <Text style={styles.cellMain}>{log.notes || 'No notes'}</Text>
+                                        <Text style={styles.cellSub}>Crew: {log.crewCount || 0} | Foreman: {log.foreman || '—'}</Text>
+                                    </View>
+                                ))}
+                            </SectionCard>
+
+                            <SectionCard sectionKey="deficiencies" icon="alert-decagram-outline" title="PROJECT-WIDE DEFICIENCY AUDIT" subtitle="Open quality and safety issues">
+                                {stats.projectDeficiencies.length === 0 ? renderEmpty('No deficiencies logged') : stats.projectDeficiencies.map((item, idx) => (
+                                    <View key={`${item.title}-${idx}`} style={styles.dataCard}>
+                                        <Text style={styles.cellMain} numberOfLines={2}>{item.title || 'Untitled Issue'}</Text>
+                                        <Text style={styles.cellSub}>Priority: {item.priority || '—'} | Status: {item.status || '—'}</Text>
+                                        <Text style={styles.cellSub}>Assigned: {item.assignedTo || 'Unassigned'}</Text>
+                                    </View>
+                                ))}
+                            </SectionCard>
+                        </>
+                    )}
+
+                    <View style={{ height: 40 }} />
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
+    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+    loadingText: { color: '#64748B', fontWeight: '700', fontSize: 13 },
     scrollContent: { paddingBottom: 40 },
-    
-    header: { padding: 24, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    headerTextContainer: { flex: 1, marginRight: 12 },
-    dashboardTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+
+    header: { padding: 20, paddingBottom: 12 },
+    headerTextContainer: { flex: 1 },
+    dashboardTitle: { fontSize: 21, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
+    dashboardTitleCompact: { fontSize: 19 },
     dashboardSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '700', marginTop: 4 },
-    
-    exportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4 },
-    exportText: { fontSize: 13, fontWeight: '900', color: '#2563EB' },
 
-    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 24, marginBottom: 24 },
-    statCard: { width: (width - 62) / 2, backgroundColor: '#fff', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-    iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    statLabel: { fontSize: 11, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
-    statValue: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginTop: 4 },
-    statSub: { fontSize: 10, color: '#64748B', fontWeight: '800', marginTop: 6 },
+    topControls: { paddingHorizontal: 20, gap: 10, marginBottom: 12 },
+    modeTabs: { flexDirection: 'row', gap: 8 },
+    modeBtn: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44
+    },
+    modeBtnActive: { backgroundColor: '#E0EAFF', borderColor: '#2563EB' },
+    modeText: { fontSize: 11, color: '#334155', fontWeight: '900', letterSpacing: 0.4 },
+    modeTextActive: { color: '#1D4ED8' },
 
-    sectionContainer: { paddingHorizontal: 24, marginBottom: 24 },
-    sectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 16 },
-    
-    chartPlaceholder: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9' },
-    progressBarBg: { height: 12, backgroundColor: '#E2E8F0', borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
-    progressBarFill: { height: '100%', backgroundColor: '#2563EB' },
-    chartLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-    chartLabel: { fontSize: 11, fontWeight: '800', color: '#64748B' },
+    sectionCard: {
+        marginHorizontal: 20,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        padding: 12
+    },
+    sectionHeaderTap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sectionContent: { paddingTop: 4 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+    sectionIconWrap: {
+        width: 30,
+        height: 30,
+        borderRadius: 8,
+        backgroundColor: '#EFF6FF',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    sectionTitle: { fontSize: 13, fontWeight: '900', color: '#0F172A' },
+    sectionSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 1 },
 
-    listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    countBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    countText: { fontSize: 11, fontWeight: '900', color: '#64748B' },
+    opsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    opsTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', letterSpacing: 0.3 },
+    opsBadge: {
+        fontSize: 10,
+        color: '#2563EB',
+        fontWeight: '800',
+        backgroundColor: '#EFF6FF',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 4
+    },
+    opsSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 10 },
+    opsRow: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        padding: 10,
+        marginBottom: 8
+    },
+    opsRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    opsJobName: { flex: 1, fontSize: 13, color: '#0F172A', fontWeight: '900', paddingRight: 6 },
+    opsMetrics: { marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    opsMetricText: { fontSize: 11, color: '#475569', fontWeight: '700' },
+    opsMetricTotal: { color: '#1D4ED8', fontWeight: '900' },
 
-    jobCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#F1F5F9' },
-    jobHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-    jobName: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
-    jobType: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', marginTop: 2 },
-    progressRing: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    dot: { width: 6, height: 6, borderRadius: 3 },
-    progressValue: { fontSize: 12, fontWeight: '900', color: '#1E293B' },
-    
-    jobTimeline: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-    timelineText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
-    
-    costSection: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
-    costInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    costLabel: { fontSize: 11, fontWeight: '900', color: '#94A3B8' },
-    costValue: { fontSize: 12, fontWeight: '900', color: '#1E293B' },
-    costProgress: {},
-    miniBarBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
-    miniBarFill: { height: '100%', backgroundColor: '#10B981' },
+    opsDetailTop: { gap: 8 },
+    backBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+    backBtnText: { fontSize: 11, color: '#1D4ED8', fontWeight: '800' },
+    opsDetailName: { fontSize: 16, color: '#0F172A', fontWeight: '900' },
 
-    emptyState: { alignItems: 'center', paddingVertical: 40 },
-    emptyStateText: { fontSize: 13, color: '#94A3B8', fontWeight: '800', marginTop: 12 }
+    dataCard: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        marginBottom: 8
+    },
+    cellDate: { fontSize: 11, fontWeight: '900', color: '#1E293B', marginBottom: 3 },
+    cellMain: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
+    cellSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
+    cellSubStrong: { fontSize: 11, color: '#1D4ED8', marginTop: 2, fontWeight: '900' },
+
+    emptyRow: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6
+    },
+    emptyText: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
+
+    summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    summaryItem: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        backgroundColor: '#F8FAFC'
+    },
+    summaryLabel: { fontSize: 10, color: '#64748B', fontWeight: '800', textTransform: 'uppercase' },
+    summaryValue: { fontSize: 15, fontWeight: '900', color: '#0F172A', marginTop: 2 },
+
+    jobCard: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 8,
+        backgroundColor: '#F8FAFC'
+    },
+    jobHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    jobName: { flex: 1, fontSize: 13, fontWeight: '900', color: '#1E293B', paddingRight: 8 },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#1D4ED8',
+        backgroundColor: '#DBEAFE',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3
+    },
+    jobMeta: { fontSize: 11, color: '#64748B', fontWeight: '700', marginTop: 4 }
 });
 
 export default ReportsScreen;

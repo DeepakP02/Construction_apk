@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Platform, useWindowDimensions } from 'react-native';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -8,8 +8,6 @@ import CustomButton from '../../components/CustomButton';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { width, height } = Dimensions.get('window');
 
 const ROLE_LABELS = {
     PM: 'Project Manager',
@@ -31,6 +29,8 @@ const DISPLAY_MODES = [
 ];
 
 const TasksScreen = ({ navigation }) => {
+    const { width } = useWindowDimensions();
+    const isCompact = width < 380;
     const { tasks, addTask, updateTask, deleteTask, projects, teamMembers, fetchTeamMembers, user, refreshData, selectedProject } = useApp();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -470,7 +470,7 @@ const TasksScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <WorkerHeader title="Tasks" />
-            <View style={styles.stickyHeader}>
+            <View style={[styles.stickyHeader, { paddingHorizontal: isCompact ? 12 : 16 }]}>
                 <View style={styles.headerTopRowCompact}>
                     <View style={styles.searchBoxCompact}>
                         <MaterialCommunityIcons name="magnify" size={16} color="#94A3B8" />
@@ -483,12 +483,12 @@ const TasksScreen = ({ navigation }) => {
                         />
                     </View>
                     <TouchableOpacity
-                        style={styles.createTaskBtn}
+                        style={[styles.createTaskBtn, { paddingHorizontal: isCompact ? 12 : 16, height: isCompact ? 40 : 44 }]}
                         activeOpacity={0.8}
                         onPress={() => navigation.navigate('TaskCreate')}
                     >
                         <MaterialCommunityIcons name="plus" size={16} color="#fff" />
-                        <Text style={styles.createTaskBtnText}>New</Text>
+                        <Text style={[styles.createTaskBtnText, { fontSize: isCompact ? 12 : 13 }]}>New</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -514,7 +514,7 @@ const TasksScreen = ({ navigation }) => {
             <Animated.FlatList
                 data={hierarchicalTasks}
                 keyExtractor={(item, index) => item._id ? `task-${item._id}` : `task-idx-${index}`}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isCompact ? 12 : 16 }]}
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                     const statusColors = {
@@ -591,7 +591,7 @@ const TasksScreen = ({ navigation }) => {
                                                             />
                                                         </TouchableOpacity>
                                                     )}
-                                                    <Text style={[styles.taskTitleText, { fontSize: isDeepLevel ? 12 : (width < 380 ? 13 : 15) }]} numberOfLines={1}>{item.title}</Text>
+                                                    <Text style={[styles.taskTitleText, { fontSize: isDeepLevel ? 12 : (isCompact ? 13 : 15) }]} numberOfLines={1}>{item.title}</Text>
                                                 </View>
                                                 <Text style={styles.projectContextText} numberOfLines={1}>
                                                     {item.projectId?.name || item.project || 'Main Project'}
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
     },
 
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: width * 0.8, backgroundColor: '#fff', borderRadius: 24, padding: 20, elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
+    selBox: { width: '82%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 24, padding: 20, elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
     selTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 16, textAlign: 'center', textTransform: 'uppercase' },
     selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     selLabel: { fontSize: 14, fontWeight: '700', color: '#334155' },

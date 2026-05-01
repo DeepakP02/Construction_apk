@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, 
-    Animated, TextInput, Dimensions, Linking, ActivityIndicator, StatusBar, Platform, Share, Alert, Image 
+    Animated, TextInput, Linking, ActivityIndicator, StatusBar, Platform, Share, Alert, Image, useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
 import WorkerHeader from '../../components/WorkerHeader';
-
-const { width } = Dimensions.get('window');
 
 const DISCIPLINES = [
     { label: 'All Disciplines', value: '', icon: 'layers' },
@@ -22,6 +20,8 @@ const DISCIPLINES = [
 ];
 
 const ClientDrawingsScreen = () => {
+    const { width } = useWindowDimensions();
+    const isCompact = width < 380;
     const { projects, teamMembers } = useApp();
     const [drawings, setDrawings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -227,7 +227,7 @@ const ClientDrawingsScreen = () => {
 
                 <View style={styles.dropdownRow}>
                     <TouchableOpacity 
-                        style={styles.dropdown}
+                        style={[styles.dropdown, { minHeight: 44 }]}
                         onPress={() => openDropdown('Select Project', 
                             [{ label: 'All Projects', value: '' }, ...projects.map(p => ({ label: p.name, value: p._id || p.id }))],
                             (val) => {
@@ -236,18 +236,18 @@ const ClientDrawingsScreen = () => {
                             }
                         )}
                     >
-                        <Text style={styles.dropdownText} numberOfLines={1}>{selectedProject.label}</Text>
+                        <Text style={[styles.dropdownText, { fontSize: isCompact ? 11 : 12 }]} numberOfLines={1}>{selectedProject.label}</Text>
                         <MaterialCommunityIcons name="chevron-down" size={18} color="#94A3B8" />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
-                        style={styles.dropdown}
+                        style={[styles.dropdown, { minHeight: 44 }]}
                         onPress={() => openDropdown('Select Discipline', DISCIPLINES, (val) => {
                             const d = DISCIPLINES.find(item => item.value === val);
                             setSelectedDiscipline(d);
                         })}
                     >
-                        <Text style={styles.dropdownText}>{selectedDiscipline.label}</Text>
+                        <Text style={[styles.dropdownText, { fontSize: isCompact ? 11 : 12 }]} numberOfLines={1}>{selectedDiscipline.label}</Text>
                         <MaterialCommunityIcons name="chevron-down" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                 </View>

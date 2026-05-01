@@ -1,17 +1,18 @@
 import React from 'react';
 import { 
     View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-    Dimensions, StatusBar, Image 
+    StatusBar, useWindowDimensions 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 const ClientProgressScreen = ({ route, navigation }) => {
+    const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+    const isCompact = width < 380;
+    const isTablet = width >= 768;
     const { project } = route.params;
     const { user } = useApp();
 
@@ -23,13 +24,13 @@ const ClientProgressScreen = ({ route, navigation }) => {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             
             {/* Header Section */}
-            <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 10, paddingHorizontal: isCompact ? 12 : 20 }]}>
                 <View style={styles.topRow}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
                     </TouchableOpacity>
-                    <View style={styles.projectHeaderInfo}>
-                        <Text style={styles.projectName}>{project.name}</Text>
+                    <View style={[styles.projectHeaderInfo, { flexWrap: 'wrap' }]}>
+                        <Text style={[styles.projectName, { fontSize: isCompact ? 22 : 28 }]} numberOfLines={1}>{project.name}</Text>
                         <View style={styles.statusBadge}>
                             <Text style={styles.statusText}>{(project.status || 'PLANNING').toUpperCase()}</Text>
                         </View>
@@ -43,16 +44,16 @@ const ClientProgressScreen = ({ route, navigation }) => {
 
             <ScrollView 
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isCompact ? 12 : 16, maxWidth: isTablet ? 980 : undefined, alignSelf: 'center', width: '100%' }]}
             >
                 {/* Main Dashboard Grid */}
                 <View style={styles.topDashboardRow}>
                     {/* Overall Progress Card */}
-                    <View style={[styles.progressCard, SHADOWS.medium]}>
-                        <View style={styles.circularContainer}>
-                            <View style={styles.outerCircle}>
-                                <View style={styles.innerCircle}>
-                                    <Text style={styles.percentText}>{progress}%</Text>
+                    <View style={[styles.progressCard, SHADOWS.medium, { padding: isCompact ? 18 : 30 }]}>
+                        <View style={[styles.circularContainer, { width: isCompact ? 150 : 180, height: isCompact ? 150 : 180 }]}>
+                            <View style={[styles.outerCircle, { width: isCompact ? 132 : 160, height: isCompact ? 132 : 160, borderRadius: isCompact ? 66 : 80 }]}>
+                                <View style={[styles.innerCircle, { width: isCompact ? 106 : 130, height: isCompact ? 106 : 130, borderRadius: isCompact ? 53 : 65 }]}>
+                                    <Text style={[styles.percentText, { fontSize: isCompact ? 34 : 44 }]}>{progress}%</Text>
                                     <Text style={styles.overallLabel}>OVERALL</Text>
                                 </View>
                             </View>
@@ -69,9 +70,9 @@ const ClientProgressScreen = ({ route, navigation }) => {
                     </View>
 
                     {/* Current Phase Card */}
-                    <View style={[styles.phaseCard, SHADOWS.medium]}>
+                    <View style={[styles.phaseCard, SHADOWS.medium, { padding: isCompact ? 18 : 30 }]}>
                         <Text style={styles.phaseHeaderLabel}>CURRENT PHASE</Text>
-                        <Text style={styles.phaseTitle}>{currentPhase}</Text>
+                        <Text style={[styles.phaseTitle, { fontSize: isCompact ? 24 : 32 }]}>{currentPhase}</Text>
                         
                         <View style={styles.inProgressBadge}>
                             <View style={styles.greenDot} />
@@ -87,7 +88,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
                 {/* Secondary Grid */}
                 <View style={styles.secondaryRow}>
                     {/* Completed Milestones */}
-                    <View style={[styles.milestoneCard, SHADOWS.small]}>
+                    <View style={[styles.milestoneCard, SHADOWS.small, { minHeight: isCompact ? 180 : 220, height: isCompact ? undefined : 220 }]}>
                         <View style={styles.cardIconHeader}>
                             <MaterialCommunityIcons name="check-circle-outline" size={20} color="#10B981" />
                             <Text style={styles.cardHeading}>Completed Milestones</Text>
@@ -99,7 +100,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
                     </View>
 
                     {/* Next Steps */}
-                    <View style={[styles.nextStepsCard, SHADOWS.small]}>
+                    <View style={[styles.nextStepsCard, SHADOWS.small, { minHeight: isCompact ? 180 : 220, height: isCompact ? undefined : 220 }]}>
                         <View style={styles.cardIconHeader}>
                             <MaterialCommunityIcons name="clock-outline" size={20} color="#3B82F6" />
                             <Text style={styles.cardHeading}>Next Steps</Text>
@@ -139,7 +140,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
                      <Text style={styles.emptyActivityText}>NO UPDATES POSTED YET.</Text>
                 </View>
 
-                <View style={{ height: 100 }} />
+                <View style={{ height: Math.max(insets.bottom + 60, 100) }} />
             </ScrollView>
         </View>
     );

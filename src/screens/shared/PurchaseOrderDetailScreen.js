@@ -8,10 +8,12 @@ import {
     SafeAreaView,
     StatusBar,
     RefreshControl,
+    useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const fmtMoney = (n) => {
     const x = typeof n === 'number' ? n : parseFloat(n);
@@ -20,6 +22,9 @@ const fmtMoney = (n) => {
 };
 
 const PurchaseOrderDetailScreen = ({ navigation, route }) => {
+    const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
+    const isCompact = width < 380;
     const poId = route.params?.poId;
     const [po, setPo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -89,13 +94,13 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
             ) : (
                 <ScrollView
                     style={styles.scroll}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isCompact ? 12 : 16, paddingBottom: Math.max(insets.bottom + 24, 24), maxWidth: width >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }]}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.hero}>
                         <View style={styles.heroTop}>
-                            <Text style={styles.poNum}>{po?.poNumber || '—'}</Text>
+                        <Text style={[styles.poNum, { fontSize: isCompact ? 17 : 20 }]}>{po?.poNumber || '—'}</Text>
                             <View style={styles.statusPill}>
                                 <Text style={styles.statusTxt}>{(po?.status || '—').toUpperCase()}</Text>
                             </View>
@@ -169,7 +174,7 @@ const PurchaseOrderDetailScreen = ({ navigation, route }) => {
                         </View>
                     ) : null}
 
-                    <View style={{ height: 32 }} />
+                    <View style={{ height: 16 }} />
                 </ScrollView>
             )}
         </SafeAreaView>

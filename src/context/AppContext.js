@@ -8,6 +8,17 @@ import { io } from 'socket.io-client';
 import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ISSUES, MOCK_MESSAGES, MOCK_USER, MOCK_ACTIVITY } from '../mock/data';
 
 const AppContext = createContext();
+const STRICT_SYNC_LABELS = new Set([
+    'Projects',
+    'Tasks',
+    'Jobs',
+    'ChatRooms',
+    'Notifications',
+    'Team',
+    'RFIs',
+    'Todos',
+    'Issues'
+]);
 
 export const AppProvider = ({ children }) => {
     const socketRef = useRef(null);
@@ -33,6 +44,7 @@ export const AppProvider = ({ children }) => {
     const [rfiStats, setRfiStats] = useState(null);
     const [todos, setTodos] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [syncStatus, setSyncStatus] = useState({ level: 'ok', message: '', at: null, roleScope: '' });
     const [lastNotifCount, setLastNotifCount] = useState(0);
     const [lastUnreadCount, setLastUnreadCount] = useState(0);
     const [selectedProject, setSelectedProject] = useState(null);
@@ -123,6 +135,12 @@ export const AppProvider = ({ children }) => {
                 }
 
                 console.log('--- SESSION RESTORED ---', { role: parsedUser.role });
+                if (parsedUser?.role) {
+                    const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(parsedUser.role)
+                        ? 'Full org visibility'
+                        : `Role-scoped visibility (${parsedUser.role})`;
+                    setSyncStatus((prev) => ({ ...prev, roleScope }));
+                }
                 fetchInitialData(parsedUser);
             } else {
                 // No artificial delay needed
@@ -138,6 +156,7 @@ export const AppProvider = ({ children }) => {
         try {
             const currentUser = restoredUser || user;
             console.log('--- FETCH INITIAL DATA START ---', { role: currentUser?.role });
+            const strictFailures = [];
 
             const fetchData = async (url, setter, label, retryCount = 1) => {
                 try {
@@ -155,6 +174,16 @@ export const AppProvider = ({ children }) => {
                         await new Promise(r => setTimeout(r, 1000));
                         return fetchData(url, setter, label, retryCount - 1);
                     }
+
+                    // Keep app/web parity reliable: never inject mock data for core synced modules.
+                    if (STRICT_SYNC_LABELS.has(label)) {
+                        const status = err?.response?.status || 'NETWORK';
+                        const message = err?.response?.data?.message || err?.message || 'Unknown error';
+                        console.warn(`[Fetch Failed] ${label} (${url}) [${status}] ${message}. Keeping last live state.`);
+                        strictFailures.push({ label, status, message });
+                        return { data: null, failed: true, label, status, message };
+                    }
+
                     console.warn(`[Fetch Failed] ${label} (${url}). Falling back to mock data.`);
                     
                     // --- MOCK FALLBACK INJECTION ---
@@ -195,15 +224,26 @@ export const AppProvider = ({ children }) => {
             // Give the backend a moment to settle after any recent POST operations
             await new Promise(r => setTimeout(r, 800)); 
             const taskRes = await fetchData('/tasks', (data) => {
-                const normalized = (data || []).map(t => ({
-                    ...t,
-                    _id: t._id || t.id,
-                    projectId: typeof t.projectId === 'string' ? { _id: t.projectId } : t.projectId,
-                    parentTaskId: t.parentTaskId?._id || t.parentTaskId || null,
-                    level: Number(t.level || 0),
-                    path: t.path || '',
-                    isSubTask: !!(t.parentTaskId || t.isSubTask)
-                }));
+                const normalized = (data || []).map(t => {
+                    const taskIdRef = t.taskId?._id || t.taskId || null;
+                    const parentSubTaskIdRef = t.parentSubTaskId?._id || t.parentSubTaskId || null;
+                    const inferredParentId = parentSubTaskIdRef || taskIdRef || null;
+                    const normalizedProjectId =
+                        typeof t.projectId === 'string'
+                            ? { _id: t.projectId }
+                            : (t.projectId || t.taskId?.projectId || t.taskId?.jobId?.projectId || null);
+
+                    return {
+                        ...t,
+                        _id: t._id || t.id,
+                        projectId: normalizedProjectId,
+                        // For SubTask model items, map parent linkage into the same key consumed by app hierarchy UI.
+                        parentTaskId: t.parentTaskId?._id || t.parentTaskId || (t.isSubTask ? inferredParentId : null),
+                        level: Number(t.level || 0),
+                        path: t.path || '',
+                        isSubTask: !!(t.isSubTask || t.parentSubTaskId || t.taskId || t.parentTaskId)
+                    };
+                });
                 
                 setTasks(prev => {
                     const existingById = new Map((normalized || []).map(t => [String(t._id || t.id), t]));
@@ -248,8 +288,26 @@ export const AppProvider = ({ children }) => {
                 }
             }
 
+            if (strictFailures.length > 0) {
+                const first = strictFailures[0];
+                setSyncStatus((prev) => ({
+                    ...prev,
+                    level: 'warn',
+                    at: Date.now(),
+                    message: `Live sync issue in ${first.label}. Showing last synced data; pull to refresh when network stabilizes.`
+                }));
+            } else {
+                setSyncStatus((prev) => ({ ...prev, level: 'ok', message: '', at: Date.now() }));
+            }
+
         } catch (e) {
             console.error('Data fetch error overall:', e.message);
+            setSyncStatus((prev) => ({
+                ...prev,
+                level: 'warn',
+                at: Date.now(),
+                message: 'Live sync temporarily unavailable. Showing last synced data.'
+            }));
         } finally {
             setLoading(false);
         }
@@ -432,6 +490,10 @@ export const AppProvider = ({ children }) => {
                 await AsyncStorage.setItem('user', JSON.stringify(userData));
                 setUser(userData);
                 console.log('User state updated, navigating...');
+                const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(userData.role)
+                    ? 'Full org visibility'
+                    : `Role-scoped visibility (${userData.role})`;
+                setSyncStatus((prev) => ({ ...prev, roleScope }));
             } else {
                 console.warn('Login success but userData/role missing:', res.data);
                 throw new Error('Invalid user data received from server');
@@ -461,6 +523,12 @@ export const AppProvider = ({ children }) => {
             if (userData) {
                 await AsyncStorage.setItem('user', JSON.stringify(userData));
                 setUser(userData);
+                if (userData?.role) {
+                    const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(userData.role)
+                        ? 'Full org visibility'
+                        : `Role-scoped visibility (${userData.role})`;
+                    setSyncStatus((prev) => ({ ...prev, roleScope }));
+                }
             }
             await fetchInitialData(userData);
             return { success: true };
@@ -530,14 +598,17 @@ export const AppProvider = ({ children }) => {
                 'In Progress': 'in_progress',
                 'Done': 'completed',
                 'pending': 'todo',
+                'todo': 'todo',
                 'in-progress': 'in_progress',
+                'in_progress': 'in_progress',
+                'review': 'review',
                 'completed': 'completed'
             };
 
             const payload = {
                 ...newTask,
                 category: (newTask.category || 'TASK').toUpperCase(),
-                status: statusMap[newTask.status] || 'todo',
+                status: statusMap[newTask.status] || newTask.status || 'todo',
                 priority: newTask.priority ? (newTask.priority.charAt(0).toUpperCase() + newTask.priority.slice(1).toLowerCase()) : 'Medium',
                 assignedTo: Array.isArray(newTask.assignedTo) ? newTask.assignedTo[0] : newTask.assignedTo,
                 dueDate: normalizeDateInput(newTask.dueDate),
@@ -551,18 +622,45 @@ export const AppProvider = ({ children }) => {
 
             let res;
             console.log(`--- [AppContext] CREATING TASK ---`, payload);
-            res = await api.post('/tasks', payload);
+            if (payload.jobId) {
+                const jobTaskPayload = {
+                    jobId: payload.jobId,
+                    title: payload.title,
+                    description: payload.description || '',
+                    assignedTo: payload.assignedTo || undefined,
+                    assignedRoleType: payload.assignedRoleType || '',
+                    priority: (payload.priority || 'Medium').toLowerCase(),
+                    status: payload.status === 'todo' ? 'pending' : payload.status,
+                    dueDate: payload.dueDate || undefined,
+                    startDate: payload.startDate || undefined
+                };
+                res = await api.post('/job-tasks', jobTaskPayload);
+            } else {
+                res = await api.post('/tasks', payload);
+            }
 
             const saved = res.data;
             setTasks(prev => {
                 // Find project name for local display
-                const proj = projects.find(p => (p._id || p.id) === (newTask.projectId || saved.projectId));
+                const linkedJob = jobs.find(j => String(j._id || j.id) === String(newTask.jobId || saved.jobId || ''));
+                const derivedProjectId =
+                    newTask.projectId ||
+                    saved.projectId ||
+                    linkedJob?.projectId?._id ||
+                    linkedJob?.projectId;
+                const proj = projects.find(p => String(p._id || p.id) === String(derivedProjectId || ''));
                 
                 const normalized = {
                     ...saved,
                     _id: saved._id || saved.id,
                     parentTaskId: saved.parentTaskId || newTask.parentTaskId || null,
-                    projectId: proj ? { _id: proj._id || proj.id, name: proj.name } : newTask.projectId,
+                    projectId: proj ? { _id: proj._id || proj.id, name: proj.name } : derivedProjectId,
+                    jobId: saved.jobId || newTask.jobId || null,
+                    isJobTask: !!(saved.jobId || newTask.jobId || saved.isJobTask),
+                    status: saved.status === 'pending' ? 'todo' : saved.status,
+                    assignedTo: saved.assignedTo
+                        ? (Array.isArray(saved.assignedTo) ? saved.assignedTo : [saved.assignedTo])
+                        : [],
                     level: Number(saved.level || 0),
                     path: saved.path || '',
                     isOptimistic: true,
@@ -571,6 +669,8 @@ export const AppProvider = ({ children }) => {
                 console.log('--- [AppContext] OPTIMISTIC ADD ---', normalized.title);
                 return [normalized, ...(prev || [])];
             });
+            // Pull fresh server truth so app + web remain in sync.
+            await fetchInitialData();
             return true;
         } catch (e) {
             console.error('Add task error', e.response?.data || e);
@@ -587,21 +687,17 @@ export const AppProvider = ({ children }) => {
             }
 
             const parent = (tasks || []).find(t => String(t._id || t.id) === parentId);
-            if (!parent) {
-                console.error('addChildTask rejected: parent task not found in local state', parentId);
-                return false;
-            }
 
-            const inheritedProjectId = parent.projectId?._id || parent.projectId;
-            if (!inheritedProjectId) {
-                console.error('addChildTask rejected: parent has no projectId', parentId);
-                return false;
-            }
+            const inheritedProjectId =
+                childTaskData.projectId ||
+                parent?.projectId?._id ||
+                parent?.projectId;
 
             const payload = {
                 ...childTaskData,
                 parentTaskId: parentId,
-                projectId: inheritedProjectId,
+                projectId: inheritedProjectId || undefined,
+                jobId: undefined,
                 isChild: true
             };
 
@@ -689,6 +785,8 @@ export const AppProvider = ({ children }) => {
                 }));
             }
 
+            // Refresh from server after patch for canonical parity with web.
+            await fetchInitialData();
             return true;
         } catch (e) {
             console.error('--- [AppContext] UPDATE TASK FAILED ---');
@@ -707,6 +805,7 @@ export const AppProvider = ({ children }) => {
             console.log(`--- [AppContext] DELETING TASK [ID: ${id}] ---`);
             await api.delete(`/tasks/${id}${query}`);
             setTasks(prev => (prev || []).filter(t => (t._id || t.id) !== id));
+            await fetchInitialData();
             return true;
         } catch (e) {
             console.error('Delete task error', e.response?.data || e);
@@ -1326,6 +1425,8 @@ export const AppProvider = ({ children }) => {
                     console.error('Mark all read error', e);
                 }
             },
+            syncStatus,
+            dismissSyncStatus: () => setSyncStatus((prev) => ({ ...prev, level: 'ok', message: '' })),
             loading,
             selectedProject,
             setSelectedProject

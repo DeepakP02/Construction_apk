@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
+import api from '../../utils/api';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 const COLLAPSE_KEY = 'taskHierarchyCollapsedV1';
@@ -21,6 +22,16 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     const [selOptions, setSelOptions] = useState([]);
     const [selOnSelect, setSelOnSelect] = useState(() => () => {});
     const [datePickerField, setDatePickerField] = useState(null);
+    const [subTasks, setSubTasks] = useState([]);
+    const loadSubTasks = useCallback(async () => {
+        if (!taskId) return;
+        try {
+            const res = await api.get(`/tasks/${taskId}/subtasks`);
+            setSubTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (e) {
+            setSubTasks([]);
+        }
+    }, [taskId]);
     const formatDateInput = (value) => {
         if (!value) return '';
         const d = new Date(value);
@@ -48,9 +59,14 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         const unsubscribe = navigation.addListener('focus', () => {
             refreshData();
             fetchTeamMembers?.();
+            loadSubTasks();
         });
         return unsubscribe;
-    }, [navigation, refreshData]);
+    }, [navigation, refreshData, fetchTeamMembers, loadSubTasks]);
+
+    useEffect(() => {
+        loadSubTasks();
+    }, [loadSubTasks]);
 
     useEffect(() => {
         AsyncStorage.setItem(COLLAPSE_KEY, JSON.stringify(Array.from(collapsed))).catch(() => {});
@@ -99,6 +115,31 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         return output;
     }, [tree, collapsed]);
 
+    const subTaskRows = useMemo(() => {
+        const list = Array.isArray(subTasks) ? subTasks : [];
+        if (list.length === 0) return [];
+        const byParent = new Map();
+        list.forEach((st) => {
+            const parentId = st.parentSubTaskId ? String(st.parentSubTaskId?._id || st.parentSubTaskId) : '';
+            if (!byParent.has(parentId)) byParent.set(parentId, []);
+            byParent.get(parentId).push(st);
+        });
+
+        const flat = [];
+        const walk = (parentId = '', depth = 0) => {
+            const nodes = byParent.get(parentId) || [];
+            nodes.forEach((node) => {
+                const id = String(node._id || node.id);
+                const collapsedNode = collapsed.has(`sub-${id}`);
+                const hasChildren = (byParent.get(id) || []).length > 0;
+                flat.push({ ...node, __depth: depth, __isCollapsed: collapsedNode, __isSubTaskNode: true, __hasChildren: hasChildren });
+                if (!collapsedNode) walk(id, depth + 1);
+            });
+        };
+        walk('', 0);
+        return flat;
+    }, [subTasks, collapsed]);
+
     const filteredTeamByRole = useMemo(() => {
         if (!editForm?.assignedRoleType) return teamMembers || [];
         return (teamMembers || []).filter(m => m.role === editForm.assignedRoleType);
@@ -110,6 +151,31 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         if (next.has(sid)) next.delete(sid);
         else next.add(sid);
         setCollapsed(next);
+    };
+
+    const isCompletedStatus = (status) => {
+        const normalized = String(status || '').toLowerCase();
+        return normalized === 'completed' || normalized === 'done';
+    };
+
+    const toggleTaskCompletion = async (task) => {
+        const id = task?._id || task?.id;
+        if (!id) return;
+        const nextStatus = isCompletedStatus(task?.status) ? 'todo' : 'completed';
+        const payload = { status: nextStatus };
+
+        if (task?.__isSubTaskNode) {
+            try {
+                await api.patch(`/tasks/${taskId}/subtasks/${id}`, payload);
+                await loadSubTasks();
+            } catch (e) {
+                Alert.alert('Error', 'Unable to update subtask status.');
+            }
+            return;
+        }
+
+        await updateTask(id, payload);
+        await loadSubTasks();
     };
 
     const openDropdown = (title, options, onSelect) => {
@@ -127,7 +193,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         setEditTarget(task);
         setEditForm({
             title: task.title || '',
-            description: task.description || '',
+            description: task.description || task.remarks || '',
             priority: ['Low', 'Medium', 'High'].includes(task.priority) ? task.priority : 'Medium',
             status: task.status || 'todo',
             category: task.category || 'TASK',
@@ -140,15 +206,35 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
 
     const saveEdit = async () => {
         if (!editTarget?._id && !editTarget?.id) return;
-        const payload = {
-            ...editForm,
-            category: editForm.category || 'TASK',
-            startDate: editForm.startDate || undefined,
-            dueDate: editForm.dueDate || undefined,
-            assignedTo: editForm.assignedTo || undefined,
-            assignedRoleType: editForm.assignedRoleType || undefined
-        };
-        await updateTask(editTarget._id || editTarget.id, payload);
+        const targetId = editTarget._id || editTarget.id;
+        if (editTarget.__isSubTaskNode) {
+            const payload = {
+                title: editForm.title || '',
+                remarks: editForm.description || '',
+                status: editForm.status || 'todo',
+                priority: editForm.priority || 'Medium',
+                startDate: editForm.startDate || undefined,
+                dueDate: editForm.dueDate || undefined,
+                assignedTo: editForm.assignedTo || undefined
+            };
+            try {
+                await api.patch(`/tasks/${taskId}/subtasks/${targetId}`, payload);
+            } catch (e) {
+                Alert.alert('Error', 'Unable to update subtask.');
+                return;
+            }
+            await loadSubTasks();
+        } else {
+            const payload = {
+                ...editForm,
+                category: editForm.category || 'TASK',
+                startDate: editForm.startDate || undefined,
+                dueDate: editForm.dueDate || undefined,
+                assignedTo: editForm.assignedTo || undefined,
+                assignedRoleType: editForm.assignedRoleType || undefined
+            };
+            await updateTask(targetId, payload);
+        }
         setEditTarget(null);
     };
 
@@ -187,6 +273,24 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     };
 
     const handleDelete = (task) => {
+        if (task?.__isSubTaskNode) {
+            Alert.alert('Delete SubTask', `Delete "${task.title}"?`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await api.delete(`/tasks/${taskId}/subtasks/${task._id || task.id}`);
+                            await loadSubTasks();
+                        } catch (e) {
+                            Alert.alert('Error', 'Unable to delete subtask.');
+                        }
+                    }
+                }
+            ]);
+            return;
+        }
         const id = task._id || task.id;
         const hasChildren = (tasks || []).some(t => String(t.parentTaskId ? (t.parentTaskId?._id || t.parentTaskId) : '') === String(id));
 
@@ -230,7 +334,16 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                 )}
 
                 <View style={styles.mainCard}>
-                    <Text style={styles.mainTitle}>{selectedTask.title}</Text>
+                    <View style={styles.mainRow}>
+                        <TouchableOpacity onPress={() => toggleTaskCompletion(selectedTask)} style={styles.checkboxBtn}>
+                            <MaterialCommunityIcons
+                                name={isCompletedStatus(selectedTask?.status) ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                size={22}
+                                color={isCompletedStatus(selectedTask?.status) ? '#16A34A' : '#64748B'}
+                            />
+                        </TouchableOpacity>
+                        <Text style={[styles.mainTitle, isCompletedStatus(selectedTask?.status) ? styles.completedText : null]}>{selectedTask.title}</Text>
+                    </View>
                     <Text style={styles.metaText}>{selectedTask.description || 'No description'}</Text>
                     <View style={styles.actions}>
                         <TouchableOpacity
@@ -256,13 +369,20 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                 {rows.map((item) => (
                     <View key={item._id || item.id} style={[styles.childRow, { marginLeft: Math.min((item.__depth || 0) * 16, 64) }]}>
                         <View style={styles.leftBar} />
+                        <TouchableOpacity onPress={() => toggleTaskCompletion(item)} style={styles.checkboxBtn}>
+                            <MaterialCommunityIcons
+                                name={isCompletedStatus(item?.status) ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                size={20}
+                                color={isCompletedStatus(item?.status) ? '#16A34A' : '#64748B'}
+                            />
+                        </TouchableOpacity>
                         {item.children?.length ? (
                             <TouchableOpacity onPress={() => toggleCollapse(item._id || item.id)} style={{ paddingHorizontal: 2 }}>
                                 <MaterialCommunityIcons name={item.__isCollapsed ? 'chevron-right' : 'chevron-down'} size={18} color="#64748B" />
                             </TouchableOpacity>
                         ) : null}
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.childTitle}>{item.title}</Text>
+                            <Text style={[styles.childTitle, isCompletedStatus(item?.status) ? styles.completedText : null]}>{item.title}</Text>
                             <Text style={styles.childMeta}>{(item.status || 'todo').toUpperCase()}</Text>
                         </View>
                         <TouchableOpacity
@@ -283,7 +403,48 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                     </View>
                 ))}
 
-                {rows.length === 0 ? <Text style={styles.emptyText}>No child tasks yet.</Text> : null}
+                {subTaskRows.map((item) => (
+                    <View key={`sub-${item._id || item.id}`} style={[styles.childRow, { marginLeft: Math.min((item.__depth || 0) * 16, 64) }]}>
+                        <View style={styles.leftBar} />
+                        <TouchableOpacity onPress={() => toggleTaskCompletion(item)} style={styles.checkboxBtn}>
+                            <MaterialCommunityIcons
+                                name={isCompletedStatus(item?.status) ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                size={20}
+                                color={isCompletedStatus(item?.status) ? '#16A34A' : '#64748B'}
+                            />
+                        </TouchableOpacity>
+                        {item.__hasChildren ? (
+                            <TouchableOpacity onPress={() => toggleCollapse(`sub-${item._id || item.id}`)} style={{ paddingHorizontal: 2 }}>
+                                <MaterialCommunityIcons name={item.__isCollapsed ? 'chevron-right' : 'chevron-down'} size={18} color="#64748B" />
+                            </TouchableOpacity>
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.childTitle, isCompletedStatus(item?.status) ? styles.completedText : null]}>{item.title}</Text>
+                            <Text style={styles.childMeta}>{(item.status || 'todo').toUpperCase()}</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('TaskCreate', {
+                                isChild: true,
+                                isSubTaskParent: true,
+                                parentTaskId: item._id || item.id,
+                                parentSubTaskId: item._id || item.id,
+                                rootTaskId: selectedTask._id || selectedTask.id,
+                                parentTitle: item.title,
+                                projectId: selectedTask?.projectId?._id || selectedTask?.projectId
+                            })}
+                        >
+                            <MaterialCommunityIcons name="plus-box-outline" size={18} color="#2563EB" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => openEdit(item)}>
+                            <MaterialCommunityIcons name="pencil" size={18} color="#10B981" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(item)}>
+                            <MaterialCommunityIcons name="delete-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+
+                {(rows.length === 0 && subTaskRows.length === 0) ? <Text style={styles.emptyText}>No child tasks yet.</Text> : null}
             </ScrollView>
 
             <Modal visible={!!editTarget} transparent animationType="slide" onRequestClose={() => setEditTarget(null)}>
@@ -446,6 +607,7 @@ const styles = StyleSheet.create({
     breadcrumbLabel: { fontSize: 10, color: '#6366F1', fontWeight: '900', textTransform: 'uppercase' },
     breadcrumbText: { marginTop: 4, color: '#1E3A8A', fontSize: 12, fontWeight: '700' },
     mainCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
+    mainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     mainTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
     metaText: { color: '#64748B', marginTop: 4, fontSize: 12 },
     actions: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
@@ -456,6 +618,8 @@ const styles = StyleSheet.create({
     leftBar: { width: 3, height: 24, borderRadius: 2, backgroundColor: '#94A3B8' },
     childTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
     childMeta: { fontSize: 10, color: '#64748B', marginTop: 2 },
+    checkboxBtn: { paddingHorizontal: 2, paddingVertical: 2 },
+    completedText: { textDecorationLine: 'line-through', color: '#64748B' },
     emptyText: { textAlign: 'center', color: '#64748B', marginTop: 20, fontWeight: '700' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' },

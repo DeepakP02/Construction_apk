@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { COLORS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
@@ -8,6 +8,8 @@ import api from '../../utils/api';
 import { useFocusEffect } from '@react-navigation/native';
 
 const ChatScreen = ({ navigation }) => {
+    const { width } = useWindowDimensions();
+    const isCompact = width < 360;
     const { user, loading, chatRooms } = useApp();
     const [search, setSearch] = useState('');
     const [roomList, setRoomList] = useState([]);
@@ -60,6 +62,16 @@ const ChatScreen = ({ navigation }) => {
             }))
             .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
 
+        const channelPool = (roomList || [])
+            .filter((room) => !['PROJECT_GROUP', 'DIRECT'].includes(room.roomType))
+            .map((room) => ({
+                _id: room.id,
+                name: room.name || 'Company Channel',
+                type: 'general',
+                __lastActivityAt: msgToTime(room?.lastMessage?.time || room?.updatedAt)
+            }))
+            .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
+
         const directRooms = (roomList || []).filter((room) => room.roomType === 'DIRECT');
         const directByUser = new Map();
         directRooms.forEach((room) => {
@@ -86,6 +98,7 @@ const ChatScreen = ({ navigation }) => {
             .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
 
         const filteredProjects = projectPool.filter((p) => (p.name || '').toLowerCase().includes(search.toLowerCase()));
+        const filteredChannels = channelPool.filter((c) => (c.name || '').toLowerCase().includes(search.toLowerCase()));
         const filteredMembers = memberPool.filter((m) =>
             (m.fullName || m.name || '').toLowerCase().includes(search.toLowerCase())
         );
@@ -96,6 +109,13 @@ const ChatScreen = ({ navigation }) => {
             sections.push({
                 title: 'PROJECT ROOMS',
                 data: filteredProjects.map((p) => ({ ...p, type: 'project' })),
+            });
+        }
+
+        if (filteredChannels.length > 0) {
+            sections.push({
+                title: 'COMPANY CHANNELS',
+                data: filteredChannels.map((c) => ({ ...c, type: 'general' })),
             });
         }
 
@@ -116,6 +136,8 @@ const ChatScreen = ({ navigation }) => {
                 ? (roomList || []).find((r) => r.roomType === 'DIRECT' && String(r.otherUserId || '') === itemId)
                 : item.type === 'project'
                     ? (roomList || []).find((r) => r.roomType === 'PROJECT_GROUP' && String(r.projectId || '') === itemId)
+                    : item.type === 'general'
+                        ? (roomList || []).find((r) => String(r.id || '') === itemId)
                     : null;
 
         const effectiveTime = roomMeta?.lastMessage?.time || roomMeta?.updatedAt || null;
@@ -134,7 +156,7 @@ const ChatScreen = ({ navigation }) => {
 
         return (
             <TouchableOpacity
-                style={styles.chatCard}
+                style={[styles.chatCard, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 12 : 16 }]}
                 onPress={() =>
                     navigation.navigate('WorkerChat', {
                         room: {
@@ -146,8 +168,8 @@ const ChatScreen = ({ navigation }) => {
                     })
                 }
             >
-                <View style={[styles.avatarBox, { backgroundColor: config.bg }]}>
-                    <Text style={[styles.avatarInitial, { color: config.iconColor }]}>{initial}</Text>
+                <View style={[styles.avatarBox, { backgroundColor: config.bg, width: isCompact ? 48 : 56, height: isCompact ? 48 : 56, borderRadius: isCompact ? 18 : 22 }]}>
+                    <Text style={[styles.avatarInitial, { color: config.iconColor, fontSize: isCompact ? 18 : 22 }]}>{initial}</Text>
                     <View style={styles.statusDot} />
                     {unreadCount > 0 && (
                         <View style={styles.unreadBadge}>
@@ -156,9 +178,9 @@ const ChatScreen = ({ navigation }) => {
                     )}
                 </View>
 
-                <View style={styles.chatInfo}>
+                <View style={[styles.chatInfo, { marginLeft: isCompact ? 12 : 18 }]}>
                     <View style={styles.nameRow}>
-                        <Text style={styles.chatName} numberOfLines={1}>
+                        <Text style={[styles.chatName, { fontSize: isCompact ? 15 : 17 }]} numberOfLines={1}>
                             {item.name}
                         </Text>
                         <Text style={styles.chatTime}>
@@ -199,11 +221,11 @@ const ChatScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Site Communications" hideSearch showBack={true} />
 
-            <View style={styles.searchSection}>
-                <View style={styles.searchBar}>
+            <View style={[styles.searchSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 10 : 15 }]}>
+                <View style={[styles.searchBar, { height: isCompact ? 48 : 54, borderRadius: isCompact ? 14 : 18 }]}>
                     <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
                     <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { fontSize: isCompact ? 13 : 14 }]}
                         placeholder="Search chats or members..."
                         placeholderTextColor="#94A3B8"
                         value={search}
@@ -219,7 +241,7 @@ const ChatScreen = ({ navigation }) => {
                 renderSectionHeader={({ section: { title, data } }) =>
                     data.length > 0 ? (
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>{title}</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: isCompact ? 10 : 11 }]}>{title}</Text>
                             <View style={styles.sectionLine} />
                         </View>
                     ) : null

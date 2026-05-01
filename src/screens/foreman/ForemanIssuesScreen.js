@@ -19,6 +19,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
     const focusedProjectId = String(route?.params?.projectId || '');
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
+    const isCompact = width < 380;
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,6 +27,13 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
     const [previewImage, setPreviewImage] = useState(null);
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [detailModalVisible, setDetailModalVisible] = useState(false);
+    const STATUS_FILTERS = [
+        { label: 'All', value: 'All' },
+        { label: 'Open', value: 'open' },
+        { label: 'In Review', value: 'in_review' },
+        { label: 'Resolved', value: 'resolved' },
+        { label: 'Closed', value: 'closed' }
+    ];
     
     // Create Issue State
     const [modalVisible, setModalVisible] = useState(false);
@@ -202,13 +210,13 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Issue List" />
 
-            <View style={[styles.content, { paddingHorizontal: isTablet ? '10%' : scale(20) }]}>
+            <View style={[styles.content, { paddingHorizontal: isTablet ? '10%' : (isCompact ? 14 : scale(20)), maxWidth: width >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }]}>
                 <View style={[styles.pageHeader, { marginTop: verticalScale(20), marginBottom: verticalScale(20) }]}>
                     <View>
-                        <Text style={[styles.mainTitle, { fontSize: moderateScale(26) }]}>Field Issues</Text>
-                        <Text style={[styles.mainSubtitle, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>Report & track site issues</Text>
+                        <Text style={[styles.mainTitle, { fontSize: moderateScale(isCompact ? 22 : 26) }]}>Field Issues</Text>
+                        <Text style={[styles.mainSubtitle, { fontSize: moderateScale(isCompact ? 12 : 13), marginTop: verticalScale(4) }]}>Report & track site issues</Text>
                     </View>
-                    <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: scale(14), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), gap: scale(6) }]} onPress={() => setModalVisible(true)}>
+                    <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: scale(isCompact ? 10 : 14), paddingVertical: verticalScale(isCompact ? 8 : 10), borderRadius: moderateScale(12), gap: scale(6) }]} onPress={() => setModalVisible(true)}>
                         <MaterialCommunityIcons name="alert-plus" size={moderateScale(18)} color="#fff" />
                         <Text style={[styles.addBtnText, { fontSize: moderateScale(12) }]}>Log Issue</Text>
                     </TouchableOpacity>
@@ -225,13 +233,33 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                             onChangeText={setSearchQuery}
                         />
                     </View>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={[styles.statusFilterRow, { gap: scale(8), marginTop: verticalScale(10) }]}
+                    >
+                        {STATUS_FILTERS.map((st) => {
+                            const active = selectedStatus === st.value;
+                            return (
+                                <TouchableOpacity
+                                    key={st.value}
+                                    style={[styles.statusFilterChip, active && styles.statusFilterChipActive]}
+                                    onPress={() => setSelectedStatus(st.value)}
+                                >
+                                    <Text style={[styles.statusFilterChipText, active && styles.statusFilterChipTextActive]}>
+                                        {st.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
                 </View>
 
                 <FlatList
                     data={filteredIssues}
                     keyExtractor={item => item._id || item.id}
                     renderItem={renderIssueItem}
-                    contentContainerStyle={[styles.list, { paddingBottom: verticalScale(100) }]}
+                    contentContainerStyle={[styles.list, { paddingBottom: Math.max(insets.bottom + verticalScale(80), verticalScale(100)) }]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -471,6 +499,20 @@ const styles = StyleSheet.create({
     addBtn: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center' },
     addBtnText: { color: '#fff', fontWeight: '900' },
     filterBar: { },
+    statusFilterRow: { paddingRight: scale(10) },
+    statusFilterChip: {
+        minHeight: verticalScale(40),
+        borderRadius: moderateScale(12),
+        paddingHorizontal: scale(14),
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    statusFilterChipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+    statusFilterChipText: { fontSize: moderateScale(12), fontWeight: '800', color: '#64748B' },
+    statusFilterChipTextActive: { color: '#fff' },
     searchBox: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center' },
     searchInput: { flex: 1, fontWeight: '700', color: '#1E293B' },
     list: { },

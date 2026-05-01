@@ -23,17 +23,6 @@ const WorkerChatScreen = ({ navigation, route }) => {
         const load = async () => {
             if (!room?.id) return;
 
-            if (user?.role === 'PM') {
-                if (room.type === 'general') {
-                    Alert.alert(
-                        'Site Communications',
-                        'Company-wide channels are not part of your project workspace.',
-                        [{ text: 'OK', onPress: () => navigation.goBack() }]
-                    );
-                    return;
-                }
-            }
-
             setLoading(true);
             try {
                 let fetchId = room.id;
