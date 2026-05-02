@@ -57,7 +57,7 @@ const ClientProjectsScreen = ({ navigation }) => {
     }, [projects, searchQuery, selectedPhase]);
 
     const ProjectCard = ({ project }) => {
-        const progress = project.progressPercentage || 0;
+        const progress = Number(project.progress ?? project.progressPercentage ?? 0) || 0;
         
         return (
             <TouchableOpacity 
@@ -77,7 +77,9 @@ const ClientProjectsScreen = ({ navigation }) => {
                     </View>
                     
                     <Text style={styles.projTitle} numberOfLines={1}>{project.name}</Text>
-                    <Text style={styles.pmInfo}>PM: {project.projectManager?.fullName || 'SHAWN'}</Text>
+                    <Text style={styles.pmInfo}>
+                        PM: {project.pmId?.fullName || project.projectManager?.fullName || '—'}
+                    </Text>
 
                     {/* Progress Bar */}
                     <View style={styles.progressContainer}>

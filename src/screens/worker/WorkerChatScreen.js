@@ -54,7 +54,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 if (typeof cleanupFn === 'function') cleanupFn();
             });
         };
-    }, [room?.id, room?.type, user, navigation]);
+    }, [room?.id, room?.type, user?._id]);
 
     const peerId = room?.id?.toString();
     const myId = user?._id?.toString();

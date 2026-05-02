@@ -5,7 +5,7 @@ import {
     SafeAreaView, StatusBar, ScrollView, Modal, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { SHADOWS, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 
@@ -205,7 +205,7 @@ const SubcontractorTasksScreen = ({ navigation }) => {
     const renderTaskCard = ({ item }) => {
         const progress = item.status === 'completed' ? 100 : (item.status === 'in_progress' ? 50 : 0);
         return (
-            <View style={[styles.taskCard, SHADOWS.medium]}>
+            <View style={styles.taskCard}>
                 <View style={[styles.urgencyStripe, { backgroundColor: item.priority === 'High' ? '#EF4444' : '#10B981' }]} />
                 <View style={styles.cardHeader}>
                     <Text style={styles.projectIdText}>{item.projectId?.name || 'GENERIC SITE'}</Text>
@@ -232,13 +232,13 @@ const SubcontractorTasksScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <WorkerHeader title="Tasks" navigation={navigation} />
+            <WorkerHeader title="Tasks" showBranding={true} />
             
             <View style={[styles.topSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 14 : 20 }]}>
                 <View style={styles.headerTopRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={[styles.headerTitle, { fontSize: isCompact ? 18 : 20 }]}>Task Command Center</Text>
-                        <Text style={styles.headerSubtitle}>MODULE TRACKING</Text>
+                        <Text style={styles.headerSubtitle}>TASK TRACKING & ASSIGNMENT</Text>
                     </View>
                     <TouchableOpacity style={[styles.plusBtn, { paddingHorizontal: isCompact ? 10 : 12 }]} onPress={() => setIsCreateModalVisible(true)}>
                         <MaterialCommunityIcons name="plus-circle" size={18} color="#fff" />
@@ -278,12 +278,15 @@ const SubcontractorTasksScreen = ({ navigation }) => {
             <ScrollView
                 style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 24), maxWidth: width >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }}
+                contentContainerStyle={{
+                    paddingBottom: contentBottomForTabBar(insets.bottom),
+                    maxWidth: width >= 900 ? 980 : undefined,
+                    alignSelf: 'center',
+                    width: '100%',
+                }}
             >
-
-
                 {loading ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} /> : (
-                    <View style={{ paddingHorizontal: isCompact ? 14 : 20 }}>
+                    <View style={{ paddingHorizontal: isCompact ? 12 : 16 }}>
                         {filteredTasks.length > 0 ? (
                             filteredTasks.map(item => <View key={item._id || item.id}>{renderTaskCard({ item })}</View>)
                         ) : (
@@ -291,7 +294,6 @@ const SubcontractorTasksScreen = ({ navigation }) => {
                         )}
                     </View>
                 )}
-                <View style={{ height: Math.max(insets.bottom + 60, 80) }} />
             </ScrollView>
 
             {/* CREATE TASK MODAL (Software-Style) */}
@@ -435,7 +437,7 @@ const styles = StyleSheet.create({
     topSection: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     headerTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
-    headerSubtitle: { fontSize: 8, fontWeight: '900', color: '#3B82F6' },
+    headerSubtitle: { fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 1, marginTop: 4 },
     plusBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 4 },
     plusBtnTxt: { color: '#fff', fontSize: 11, fontWeight: '900' },
     searchRow: { flexDirection: 'row', gap: 10 },
@@ -452,7 +454,7 @@ const styles = StyleSheet.create({
     statItem: { width: '31.5%', minWidth: 100, padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
     statVal: { fontSize: 14, fontWeight: '900' },
     statLab: { fontSize: 8, fontWeight: '900', marginTop: 2, letterSpacing: 0.5 },
-    taskCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
+    taskCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', ...SHADOWS.small },
     urgencyStripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: 4 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     projectIdText: { fontSize: 9, fontWeight: '800', color: '#64748B' },

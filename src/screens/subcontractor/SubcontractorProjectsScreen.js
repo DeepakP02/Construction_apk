@@ -74,7 +74,7 @@ const SubcontractorProjectsScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            <WorkerHeader title="Projects" navigation={navigation} />
+            <WorkerHeader title="Projects" showBranding={true} />
 
             {/* Sub-Header matching Web Screenshot */}
             <View style={styles.headerContent}>

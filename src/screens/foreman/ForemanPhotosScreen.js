@@ -89,20 +89,31 @@ const ForemanPhotosScreen = () => {
     };
 
     const uploadImage = async () => {
-        if (!tempImage && !externalUrl) { Alert.alert('Required', 'Sync requires a photo.'); return; }
+        if (!tempImage && !externalUrl?.trim()) {
+            Alert.alert('Required', 'Choose a photo from your library or paste an image URL.');
+            return;
+        }
         try {
             setUploading(true);
             const formData = new FormData();
             if (tempImage) {
                 formData.append('image', { uri: Platform.OS === 'android' ? tempImage : tempImage.replace('file://', ''), name: 'photo.jpg', type: 'image/jpeg' });
-            } else { formData.append('imageUrl', externalUrl); }
+            } else {
+                formData.append('imageUrl', externalUrl.trim());
+            }
             formData.append('description', description || 'Site Update');
             if (uploadProjectId !== 'none') formData.append('projectId', idKey(uploadProjectId));
 
             const res = await api.post('/photos/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             setPhotos(prev => [enrichPhotoWithProject(res.data, projects), ...prev]);
             setUploadModal(false);
-        } catch (e) { Alert.alert('Error', 'Sync failed.'); } finally { setUploading(false); }
+        } catch (e) { Alert.alert('Error', 'Sync failed.'); } finally {
+            setUploading(false);
+            setTempImage(null);
+            setExternalUrl('');
+            setDescription('');
+            setUploadProjectId('none');
+        }
     };
 
     const confirmDeletePhoto = (item) => {
@@ -119,6 +130,23 @@ const ForemanPhotosScreen = () => {
 
     const openDropdown = (title, options, onSelect) => {
         setSelTitle(title); setSelOptions(options); setSelOnSelect(() => (val) => { onSelect(val); setSelVisible(false); }); setSelVisible(true);
+    };
+
+    const handleExternalUrlChange = (text) => {
+        setExternalUrl(text);
+        if (text.trim()) setTempImage(null);
+    };
+
+    const openUploadModal = () => {
+        setTempImage(null);
+        setExternalUrl('');
+        setDescription('');
+        if (selectedProjectId !== 'all') {
+            setUploadProjectId(idKey(selectedProjectId));
+        } else {
+            setUploadProjectId('none');
+        }
+        setUploadModal(true);
     };
 
     return (
@@ -142,7 +170,7 @@ const ForemanPhotosScreen = () => {
                         <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.uploadBtnNew, { height: verticalScale(48), borderRadius: moderateScale(14), paddingHorizontal: scale(20), gap: scale(8) }]} onPress={() => setUploadModal(true)}>
+                    <TouchableOpacity style={[styles.uploadBtnNew, { height: verticalScale(48), borderRadius: moderateScale(14), paddingHorizontal: scale(20), gap: scale(8) }]} onPress={openUploadModal}>
                         <MaterialCommunityIcons name="plus" size={moderateScale(16)} color="#fff" />
                         <Text style={[styles.uploadBtnText, { fontSize: moderateScale(13) }]}>Add Photo</Text>
                     </TouchableOpacity>
@@ -204,6 +232,19 @@ const ForemanPhotosScreen = () => {
                                     </View>
                                 )}
                             </TouchableOpacity>
+
+                            <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Or Image URL (External)</Text>
+                            <TextInput
+                                style={[styles.inputField, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(16), marginBottom: verticalScale(20), fontSize: moderateScale(14) }]}
+                                placeholder="https://images.unsplash.com/..."
+                                placeholderTextColor="#94A3B8"
+                                value={externalUrl}
+                                onChangeText={handleExternalUrlChange}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="url"
+                            />
+
                             <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Brief Note / Activity</Text>
                             <TextInput style={[styles.inputField, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(16), marginBottom: verticalScale(20) }]} placeholder="e.g. Scaffolding complete" value={description} onChangeText={setDescription} />
 

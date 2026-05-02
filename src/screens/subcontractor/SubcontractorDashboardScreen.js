@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, Animated, StyleSheet, StatusBar, Modal, TouchableOpacity, Text, Alert, FlatList, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/theme';
+import { COLORS, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import SubcontractorDashboard from './SubcontractorDashboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SubcontractorDashboardScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isTabletWidth = width >= 768;
     const { refreshData, isClockedIn, toggleClock, getWorkDuration, projects } = useApp();
@@ -66,7 +68,7 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            <WorkerHeader title="Dashboard" hideSearch={false} navigation={navigation} />
+            <WorkerHeader title="Dashboard" showBranding={true} />
 
             <Animated.ScrollView 
                 style={[styles.scroll, { opacity: fadeAnim }]} 
@@ -75,6 +77,7 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
                     styles.scrollContent,
                     {
                         paddingHorizontal: isTabletWidth ? 28 : 16,
+                        paddingBottom: contentBottomForTabBar(insets.bottom),
                         alignSelf: 'center',
                         width: '100%',
                         maxWidth: 980
@@ -138,7 +141,7 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     scroll: { flex: 1 },
-    scrollContent: { padding: 20, paddingBottom: 100 },
+    scrollContent: { padding: 20 },
     
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '80%' },

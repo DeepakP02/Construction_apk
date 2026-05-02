@@ -103,7 +103,6 @@ import ForemanTasksScreen from '../screens/foreman/ForemanTasksScreen';
 import RFIDashboardScreen from '../screens/foreman/RFIDashboardScreen';
 import ForemanRFIListScreen from '../screens/foreman/RFIListScreen';
 import ForemanIssuesScreen from '../screens/foreman/ForemanIssuesScreen';
-import ForemanEquipmentScreen from '../screens/foreman/ForemanEquipmentScreen';
 import ForemanJobsScreen from '../screens/foreman/ForemanJobsScreen';
 import ForemanJobDetailScreen from '../screens/foreman/ForemanJobDetailScreen';
 
@@ -189,10 +188,13 @@ const WorkerTabs = () => {
                 }}
             />
             <Tab.Screen
-                name="Drawings"
-                component={WorkerDrawingsScreen}
+                name="Clock"
+                component={WorkerTimeClockScreen}
                 options={{
-                    tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? "floor-plan" : "floor-plan"} color={color} size={24} />
+                    tabBarLabel: 'Clock',
+                    tabBarIcon: ({ color, focused }) => (
+                        <MaterialCommunityIcons name={focused ? 'clock-check' : 'clock-check-outline'} color={color} size={24} />
+                    ),
                 }}
             />
             <Tab.Screen
@@ -261,7 +263,7 @@ const WorkerDrawerContent = (props) => {
                     <DrawerItem
                         label="Site Check-In (My Clock)"
                         icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('TimeClock')}
+                        onPress={() => props.navigation.navigate('MainTabs', { screen: 'Clock' })}
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
                     <DrawerItem
@@ -307,6 +309,7 @@ const WorkerDrawer = () => {
             drawerContent={(props) => <WorkerDrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
+                drawerType: 'front',
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
@@ -315,7 +318,6 @@ const WorkerDrawer = () => {
             }}
         >
             <Drawer.Screen name="MainTabs" component={WorkerTabs} />
-            <Drawer.Screen name="TimeClock" component={WorkerTimeClockScreen} />
             <Drawer.Screen name="WorkerLogs" component={WorkerLogsScreen} options={{ title: 'Time & Attendance' }} />
             <Drawer.Screen name="RFI" component={RFIScreen} />
             <Drawer.Screen name="Profile" component={ProfileScreen} />
@@ -408,18 +410,6 @@ const ForemanDrawerContent = (props) => {
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
                     <DrawerItem
-                        label="Equipment Tracking"
-                        icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Photos"
-                        icon={({ color }) => <MaterialCommunityIcons name="camera-image" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Photos')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
-                    />
-                    <DrawerItem
                         label="Purchase Orders"
                         icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('PurchaseOrders')}
@@ -462,6 +452,7 @@ const ForemanDrawer = () => {
             drawerContent={(props) => <ForemanDrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
+                drawerType: 'front',
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
@@ -481,7 +472,6 @@ const ForemanDrawer = () => {
             <Drawer.Screen name="ForemanIssues" component={ForemanIssuesScreen} />
             <Drawer.Screen name="ForemanJobDetail" component={ForemanJobDetailScreen} />
             <Drawer.Screen name="Photos" component={ForemanPhotosScreen} />
-            <Drawer.Screen name="Equipment" component={EquipmentScreen} />
             <Drawer.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} />
             <Drawer.Screen name="PurchaseOrderDetail" component={PurchaseOrderDetailScreen} />
             <Drawer.Screen name="Chatboard" component={WorkerChatboard} />
@@ -605,6 +595,7 @@ const ClientDrawer = () => {
             drawerContent={(props) => <ClientDrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
+                drawerType: 'front',
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
@@ -819,10 +810,45 @@ const SubcontractorDrawerContent = (props) => {
             <DrawerHeader title="CONTRACTOR PORTAL" subtitle={user?.fullName || 'VERIFIED PARTNER'} color={COLORS.primary} />
             <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
+                    <DrawerSection title="DASHBOARD" />
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+
+                    <DrawerSection title="SITE & PROCUREMENT" />
+                    <DrawerItem
+                        label="Equipment"
+                        icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('Equipment')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
+                        label="Purchase Orders"
+                        icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('PurchaseOrders')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+
+                    <DrawerSection title="COMMUNICATIONS" />
+                    <DrawerItem
+                        label="RFI Center"
+                        icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('RFI')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
+                        label="Report Logs"
+                        icon={({ color }) => <MaterialCommunityIcons name="chart-box" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('Reports')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
+                        label="Site Discussions"
+                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('Chatboard')}
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
 
@@ -833,7 +859,7 @@ const SubcontractorDrawerContent = (props) => {
                             backgroundColor: '#FEF2F2', 
                             padding: 14, 
                             borderRadius: 12, 
-                            marginTop: 40,
+                            marginTop: 30,
                             marginHorizontal: 8,
                             marginBottom: 30 
                         }}
@@ -907,8 +933,9 @@ const SubcontractorDrawer = () => {
             drawerContent={(props) => <SubcontractorDrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
+                drawerType: 'front',
                 drawerActiveBackgroundColor: '#EFF6FF',
-                drawerActiveTintColor: COLORS.primary,
+                drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
                 drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
                 drawerStyle: { width: Math.min(width * 0.70, 275) }

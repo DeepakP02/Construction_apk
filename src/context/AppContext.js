@@ -68,9 +68,10 @@ export const AppProvider = ({ children }) => {
         return Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     };
 
-    // Single sharp iPhone-style tone for all incoming chat notifications.
-    const notificationTone = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
-    const notificationPlayer = useAudioPlayer(notificationTone);
+    const incomingChatTone = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+    const sentChatTone = 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
+    const incomingChatPlayer = useAudioPlayer(incomingChatTone);
+    const sentChatPlayer = useAudioPlayer(sentChatTone);
 
     useEffect(() => {
         const configureAudio = async () => {
@@ -87,20 +88,37 @@ export const AppProvider = ({ children }) => {
         configureAudio();
     }, []);
 
-    const playNotificationSound = async () => {
+    const playIncomingChatSound = async () => {
         try {
             await setAudioModeAsync({
                 playsInSilentMode: true,
                 allowsRecording: false,
                 shouldPlayInBackground: false
             });
-            if (notificationPlayer) {
-                // Restart from beginning so rapid incoming messages always produce a sound.
-                await notificationPlayer.seekTo(0);
-                await notificationPlayer.play();
+            if (incomingChatPlayer) {
+                incomingChatPlayer.volume = 1;
+                await incomingChatPlayer.seekTo(0);
+                incomingChatPlayer.play();
             }
         } catch (error) {
             console.log('--- SOUND PLAY ERROR ---', error.message);
+        }
+    };
+
+    const playSentChatSound = async () => {
+        try {
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldPlayInBackground: false
+            });
+            if (sentChatPlayer) {
+                sentChatPlayer.volume = 1;
+                await sentChatPlayer.seekTo(0);
+                sentChatPlayer.play();
+            }
+        } catch (error) {
+            console.log('--- SENT SOUND ERROR ---', error.message);
         }
     };
 
@@ -317,7 +335,7 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         if (!loading && notifications.length > lastNotifCount) {
             const hasUnread = notifications.some(n => !n.isRead);
-            if (hasUnread) playNotificationSound();
+            if (hasUnread) playIncomingChatSound();
         }
         setLastNotifCount(notifications.length);
     }, [notifications.length]);
@@ -325,7 +343,7 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         const currentUnread = (chatRooms || []).reduce((acc, r) => acc + (r.unreadCount || 0), 0);
         if (!loading && currentUnread > lastUnreadCount) {
-            playNotificationSound();
+            playIncomingChatSound();
         }
         setLastUnreadCount(currentUnread);
     }, [chatRooms]);
@@ -414,9 +432,11 @@ export const AppProvider = ({ children }) => {
                     return current;
                 });
 
-                if (lastPopupMessageIdRef.current !== incomingId) {
+                const senderForSound = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
+                const isOwnEcho = senderForSound && senderForSound === String(user._id);
+                if (!isOwnEcho && lastPopupMessageIdRef.current !== incomingId) {
                     lastPopupMessageIdRef.current = incomingId;
-                    playNotificationSound();
+                    playIncomingChatSound();
                 }
             });
 
@@ -429,7 +449,6 @@ export const AppProvider = ({ children }) => {
                     socket.emit('join_room', String(payload.roomId));
                 }
                 if (payload.type === 'chat') {
-                    void playNotificationSound();
                     refreshBackgroundData();
                 }
             });
@@ -1140,28 +1159,24 @@ export const AppProvider = ({ children }) => {
         try {
             const pStr = projectId?.toString();
             const rStr = roomId?.toString();
-            
+
             let finalRoomId = rStr || pStr || receiverId?.toString();
 
-            // SMART SYNC: Deep discovery of the correct room ID
             if (pStr && (finalRoomId === pStr || !finalRoomId)) {
-                const existingRoom = (chatRooms || []).find(r => {
-                    // Try every possible key where the Project ID might be stored
+                const existingRoom = (chatRooms || []).find((r) => {
                     const p1 = (r.projectId?._id || r.projectId)?.toString();
                     const p2 = (r.project?._id || r.project)?.toString();
                     const p3 = (r.relatedId?._id || r.relatedId)?.toString();
                     const p4 = (r.projectId?.$oid || r.project?.$oid)?.toString();
-                    
                     return p1 === pStr || p2 === pStr || p3 === pStr || p4 === pStr;
                 });
-                
+
                 if (existingRoom) {
                     finalRoomId = (existingRoom._id || existingRoom.id)?.toString();
-                    console.log('--- SMART SYNC (Send): Deep Resolved Room ID ---', { pStr, finalRoomId });
                 }
             }
 
-            const payload = { 
+            const payload = {
                 message: text,
                 attachments: attachments,
                 roomId: finalRoomId
@@ -1170,12 +1185,44 @@ export const AppProvider = ({ children }) => {
             if (projectId) payload.projectId = pStr;
             if (receiverId) payload.receiverId = receiverId?.toString();
 
-            console.log('--- SUBMITTING CHAT ---', { roomId: finalRoomId, projectId: pStr });
+            const tempId = `optimistic-${Date.now()}`;
+            const optimisticMsg = {
+                _id: tempId,
+                id: tempId,
+                message: text,
+                attachments: attachments || [],
+                roomId: finalRoomId,
+                projectId: pStr || undefined,
+                sender: user
+                    ? { _id: user._id, fullName: user.fullName || user.name, role: user.role }
+                    : undefined,
+                createdAt: new Date().toISOString(),
+                pending: true
+            };
+
+            setMessages((prev) => [...(prev || []), optimisticMsg]);
+
+            setChatRooms((prev) => {
+                const list = Array.isArray(prev) ? [...prev] : [];
+                const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
+                if (idx === -1) return list;
+                const room = { ...list[idx] };
+                room.lastMessage = {
+                    text,
+                    sender: user?.fullName || 'You',
+                    time: new Date().toISOString()
+                };
+                list.splice(idx, 1);
+                list.unshift(room);
+                return list;
+            });
+
+            void playSentChatSound();
 
             const res = await api.post('/chat', payload);
             const savedMsg = res.data;
 
-            setMessages(prev => {
+            setMessages((prev) => {
                 const rawRoom = savedMsg.roomId ?? payload.roomId;
                 const rawProj = savedMsg.projectId ?? payload.projectId;
                 const normalizedMsg = {
@@ -1185,13 +1232,30 @@ export const AppProvider = ({ children }) => {
                     projectId: rawProj != null ? String(rawProj) : undefined,
                     receiverId: savedMsg.receiverId || payload.receiverId
                 };
-
-                if (prev.find(m => (m._id || m.id) === normalizedMsg.id)) return prev;
-                return [...prev, normalizedMsg];
+                const withoutTemp = (prev || []).filter((m) => String(m._id || m.id) !== tempId);
+                if (withoutTemp.find((m) => String(m._id || m.id) === String(normalizedMsg.id))) return withoutTemp;
+                return [...withoutTemp, normalizedMsg];
             });
+
+            setChatRooms((prev) => {
+                const list = Array.isArray(prev) ? [...prev] : [];
+                const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
+                if (idx === -1) return list;
+                const room = { ...list[idx] };
+                room.lastMessage = {
+                    text: savedMsg.message,
+                    sender: savedMsg.sender?.fullName || user?.fullName,
+                    time: savedMsg.createdAt
+                };
+                list.splice(idx, 1);
+                list.unshift(room);
+                return list;
+            });
+
             return true;
         } catch (e) {
             console.error('Send message error', e.response?.data || e);
+            setMessages((prev) => (prev || []).filter((m) => !String(m._id || m.id).startsWith('optimistic-')));
             return false;
         }
     };
@@ -1355,6 +1419,25 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const updateTodo = async (rawId, updates) => {
+        const id = String(rawId || '').trim();
+        if (!id || id === 'undefined' || id === 'null') return null;
+        try {
+            const res = await api.patch(`/todos/${id}`, updates);
+            const updated = res.data;
+            const updatedId = String(updated._id || updated.id || id);
+            setTodos(prev => (prev || []).map(t => (String(t._id || t.id) === updatedId ? updated : t)));
+            return updated;
+        } catch (error) {
+            console.error('--- [AppContext] updateTodo API ERROR ---', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+            return null;
+        }
+    };
+
     const deleteTodo = async (rawId) => {
         const id = String(rawId || '').trim();
         if (!id || id === 'undefined' || id === 'null') return false;
@@ -1404,7 +1487,7 @@ export const AppProvider = ({ children }) => {
             chatRooms,
             notifications,
             metrics,
-            todos, addTodo, toggleTodo, deleteTodo,
+            todos, addTodo, toggleTodo, updateTodo, deleteTodo,
             unreadChatCount: (chatRooms || []).reduce((acc, room) => acc + (room.unreadCount || 0), 0),
             uploadNotes, setUploadNotes,
             addUploadNote: (note) => setUploadNotes([note, ...uploadNotes]),

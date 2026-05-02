@@ -5,13 +5,15 @@ import {
     SafeAreaView, StatusBar, useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../../components/shared/CommonUI';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const WorkerTasksScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const { tasks, metrics, refreshData, user, updateTask } = useApp();
     const { width, height } = useWindowDimensions();
     const [search, setSearch] = useState('');
@@ -130,7 +132,7 @@ const WorkerTasksScreen = ({ navigation }) => {
                         data={displayTasks}
                         keyExtractor={item => item._id || item.id}
                         renderItem={renderTaskItem}
-                        contentContainerStyle={[styles.listContainer, { padding: scale(16), paddingBottom: verticalScale(100) }]}
+                        contentContainerStyle={[styles.listContainer, { padding: scale(16), paddingBottom: contentBottomForTabBar(insets.bottom) }]}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.emptyState}>

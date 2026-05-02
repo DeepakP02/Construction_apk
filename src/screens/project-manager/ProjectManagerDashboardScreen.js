@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, ScrollView, Animated, Modal, TouchableOpacity, Text, StyleSheet, Alert, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import ProjectManagerDashboard from './ProjectManagerDashboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ProjectManagerDashboardScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const { user, isClockedIn, toggleClock, getWorkDuration, refreshData, projects } = useApp();
     const [timer, setTimer] = useState('00:00:00');
     const [clockModal, setClockModal] = useState(false);
@@ -54,7 +56,11 @@ const ProjectManagerDashboardScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <WorkerHeader showBranding={true} />
 
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={[styles.scroll, { paddingBottom: contentBottomForTabBar(insets.bottom) }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Animated.View style={{ opacity: fadeAnim }}>
                     <ProjectManagerDashboard
                         navigation={navigation}
@@ -109,7 +115,7 @@ const ProjectManagerDashboardScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    scroll: { padding: 14, paddingBottom: 100 },
+    scroll: { padding: 14 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', padding: 20 },
     modalContent: { backgroundColor: '#fff', borderRadius: 32, padding: 24, maxHeight: '80%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

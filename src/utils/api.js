@@ -7,8 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 2) Known production host candidates (auto-failover)
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
-    // 'https://construction-production-b18f.up.railway.app',
-    'https://constuctionbackend-production.up.railway.app',
+    'https://construction-production-b18f.up.railway.app',
+    // 'https://constuctionbackend-production.up.railway.app',
     // 'http://localhost:8080/api',
 ].filter(Boolean);
 

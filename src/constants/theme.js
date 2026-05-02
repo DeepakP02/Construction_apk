@@ -62,6 +62,23 @@ export const SPACING = {
     xxl: 48,
 };
 
+/** Layout tokens aligned with PM panels (floating tab bar + home indicator). */
+export const LAYOUT = {
+    /** Default ScrollView/FlatList paddingBottom so content clears the absolute tab bar */
+    tabBarContentPadding: 100,
+    /** Standard horizontal gutter for scroll pages */
+    screenPaddingX: 16,
+    screenPaddingXCompact: 12,
+};
+
+/**
+ * @param {number} [insetsBottom=0] — useSafeAreaInsets().bottom
+ * @returns {number} paddingBottom for vertical scroll content
+ */
+export function contentBottomForTabBar(insetsBottom = 0) {
+    return Math.max(insetsBottom + 90, LAYOUT.tabBarContentPadding);
+}
+
 export const SHADOWS = {
     card: {
         shadowColor: '#64748B',

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     TextInput, ActivityIndicator, SafeAreaView, Modal,
-    StatusBar, Platform, ScrollView, Alert, Dimensions, RefreshControl
+    StatusBar, Platform, Alert, Dimensions, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -22,13 +22,6 @@ const CrewClockScreen = ({ navigation }) => {
     const [selectedWorkers, setSelectedWorkers] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
 
-    // Calculate Stats for the UI
-    const stats = {
-        total: workers.length,
-        onSite: workers.filter(w => w.isClockedIn).length,
-        scheduled: workers.length // Fallback to total if schedule data is missing
-    };
-
     const selectAll = () => {
         if (selectedWorkers.length === filteredWorkers.length && filteredWorkers.length > 0) {
             setSelectedWorkers([]);
@@ -42,13 +35,6 @@ const CrewClockScreen = ({ navigation }) => {
 
     // Modal state
     const [projectModalVisible, setProjectModalVisible] = useState(false);
-
-    // Live Ticker for metrics
-    const [now, setNow] = useState(new Date());
-    useEffect(() => {
-        const interval = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(interval);
-    }, []);
 
     // ── Fetch crew data ───────────────────────────────────────────────────
     const fetchCrewData = useCallback(async () => {
@@ -178,19 +164,6 @@ const CrewClockScreen = ({ navigation }) => {
 
     const ListHeader = () => (
         <View style={styles.dashboardHeader}>
-            <View style={styles.statsContainer}>
-                <View style={[styles.statBox, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                    <MaterialCommunityIcons name="account-group" size={22} color="#2563EB" />
-                    <Text style={styles.statNumber}>{stats.total}</Text>
-                    <Text style={styles.statSubtitle}>TOTAL FLEET</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
-                    <MaterialCommunityIcons name="account-check" size={22} color="#10B981" />
-                    <Text style={styles.statNumber}>{stats.onSite}</Text>
-                    <Text style={styles.statSubtitle}>LIVE ON SITE</Text>
-                </View>
-            </View>
-
             <View style={styles.controlPanel}>
                 <View style={styles.searchRow}>
                     <View style={styles.premiumSearchBar}>
@@ -305,12 +278,7 @@ const CrewClockScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     
-    // Header & Stats
     dashboardHeader: { padding: 20 },
-    statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-    statBox: { flex: 1, padding: 16, borderRadius: 20, borderWidth: 1, alignItems: 'center' },
-    statNumber: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginTop: 4 },
-    statSubtitle: { fontSize: 8, fontWeight: '800', color: '#64748B', letterSpacing: 0.5 },
 
     // Control Panel
     controlPanel: { gap: 12 },

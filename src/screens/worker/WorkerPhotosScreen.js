@@ -1,9 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-    View, Text, StyleSheet, FlatList, TouchableOpacity, 
-    Image, Dimensions, ActivityIndicator, Alert, Modal, 
-    TextInput, Platform, ScrollView, Animated, SafeAreaView,
-    useWindowDimensions
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TouchableOpacity,
+    Image,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    TextInput,
+    Platform,
+    ScrollView,
+    Animated,
+    SafeAreaView,
+    useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,38 +24,68 @@ import api, { getServerUrl } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 
+function idKey(raw) {
+    if (raw == null || raw === '') return '';
+    return String(raw);
+}
+function projectIdFromDoc(p) {
+    if (!p) return '';
+    return idKey(p._id ?? p.id);
+}
+
 const WorkerPhotosScreen = () => {
-    const { projects, user, selectedProject: globalSelectedProject } = useApp();
-    const { width, height } = useWindowDimensions();
+    const { projects, selectedProject: globalSelectedProject } = useApp();
+    const { width } = useWindowDimensions();
     const [photos, setPhotos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-    
-    // Filtering
-    const [activeFilter, setActiveFilter] = useState('All');
-    const [filteredPhotos, setFilteredPhotos] = useState([]);
+
+    /** Gallery filter: show all sites or one project (same pattern as Foreman Site Photos). */
+    const [galleryProjectId, setGalleryProjectId] = useState('all');
 
     // For Description/Upload Modal
     const [uploadModal, setUploadModal] = useState(false);
     const [previewModal, setPreviewModal] = useState(false);
     const [selectedPhoto, setSelectedPhoto] = useState(null);
-    
+
     const [tempImage, setTempImage] = useState(null);
     const [description, setDescription] = useState('');
     const [targetProjectId, setTargetProjectId] = useState(null);
     const [selVisible, setSelVisible] = useState(false);
+    const [selTitle, setSelTitle] = useState('');
+    const [selOptions, setSelOptions] = useState([]);
+    const [selOnSelect, setSelOnSelect] = useState(() => () => {});
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    const selectedGalleryLabel =
+        galleryProjectId === 'all'
+            ? 'All Projects'
+            : projects.find((p) => projectIdFromDoc(p) === galleryProjectId)?.name || 'Select project';
+
     const selectedTargetProjectLabel =
-        projects.find((p) => (p._id || p.id) === targetProjectId)?.name || 'Select Project';
+        projects.find((p) => projectIdFromDoc(p) === idKey(targetProjectId))?.name || 'Select Project';
+
+    const filteredPhotos = useMemo(() => {
+        if (galleryProjectId === 'all') return photos;
+        return photos.filter((p) => idKey(p.projectId?._id || p.projectId) === galleryProjectId);
+    }, [galleryProjectId, photos]);
+
+    const openDropdown = (title, options, onSelect) => {
+        setSelTitle(title);
+        setSelOptions(options);
+        setSelOnSelect(() => (opt) => {
+            onSelect(opt);
+            setSelVisible(false);
+        });
+        setSelVisible(true);
+    };
 
     const fetchPhotos = async () => {
         try {
             setLoading(true);
             const res = await api.get('/photos');
             setPhotos(res.data || []);
-            setFilteredPhotos(res.data || []);
             Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
         } catch (e) {
             console.error('Fetch photos error:', e.response?.data || e.message);
@@ -56,30 +97,23 @@ const WorkerPhotosScreen = () => {
     useEffect(() => {
         fetchPhotos();
         if (projects && projects.length > 0) {
-            setTargetProjectId(projects[0]._id || projects[0].id);
+            setTargetProjectId(projectIdFromDoc(projects[0]));
         }
     }, [projects]);
 
     // Sync with global selection
     useEffect(() => {
         if (globalSelectedProject) {
-            setActiveFilter(globalSelectedProject._id || globalSelectedProject.id);
-            setTargetProjectId(globalSelectedProject._id || globalSelectedProject.id);
+            const gid = projectIdFromDoc(globalSelectedProject);
+            setGalleryProjectId(gid);
+            setTargetProjectId(gid);
         } else {
-            setActiveFilter('All');
+            setGalleryProjectId('all');
             if (projects && projects.length > 0) {
-                setTargetProjectId(projects[0]._id || projects[0].id);
+                setTargetProjectId(projectIdFromDoc(projects[0]));
             }
         }
     }, [globalSelectedProject, projects]);
-
-    useEffect(() => {
-        if (activeFilter === 'All') {
-            setFilteredPhotos(photos);
-        } else {
-            setFilteredPhotos(photos.filter(p => (p.projectId?._id || p.projectId) === activeFilter));
-        }
-    }, [activeFilter, photos]);
 
     const handlePick = async (mode) => {
         try {
@@ -120,7 +154,7 @@ const WorkerPhotosScreen = () => {
                 type: 'image/jpeg'
             });
             formData.append('description', description || 'Site Progress Photo');
-            formData.append('projectId', targetProjectId);
+            formData.append('projectId', idKey(targetProjectId));
 
             const res = await api.post('/photos/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
@@ -161,23 +195,31 @@ const WorkerPhotosScreen = () => {
                 </TouchableOpacity>
             </View>
             
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterBar, { paddingVertical: verticalScale(5) }]}>
-                <TouchableOpacity 
-                    style={[styles.filterChip, activeFilter === 'All' && styles.filterChipActive, { marginRight: scale(8) }]}
-                    onPress={() => setActiveFilter('All')}
-                >
-                    <Text style={[styles.filterText, activeFilter === 'All' && styles.filterTextActive]}>All Projects</Text>
-                </TouchableOpacity>
-                {projects.map(p => (
-                    <TouchableOpacity 
-                        key={p._id || p.id}
-                        style={[styles.filterChip, activeFilter === (p._id || p.id) && styles.filterChipActive, { marginRight: scale(8) }]}
-                        onPress={() => setActiveFilter(p._id || p.id)}
-                    >
-                        <Text style={[styles.filterText, activeFilter === (p._id || p.id) && styles.filterTextActive]}>{p.name}</Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+            <TouchableOpacity
+                style={[styles.customDropdownBtn, { height: verticalScale(48), borderRadius: moderateScale(14), paddingHorizontal: scale(16), marginTop: verticalScale(4) }]}
+                onPress={() =>
+                    openDropdown(
+                        'Filter by project',
+                        [
+                            { label: 'All Projects', value: 'all', icon: 'layers' },
+                            ...projects.map((p) => ({
+                                label: p.name,
+                                value: projectIdFromDoc(p),
+                                icon: 'office-building',
+                            })),
+                        ],
+                        (opt) => setGalleryProjectId(opt.value === 'all' ? 'all' : idKey(opt.value))
+                    )
+                }
+            >
+                <View style={[styles.dropdownLeft, { gap: scale(10), flex: 1, minWidth: 0 }]}>
+                    <MaterialCommunityIcons name="filter-variant" size={moderateScale(14)} color="#64748B" />
+                    <Text style={[styles.dropdownValueText, { fontSize: moderateScale(13) }]} numberOfLines={1}>
+                        {selectedGalleryLabel}
+                    </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
+            </TouchableOpacity>
         </View>
     );
 
@@ -248,7 +290,17 @@ const WorkerPhotosScreen = () => {
                         <Text style={[styles.inputLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>SELECT PROJECT</Text>
                         <TouchableOpacity
                             style={[styles.projectDropdown, { borderRadius: moderateScale(12), paddingHorizontal: scale(14), height: verticalScale(50), marginBottom: verticalScale(20) }]}
-                            onPress={() => setSelVisible(true)}
+                            onPress={() =>
+                                openDropdown(
+                                    'SELECT PROJECT',
+                                    projects.map((p) => ({
+                                        label: p.name,
+                                        value: projectIdFromDoc(p),
+                                        icon: 'office-building',
+                                    })),
+                                    (opt) => setTargetProjectId(idKey(opt.value))
+                                )
+                            }
                         >
                             <View style={styles.projectDropdownLeft}>
                                 <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
@@ -279,29 +331,27 @@ const WorkerPhotosScreen = () => {
                 </View>
             </Modal>
 
-            {/* PROJECT SELECTOR MODAL */}
+            {/* Filter / upload project picker (same UX as Foreman Site Photos dropdown list) */}
             <Modal visible={selVisible} transparent animationType="fade">
                 <TouchableOpacity style={styles.selOverlayModal} activeOpacity={1} onPress={() => setSelVisible(false)}>
                     <View style={[styles.selBox, { width: isTablet ? 420 : '86%', borderRadius: moderateScale(24), padding: scale(20) }]}>
-                        <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>SELECT PROJECT</Text>
-                        <ScrollView style={{ maxHeight: verticalScale(300) }}>
-                            {projects.map((p) => {
-                                const pid = p._id || p.id;
-                                const selected = targetProjectId === pid;
-                                return (
-                                    <TouchableOpacity
-                                        key={pid}
-                                        style={[styles.selItem, selected && styles.selItemActive, { paddingVertical: verticalScale(12) }]}
-                                        onPress={() => {
-                                            setTargetProjectId(pid);
-                                            setSelVisible(false);
-                                        }}
-                                    >
-                                        <MaterialCommunityIcons name="office-building" size={moderateScale(17)} color={selected ? '#2563EB' : '#94A3B8'} style={{ marginRight: scale(12) }} />
-                                        <Text style={[styles.selLabelText, selected && styles.selLabelTextActive, { fontSize: moderateScale(13) }]}>{p.name}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                        <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>{selTitle}</Text>
+                        <ScrollView style={{ maxHeight: verticalScale(300) }} keyboardShouldPersistTaps="handled">
+                            {selOptions.map((opt, i) => (
+                                <TouchableOpacity
+                                    key={`${selTitle}-${i}-${opt.value}`}
+                                    style={[styles.selItem, { paddingVertical: verticalScale(12) }]}
+                                    onPress={() => selOnSelect(opt)}
+                                >
+                                    <MaterialCommunityIcons
+                                        name={opt.icon || 'circle-small'}
+                                        size={moderateScale(17)}
+                                        color="#2563EB"
+                                        style={{ marginRight: scale(12) }}
+                                    />
+                                    <Text style={[styles.selLabelText, { fontSize: moderateScale(13) }]}>{opt.label}</Text>
+                                </TouchableOpacity>
+                            ))}
                         </ScrollView>
                     </View>
                 </TouchableOpacity>
@@ -336,11 +386,16 @@ const styles = StyleSheet.create({
     headerTop: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
     headerLabel: { fontWeight: '900', color: '#2563EB', letterSpacing: 1.5 },
-    filterBar: { },
-    filterChip: { minHeight: verticalScale(44), paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(22), backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
-    filterChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    filterText: { fontWeight: '800', color: '#64748B', fontSize: moderateScale(12) },
-    filterTextActive: { color: '#fff' },
+    customDropdownBtn: {
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    dropdownLeft: { flexDirection: 'row', alignItems: 'center' },
+    dropdownValueText: { fontWeight: '800', color: '#1E293B' },
     row: { justifyContent: 'space-between', paddingHorizontal: 16 },
     subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     titleSection: { flex: 1 },

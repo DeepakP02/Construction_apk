@@ -1,21 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, TextInput, ActivityIndicator, Alert, ScrollView, Modal, KeyboardAvoidingView, Platform, SafeAreaView, useWindowDimensions, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, SafeAreaView, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
-import api from '../../utils/api';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 import { isTodoVisibleToUser } from '../../utils/todoVisibility';
 
+const isTodoCompleted = (item) => {
+    const s = (item?.status || '').toLowerCase();
+    return s === 'completed' || s === 'done';
+};
+
 const ProjectManagerDashboard = ({ navigation }) => {
-    const { refreshData, teamMembers, user, todos, fetchTeamMembers, addTodo, resolveUser } = useApp();
-    const { width, height } = useWindowDimensions();
+    const { refreshData, teamMembers, user, todos, fetchTeamMembers, addTodo, toggleTodo, updateTodo, deleteTodo, resolveUser } = useApp();
     const [todo, setTodo] = useState('');
     const [assignedTo, setAssignedTo] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isUserSelectorVisible, setIsUserSelectorVisible] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editingTodo, setEditingTodo] = useState(null);
+    const [editTodoTitle, setEditTodoTitle] = useState('');
+    const [savingTodo, setSavingTodo] = useState(false);
+    const [togglingTodoId, setTogglingTodoId] = useState(null);
+    const [deletingTodoId, setDeletingTodoId] = useState(null);
 
     const fetchDashboardData = async () => {
         try {
@@ -70,12 +80,100 @@ const ProjectManagerDashboard = ({ navigation }) => {
         return assignerId === user?._id && assignedId !== user?._id;
     });
 
+    const openEditTodo = (item) => {
+        if (!item?._id && !item?.id) return;
+        setEditingTodo(item);
+        setEditTodoTitle(item.title || '');
+        setEditModalVisible(true);
+    };
+
+    const closeEditTodo = () => {
+        setEditModalVisible(false);
+        setEditingTodo(null);
+        setEditTodoTitle('');
+    };
+
+    const handleSaveEditTodo = async () => {
+        const id = editingTodo?._id || editingTodo?.id;
+        if (!id) return;
+        const title = editTodoTitle.trim();
+        if (!title) {
+            Alert.alert('Title required', 'Please enter a title for this to-do.');
+            return;
+        }
+        setSavingTodo(true);
+        try {
+            const updated = await updateTodo(id, { title });
+            if (updated) {
+                closeEditTodo();
+            } else {
+                Alert.alert('Update failed', 'Could not save changes. Try again.');
+            }
+        } finally {
+            setSavingTodo(false);
+        }
+    };
+
+    const runDeleteTodo = async (item) => {
+        const id = item?._id || item?.id;
+        if (!id) return;
+        setDeletingTodoId(String(id));
+        try {
+            const ok = await deleteTodo(id);
+            if (!ok) {
+                Alert.alert('Delete failed', 'Could not remove this to-do.');
+            } else {
+                if (editingTodo && String(editingTodo._id || editingTodo.id) === String(id)) {
+                    closeEditTodo();
+                }
+            }
+        } finally {
+            setDeletingTodoId(null);
+        }
+    };
+
+    const promptDeleteTodo = (item) => {
+        Alert.alert(
+            'Delete to-do',
+            'Remove this item? This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => runDeleteTodo(item) },
+            ]
+        );
+    };
+
+    const handleDeleteFromModal = () => {
+        if (!editingTodo) return;
+        Alert.alert(
+            'Delete to-do',
+            'Remove this item? This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => runDeleteTodo(editingTodo) },
+            ]
+        );
+    };
+
+    const handleToggleTodoRow = async (item) => {
+        const id = item?._id || item?.id;
+        if (!id || togglingTodoId) return;
+        setTogglingTodoId(String(id));
+        try {
+            const ok = await toggleTodo(id);
+            if (!ok) {
+                Alert.alert('Update failed', 'Could not update status.');
+            }
+        } finally {
+            setTogglingTodoId(null);
+        }
+    };
+
     return (
         <View style={styles.container}>
-            <ScrollView 
-                showsVerticalScrollIndicator={false} 
-                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : moderateScale(16) }]}
-                keyboardShouldPersistTaps="handled"
+            {/* Content scrolls via parent ProjectManagerDashboardScreen ScrollView — avoid nested ScrollView clipping lower sections (e.g. Assigned By Me). */}
+            <View
+                style={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : moderateScale(16) }]}
             >
                 <View style={styles.header}>
                     <Text style={[styles.headerTitle, { fontSize: moderateScale(32) }]}>Dashboard</Text>
@@ -195,15 +293,68 @@ const ProjectManagerDashboard = ({ navigation }) => {
                 {myDailyTodos.length === 0 ? (
                     <View style={[styles.emptyState, { borderRadius: moderateScale(12) }]}><Text style={[styles.emptyText, { fontSize: moderateScale(12) }]}>No pending todos</Text></View>
                 ) : (
-                    <View style={styles.grid}>
-                        {myDailyTodos.map((item, index) => (
-                            <View key={item._id ? `todo-${item._id}-${index}` : `todo-idx-${index}`} style={[styles.miniCard, { borderLeftColor: '#10B981', borderRadius: moderateScale(14), padding: moderateScale(10) }]}>
-                                <View style={[styles.miniIconBox, { backgroundColor: '#ECFDF5', width: scale(30), height: scale(30), borderRadius: moderateScale(8) }]}>
-                                    <MaterialCommunityIcons name="check-circle-outline" size={moderateScale(14)} color="#10B981" />
+                    <View style={styles.todoListShell}>
+                        {myDailyTodos.map((item, index) => {
+                            const done = isTodoCompleted(item);
+                            const busy = togglingTodoId === String(item._id || item.id);
+                            return (
+                                <View
+                                    key={item._id ? `todo-${item._id}-${index}` : `todo-idx-${index}`}
+                                    style={[styles.todoLineRow, index === myDailyTodos.length - 1 && styles.todoLineRowLast]}
+                                >
+                                    <TouchableOpacity
+                                        onPress={() => handleToggleTodoRow(item)}
+                                        disabled={!!togglingTodoId}
+                                        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                                        style={styles.todoRowIconWrap}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={done ? 'Mark incomplete' : 'Mark complete'}
+                                    >
+                                        {busy ? (
+                                            <ActivityIndicator size="small" color="#10B981" />
+                                        ) : (
+                                            <MaterialCommunityIcons
+                                                name={done ? 'check-circle' : 'circle-outline'}
+                                                size={moderateScale(20)}
+                                                color={done ? '#10B981' : '#94A3B8'}
+                                            />
+                                        )}
+                                    </TouchableOpacity>
+                                    <Text
+                                        style={[styles.todoLineText, { fontSize: moderateScale(13) }, done && styles.todoLineDone]}
+                                        numberOfLines={3}
+                                    >
+                                        {item.title || item.description || 'Todo'}
+                                    </Text>
+                                    <View style={styles.todoRowActions}>
+                                        <TouchableOpacity
+                                            onPress={() => openEditTodo(item)}
+                                            disabled={!!togglingTodoId || !!deletingTodoId}
+                                            hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                                            style={styles.todoRowIconWrap}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Edit to-do"
+                                        >
+                                            <MaterialCommunityIcons name="pencil-outline" size={moderateScale(18)} color="#6366F1" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => promptDeleteTodo(item)}
+                                            disabled={!!togglingTodoId || !!deletingTodoId}
+                                            hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                                            style={styles.todoRowIconWrap}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Delete to-do"
+                                        >
+                                            {deletingTodoId === String(item._id || item.id) ? (
+                                                <ActivityIndicator size="small" color="#EF4444" />
+                                            ) : (
+                                                <MaterialCommunityIcons name="trash-can-outline" size={moderateScale(18)} color="#EF4444" />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                                <Text style={[styles.miniText, { fontSize: moderateScale(11) }]} numberOfLines={1}>{item.title}</Text>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 )}
 
@@ -215,25 +366,133 @@ const ProjectManagerDashboard = ({ navigation }) => {
                 {assignedByMe.length === 0 ? (
                     <View style={[styles.emptyState, { borderRadius: moderateScale(12) }]}><Text style={[styles.emptyText, { fontSize: moderateScale(12) }]}>Nothing assigned</Text></View>
                 ) : (
-                    <View style={styles.grid}>
-                        {assignedByMe.map((item, index) => (
-                            <View key={item._id || `assigned-${index}`} style={[styles.miniCard, { flexDirection: 'column', alignItems: 'flex-start', gap: verticalScale(6), borderLeftColor: '#4F46E5', borderRadius: moderateScale(14), padding: moderateScale(10) }]}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
-                                    <View style={[styles.miniIconBox, { backgroundColor: '#EEF2FF', width: scale(24), height: scale(24), borderRadius: moderateScale(6) }]}>
-                                        <MaterialCommunityIcons name="account-arrow-right-outline" size={moderateScale(12)} color="#4F46E5" />
-                                    </View>
-                                    <Text style={[styles.miniLabel, { fontSize: moderateScale(8) }]} numberOfLines={1}>
-                                        {resolveUser(item.assignedTo).fullName}
+                    <View style={styles.todoListShell}>
+                        {assignedByMe.map((item, index) => {
+                            const done = isTodoCompleted(item);
+                            const busy = togglingTodoId === String(item._id || item.id);
+                            return (
+                                <View
+                                    key={item._id || `assigned-${index}`}
+                                    style={[styles.todoLineRow, index === assignedByMe.length - 1 && styles.todoLineRowLast]}
+                                >
+                                    <TouchableOpacity
+                                        onPress={() => handleToggleTodoRow(item)}
+                                        disabled={!!togglingTodoId}
+                                        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                                        style={styles.todoRowIconWrap}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={done ? 'Mark incomplete' : 'Mark complete'}
+                                    >
+                                        {busy ? (
+                                            <ActivityIndicator size="small" color="#10B981" />
+                                        ) : (
+                                            <MaterialCommunityIcons
+                                                name={done ? 'check-circle' : 'circle-outline'}
+                                                size={moderateScale(20)}
+                                                color={done ? '#10B981' : '#94A3B8'}
+                                            />
+                                        )}
+                                    </TouchableOpacity>
+                                    <Text style={[styles.todoLineText, { fontSize: moderateScale(13) }, done && styles.todoLineDone]} numberOfLines={3}>
+                                        <Text style={[styles.todoLineAssignee, { fontSize: moderateScale(12) }, done && styles.todoLineDone]}>
+                                            {resolveUser(item.assignedTo).fullName}
+                                        </Text>
+                                        {' · '}
+                                        {item.title || item.description || 'Todo'}
                                     </Text>
+                                    <View style={styles.todoRowActions}>
+                                        <TouchableOpacity
+                                            onPress={() => openEditTodo(item)}
+                                            disabled={!!togglingTodoId || !!deletingTodoId}
+                                            hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                                            style={styles.todoRowIconWrap}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Edit to-do"
+                                        >
+                                            <MaterialCommunityIcons name="pencil-outline" size={moderateScale(18)} color="#6366F1" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => promptDeleteTodo(item)}
+                                            disabled={!!togglingTodoId || !!deletingTodoId}
+                                            hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                                            style={styles.todoRowIconWrap}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Delete to-do"
+                                        >
+                                            {deletingTodoId === String(item._id || item.id) ? (
+                                                <ActivityIndicator size="small" color="#EF4444" />
+                                            ) : (
+                                                <MaterialCommunityIcons name="trash-can-outline" size={moderateScale(18)} color="#EF4444" />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                                <Text style={[styles.miniTitle, { fontSize: moderateScale(12) }]} numberOfLines={1}>{item.title}</Text>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 )}
 
                 <View style={{ height: verticalScale(20) }} />
-            </ScrollView>
+            </View>
+
+            <Modal
+                visible={editModalVisible}
+                animationType="slide"
+                transparent
+                onRequestClose={closeEditTodo}
+            >
+                <KeyboardAvoidingView
+                    style={styles.editModalRoot}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <View style={styles.editModalInner}>
+                        <TouchableOpacity style={styles.editModalBackdrop} activeOpacity={1} onPress={closeEditTodo} />
+                        <SafeAreaView style={[styles.editModalSheet, { borderTopLeftRadius: moderateScale(20), borderTopRightRadius: moderateScale(20) }]}>
+                            <View style={[styles.editModalHeader, { paddingHorizontal: scale(20), paddingTop: verticalScale(12) }]}>
+                                <Text style={[styles.editModalTitle, { fontSize: moderateScale(18) }]}>Edit to-do</Text>
+                                <TouchableOpacity onPress={closeEditTodo} hitSlop={12}>
+                                    <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#64748B" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={{ paddingHorizontal: scale(20), paddingBottom: verticalScale(24) }}>
+                                <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>TITLE</Text>
+                                <TextInput
+                                    style={[styles.editModalInput, { fontSize: moderateScale(14), minHeight: verticalScale(44) }]}
+                                    value={editTodoTitle}
+                                    onChangeText={setEditTodoTitle}
+                                    placeholder="Title"
+                                    placeholderTextColor="#94A3B8"
+                                />
+                                <TouchableOpacity
+                                    style={[styles.editModalSaveBtn, (savingTodo || deletingTodoId) && { opacity: 0.6 }]}
+                                    onPress={handleSaveEditTodo}
+                                    disabled={savingTodo || !!deletingTodoId}
+                                >
+                                    {savingTodo ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text style={[styles.editModalSaveText, { fontSize: moderateScale(14) }]}>Save changes</Text>
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.editModalDeleteBtn, (savingTodo || deletingTodoId) && { opacity: 0.6 }]}
+                                    onPress={handleDeleteFromModal}
+                                    disabled={savingTodo || !!deletingTodoId}
+                                >
+                                    {deletingTodoId === String(editingTodo?._id || editingTodo?.id) ? (
+                                        <ActivityIndicator color="#EF4444" />
+                                    ) : (
+                                        <>
+                                            <MaterialCommunityIcons name="trash-can-outline" size={moderateScale(18)} color="#EF4444" style={{ marginRight: scale(8) }} />
+                                            <Text style={[styles.editModalDeleteText, { fontSize: moderateScale(14) }]}>Delete to-do</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </SafeAreaView>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
             <Modal
                 visible={isUserSelectorVisible}
@@ -306,8 +565,8 @@ const ProjectManagerDashboard = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    scrollContent: { paddingBottom: 10, paddingTop: 10 },
+    container: { width: '100%', backgroundColor: '#F8FAFC' },
+    scrollContent: { width: '100%', paddingBottom: 10, paddingTop: 10 },
     header: { marginBottom: 6, paddingLeft: 2 },
     headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
     headerSubtitle: { fontWeight: '700', color: '#64748B', marginTop: 1 },
@@ -391,23 +650,91 @@ const styles = StyleSheet.create({
     countText: { fontWeight: '900', color: '#64748B' },
     emptyState: { padding: 15, backgroundColor: '#F8FAFC', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1', width: '100%' },
     emptyText: { color: '#94A3B8', fontWeight: '700' },
-    miniIconBox: { backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
-    miniCard: { 
-        width: '48.5%', 
-        backgroundColor: '#FFFFFF', 
-        marginBottom: 12, 
-        borderLeftWidth: 4, 
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        flexDirection: 'row', 
-        alignItems: 'center', 
+    todoListShell: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        overflow: 'hidden',
+        marginBottom: 4,
     },
-    miniText: { flex: 1, fontWeight: '700', color: '#334155' },
-    miniLabel: { fontWeight: '900', color: '#4F46E5', textTransform: 'uppercase' },
-    miniTitle: { fontWeight: '800', color: '#1E293B', lineHeight: 16 },
+    todoLineRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#E2E8F0',
+    },
+    todoLineRowLast: { borderBottomWidth: 0 },
+    todoRowActions: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'flex-end',
+        paddingTop: 2,
+    },
+    todoRowIconWrap: {
+        width: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 2,
+    },
+    todoLineText: { flex: 1, fontWeight: '600', color: '#334155', lineHeight: 20, paddingRight: 4 },
+    todoLineDone: { textDecorationLine: 'line-through', color: '#94A3B8' },
+    todoLineAssignee: { fontWeight: '800', color: '#4F46E5' },
+    editModalRoot: { flex: 1 },
+    editModalInner: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.65)' },
+    editModalBackdrop: { ...StyleSheet.absoluteFillObject },
+    editModalSheet: {
+        backgroundColor: '#fff',
+        maxHeight: '88%',
+        width: '100%',
+        alignSelf: 'center',
+        maxWidth: 600,
+        borderTopWidth: 1,
+        borderColor: '#E2E8F0',
+        zIndex: 2,
+        elevation: 12,
+    },
+    editModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#E2E8F0',
+    },
+    editModalTitle: { fontWeight: '900', color: '#0F172A' },
+    editModalInput: {
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
+    editModalSaveBtn: {
+        marginTop: 20,
+        backgroundColor: '#0F172A',
+        borderRadius: 14,
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    editModalSaveText: { color: '#fff', fontWeight: '900' },
+    editModalDeleteBtn: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        backgroundColor: '#FEF2F2',
+    },
+    editModalDeleteText: { color: '#DC2626', fontWeight: '800' },
 });
 
 export default ProjectManagerDashboard;

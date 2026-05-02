@@ -1,58 +1,239 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Animated, ActivityIndicator, Dimensions, ScrollView, RefreshControl, StatusBar, Modal, Platform, useWindowDimensions } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Animated, ActivityIndicator, ScrollView, RefreshControl, StatusBar, Modal, Platform, Alert, useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SIZES, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
+import CustomInput from '../../components/CustomInput';
+import CustomButton from '../../components/CustomButton';
 import { useApp } from '../../context/AppContext';
-import { Calendar } from 'react-native-calendars';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 
+const ROLE_LABELS = {
+    PM: 'Project Manager',
+    FOREMAN: 'Foreman',
+    WORKER: 'Worker',
+    SUBCONTRACTOR: 'Subcontractor',
+};
+
+function cmpTaskOrder(a, b) {
+    const pa = a.position;
+    const pb = b.position;
+    if (pa != null && pb != null && pa !== pb) return pa - pb;
+    if (pa != null && pb == null) return -1;
+    if (pa == null && pb != null) return 1;
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+}
+
+const FOREMAN_COLLAPSE_KEY = 'foremanTasksCollapsedV1';
+
+/**
+ * Full task tree from allTasks; visibility = entire subtrees whose root is an ancestor of any anchor match
+ * (same idea as web Task Command Center / PM Tasks when search hits a subtask).
+ */
+function buildForemanHierarchy(allTasks, anchorIdSet, collapsedNodes) {
+    const collapsed = collapsedNodes instanceof Set ? collapsedNodes : new Set();
+    const map = new Map();
+    const roots = [];
+    const orphans = [];
+
+    (allTasks || []).forEach((t) => {
+        const id = String(t._id || t.id);
+        map.set(id, { ...t, children: [] });
+    });
+
+    (allTasks || []).forEach((t) => {
+        const id = String(t._id || t.id);
+        const node = map.get(id);
+        const directParentId = t.parentTaskId ? String(t.parentTaskId?._id || t.parentTaskId) : null;
+
+        if (directParentId && map.has(directParentId)) {
+            const parentNode = map.get(directParentId);
+            parentNode.children.push(node);
+            if (!node.projectId && parentNode.projectId) {
+                node.projectId = parentNode.projectId;
+            }
+        } else if (!directParentId) {
+            roots.push(node);
+        } else {
+            orphans.push(node);
+        }
+    });
+
+    const sortRecursive = (node) => {
+        if (node.children?.length) {
+            node.children.sort(cmpTaskOrder);
+            node.children.forEach(sortRecursive);
+        }
+    };
+    roots.sort(cmpTaskOrder);
+    roots.forEach(sortRecursive);
+    orphans.sort(cmpTaskOrder);
+    orphans.forEach(sortRecursive);
+
+    const rootIdOf = (taskId) => {
+        let id = String(taskId);
+        const seen = new Set();
+        while (true) {
+            const cur = map.get(id);
+            if (!cur) return String(taskId);
+            const pid = cur.parentTaskId ? String(cur.parentTaskId?._id || cur.parentTaskId) : null;
+            if (!pid || !map.has(pid)) return id;
+            if (seen.has(id)) return id;
+            seen.add(id);
+            id = pid;
+        }
+    };
+
+    const rootIdsToShow = new Set();
+    anchorIdSet.forEach((tid) => {
+        rootIdsToShow.add(rootIdOf(tid));
+    });
+
+    const visibleIds = new Set();
+    const collectSubtree = (node) => {
+        const nid = String(node._id || node.id);
+        visibleIds.add(nid);
+        (node.children || []).forEach(collectSubtree);
+    };
+
+    roots.forEach((r) => {
+        if (rootIdsToShow.has(String(r._id || r.id))) collectSubtree(r);
+    });
+    orphans.forEach((o) => {
+        if (rootIdsToShow.has(String(o._id || o.id))) collectSubtree(o);
+    });
+
+    const flatList = [];
+    const flatten = (nodes, level, parentCollapsed = false) => {
+        const sortedNodes = [...nodes].sort(cmpTaskOrder);
+        sortedNodes.forEach((n) => {
+            const id = String(n._id || n.id);
+            if (!visibleIds.has(id)) return;
+
+            n.level = level;
+            n.isCollapsed = collapsed.has(id);
+            n.hasChildren = !!(n.children && n.children.length > 0);
+
+            if (!parentCollapsed) {
+                flatList.push(n);
+            }
+
+            if (n.children && n.children.length > 0) {
+                flatten(n.children, level + 1, parentCollapsed || collapsed.has(id));
+            }
+        });
+    };
+
+    flatten(roots, 0, false);
+    orphans.forEach((o) => {
+        const oid = String(o._id || o.id);
+        if (!visibleIds.has(oid)) return;
+        if (flatList.some((x) => String(x._id || x.id) === oid)) return;
+        flatten([o], 0, false);
+    });
+
+    return flatList;
+}
+
 const ForemanTasksScreen = ({ navigation }) => {
-    const { tasks, addTask, refreshData, projects, teamMembers, jobs, user } = useApp();
     const { width } = useWindowDimensions();
+    const isCompact = width < 380;
+    const { tasks, addTask, deleteTask, refreshData, projects, teamMembers, fetchTeamMembers, jobs, user, selectedProject } = useApp();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('ALL TASKS');
     const [showModal, setShowModal] = useState(false);
-    const [userSearch, setUserSearch] = useState('');
+    const [collapsedNodes, setCollapsedNodes] = useState(new Set());
 
-    // Date Picker State
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dateTarget, setDateTarget] = useState('startDate');
+    const [selVisible, setSelVisible] = useState(false);
+    const [selTitle, setSelTitle] = useState('');
+    const [selOptions, setSelOptions] = useState([]);
+    const [selOnSelect, setSelOnSelect] = useState(() => () => {});
+    const [datePickerMode, setDatePickerMode] = useState(null);
 
-    // Form State
     const [form, setForm] = useState({
         title: '',
+        project: '',
         projectId: '',
+        parentTaskId: '',
         jobId: '',
-        assignedRoleType: 'FOREMAN',
+        assignedRoleType: '',
         assignedTo: [],
         category: 'TASK',
         priority: 'Medium',
         status: 'todo',
         startDate: '',
         dueDate: '',
-        description: ''
+        description: '',
     });
 
-    const onDateSelect = (day) => {
-        setForm({ ...form, [dateTarget]: day.dateString });
-        setShowDatePicker(false);
+    const formatDate = (date) => {
+        if (!date) return '';
+        try {
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        } catch (e) {
+            return '';
+        }
     };
 
-    const openDatePicker = (target) => {
-        setDateTarget(target);
-        setShowDatePicker(true);
+    const parsePickerDate = (value) => {
+        if (!value || typeof value !== 'string') return new Date();
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
+    const openDatePicker = (field) => {
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                value: parsePickerDate(form[field]),
+                mode: 'date',
+                is24Hour: true,
+                onChange: (event, selectedDate) => {
+                    if (event.type !== 'set' || !selectedDate) return;
+                    setForm((prev) => ({ ...prev, [field]: formatDate(selectedDate) }));
+                },
+            });
+            return;
+        }
+        setDatePickerMode(field);
     };
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => { refreshData(); });
+        const unsubscribe = navigation.addListener('focus', () => {
+            refreshData();
+            fetchTeamMembers?.();
+        });
         Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
         return unsubscribe;
     }, [navigation]);
+
+    useEffect(() => {
+        const restore = async () => {
+            try {
+                const raw = await AsyncStorage.getItem(FOREMAN_COLLAPSE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) setCollapsedNodes(new Set(parsed.map((v) => String(v))));
+            } catch (e) {}
+        };
+        restore();
+    }, []);
+
+    useEffect(() => {
+        AsyncStorage.setItem(FOREMAN_COLLAPSE_KEY, JSON.stringify(Array.from(collapsedNodes))).catch(() => {});
+    }, [collapsedNodes]);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -60,134 +241,377 @@ const ForemanTasksScreen = ({ navigation }) => {
         setRefreshing(false);
     };
 
-    const filteredTasks = (tasks || []).filter(t => {
+    const matchingForemanTasks = useMemo(() => {
         const q = search.toLowerCase();
-        const matchesSearch = (t.title || '').toLowerCase().includes(q) ||
-                              (t.projectId?.name || '').toLowerCase().includes(q);
+        const matchesSearch = (t) =>
+            (t.title || '').toLowerCase().includes(q) || (t.projectId?.name || '').toLowerCase().includes(q);
 
-        if (activeTab === 'MY TASKS') {
-            const myId = user?._id || user?.id;
-            const isAssignedToMe = Array.isArray(t.assignedTo)
-                ? t.assignedTo.some(a => (a?._id || a?.id || a) === myId)
-                : (t.assignedTo?._id || t.assignedTo?.id || t.assignedTo) === myId;
-            return matchesSearch && isAssignedToMe;
+        return (tasks || []).filter((t) => {
+            if (!matchesSearch(t)) return false;
+            if (selectedProject) {
+                const selId = String(selectedProject._id || selectedProject.id);
+                if (String(t.projectId?._id || t.projectId) !== selId) return false;
+            }
+            if (activeTab === 'MY TASKS') {
+                const myId = user?._id || user?.id;
+                const sameId = (a, b) => String(a ?? '') === String(b ?? '');
+                const isAssignedToMe = Array.isArray(t.assignedTo)
+                    ? t.assignedTo.some((a) => sameId(a?._id || a?.id || a, myId))
+                    : sameId(t.assignedTo?._id || t.assignedTo?.id || t.assignedTo, myId);
+                const assignedForeman = t.assignedForeman?._id || t.assignedForeman;
+                const isLeadForeman = myId && sameId(assignedForeman, myId);
+                return isAssignedToMe || isLeadForeman;
+            }
+            return true;
+        });
+    }, [tasks, search, activeTab, user, selectedProject]);
+
+    const matchingForemanIds = useMemo(
+        () => new Set(matchingForemanTasks.map((t) => String(t._id || t.id))),
+        [matchingForemanTasks]
+    );
+
+    const hierarchicalTasks = useMemo(
+        () => buildForemanHierarchy(tasks || [], matchingForemanIds, collapsedNodes),
+        [tasks, matchingForemanIds, collapsedNodes]
+    );
+
+    /** Alias kept so any stale reference / Metro cache does not throw ReferenceError. */
+    const taskRows = hierarchicalTasks;
+
+    const promptDeleteTask = (task) => {
+        const id = task?._id || task?.id;
+        if (!id) return;
+        const hasChildren =
+            (task?.children && task.children.length > 0) ||
+            (tasks || []).some((t) => String(t.parentTaskId ? t.parentTaskId?._id || t.parentTaskId : '') === String(id));
+
+        if (!hasChildren) {
+            Alert.alert('Delete task', `Delete "${task.title}"?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) },
+            ]);
+            return;
         }
-        return matchesSearch;
-    });
-
-    const [selectConfig, setSelectConfig] = useState({ visible: false, title: '', options: [], field: '' });
-
-    const openSelector = (title, field, options) => {
-        setSelectConfig({ visible: true, title, field, options });
+        Alert.alert('Delete parent task', 'This task has subtasks. Choose an option.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Move children up', onPress: () => deleteTask(id, { action: 'moveUpward' }) },
+            { text: 'Delete all', style: 'destructive', onPress: () => deleteTask(id, { action: 'cascade' }) },
+        ]);
     };
 
-    const handleSelectAction = (val) => {
-        if (selectConfig.field === 'assignedTo') {
-            setForm({ ...form, assignedTo: [val] });
-        } else {
-            setForm({ ...form, [selectConfig.field]: val });
-        }
-        setSelectConfig({ visible: false, title: '', options: [], field: '' });
+    const filteredTeam = useMemo(
+        () =>
+            form.assignedRoleType
+                ? (teamMembers || []).filter((m) => m.role === form.assignedRoleType)
+                : teamMembers || [],
+        [teamMembers, form.assignedRoleType]
+    );
+
+    const jobsForProject = useMemo(() => {
+        if (!form.projectId) return [];
+        const pid = String(form.projectId);
+        return (jobs || []).filter((j) => String(j.projectId?._id || j.projectId) === pid);
+    }, [jobs, form.projectId]);
+
+    const openCreateModal = () => {
+        setDatePickerMode(null);
+        const defProj = selectedProject || projects?.[0];
+        setForm({
+            title: '',
+            project: defProj?.name || '',
+            projectId: defProj?._id || defProj?.id || '',
+            parentTaskId: '',
+            jobId: '',
+            assignedRoleType: '',
+            assignedTo: [],
+            category: 'TASK',
+            priority: 'Medium',
+            status: 'todo',
+            startDate: '',
+            dueDate: '',
+            description: '',
+        });
+        setShowModal(true);
+    };
+
+    const openDropdown = (title, options, onSelect) => {
+        setSelTitle(title);
+        setSelOptions(options);
+        setSelOnSelect(() => (val) => {
+            onSelect(val);
+            setSelVisible(false);
+        });
+        setSelVisible(true);
+    };
+
+    const closeCreateModal = () => {
+        setShowModal(false);
+        setDatePickerMode(null);
     };
 
     const handleCreateTask = async () => {
-        if (!form.title) { alert('Task Title is required'); return; }
-        if (!form.projectId) { alert('Please select a Project'); return; }
+        if (!form.title) {
+            Alert.alert('Error', 'Task title is required');
+            return;
+        }
+        if (!form.projectId) {
+            Alert.alert('Error', 'Project selection is required');
+            return;
+        }
 
         setLoading(true);
         try {
-            const success = await addTask(form);
+            const payload = { ...form };
+            if (!payload.assignedRoleType) delete payload.assignedRoleType;
+            if (!payload.startDate) delete payload.startDate;
+            if (!payload.dueDate) delete payload.dueDate;
+            if (!payload.parentTaskId) delete payload.parentTaskId;
+            if (!payload.jobId) delete payload.jobId;
+            if (Array.isArray(payload.assignedTo)) {
+                payload.assignedTo = payload.assignedTo.length > 0 ? payload.assignedTo[0] : null;
+            }
+            if (!payload.assignedTo) delete payload.assignedTo;
+
+            const success = await addTask(payload);
             if (success) {
-                setShowModal(false);
+                closeCreateModal();
+                const defProj = selectedProject || projects?.[0];
                 setForm({
-                    title: '', projectId: '', jobId: '', assignedRoleType: 'FOREMAN',
-                    assignedTo: [], category: 'TASK', priority: 'Medium', status: 'todo',
-                    startDate: '', dueDate: '', description: ''
+                    title: '',
+                    project: defProj?.name || '',
+                    projectId: defProj?._id || defProj?.id || '',
+                    parentTaskId: '',
+                    jobId: '',
+                    assignedRoleType: '',
+                    assignedTo: [],
+                    category: 'TASK',
+                    priority: 'Medium',
+                    status: 'todo',
+                    startDate: '',
+                    dueDate: '',
+                    description: '',
                 });
                 refreshData();
-            } else { alert('Failed to create task.'); }
-        } catch (e) { alert('Network Error.'); } finally { setLoading(false); }
+            } else {
+                Alert.alert('Error', 'Failed to create task.');
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Network error.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const getStatusColor = (status) => {
-        const s = (status || '').toLowerCase();
-        if (s.includes('todo')) return { bg: '#F1F5F9', text: '#64748B' };
-        if (s.includes('progress')) return { bg: '#EFF6FF', text: '#2563EB' };
-        if (s.includes('review')) return { bg: '#FEF3C7', text: '#D97706' };
-        if (s.includes('completed') || s.includes('done')) return { bg: '#ECFDF5', text: '#10B981' };
-        return { bg: '#F1F5F9', text: '#64748B' };
+    const DropdownField = ({ label, value, onPress, flex = 1 }) => (
+        <View style={{ flex }}>
+            <Text style={styles.label}>{label}</Text>
+            <TouchableOpacity style={styles.compactDropdown} activeOpacity={0.7} onPress={onPress}>
+                <Text style={styles.dropdownValue} numberOfLines={1}>
+                    {value || 'Select...'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={14} color="#3B82F6" />
+            </TouchableOpacity>
+        </View>
+    );
+
+    const openTaskActions = (task) => {
+        Alert.alert(task?.title || 'Task', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Add subtask',
+                onPress: () =>
+                    navigation.navigate('TaskCreate', {
+                        isChild: true,
+                        parentTaskId: task._id || task.id,
+                        projectId: task?.projectId?._id || task?.projectId,
+                    }),
+            },
+            { text: 'Delete', style: 'destructive', onPress: () => promptDeleteTask(task) },
+        ]);
     };
 
-    const renderTaskCard = ({ item }) => {
-        const statusStyle = getStatusColor(item.status);
-        const priority = (item.priority || 'Medium').toLowerCase();
-        const pColor = priority === 'high' ? '#EF4444' : (priority === 'medium' ? '#F59E0B' : '#10B981');
+    const goHierarchy = (taskId) => navigation.navigate('TaskHierarchyDetail', { taskId: String(taskId) });
+
+    const renderTaskCard = (item) => {
+        const level = item.level || 0;
+        const isDeepLevel = level >= 3;
+        const dynamicMargin = level === 0 ? 0 : level === 1 ? scale(18) : level === 2 ? scale(32) : Math.min(scale(32 + (level - 2) * 8), scale(60));
+        const statusColors = {
+            todo: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
+            pending: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
+            in_progress: { color: '#3B82F6', bg: '#EFF6FF', label: 'LIVE' },
+            review: { color: '#F59E0B', bg: '#FFFBEB', label: 'REVIEW' },
+            completed: { color: '#10B981', bg: '#ECFDF5', label: 'DONE' },
+        };
+        const st = String(item.status || 'todo').toLowerCase().replace(/[\s-]+/g, '_');
+        const sc =
+            statusColors[st] ||
+            (st.includes('progress') ? statusColors.in_progress : statusColors.todo);
+        const titleText = item.title || item.remarks || 'Untitled';
+        const taskIdForNav = item._id || item.id;
+        const progressPct = Math.min(100, Math.max(0, Number(item.progress) || 0));
 
         return (
-            <TouchableOpacity
-                style={[styles.taskCard, SHADOWS.small, { padding: moderateScale(16), borderRadius: moderateScale(20), marginBottom: verticalScale(16) }]}
-                onPress={() => navigation.navigate('TaskDetail', { task: item })}
-                activeOpacity={0.7}
-            >
-                <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.taskTitle, { fontSize: moderateScale(15) }]}>{item.title}</Text>
-                        <Text style={[styles.projectSubtitle, { fontSize: moderateScale(11), marginTop: verticalScale(2) }]}>{item.projectId?.name || item.projectName || 'General Project'}</Text>
+            <View style={[styles.taskItemWrapper, { marginLeft: dynamicMargin }]}>
+                {level > 0 ? (
+                    <View style={styles.treeConnector}>
+                        <View style={[styles.connectorVertical, { bottom: 25 }]} />
+                        <View style={styles.connectorHorizontal} />
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg, paddingHorizontal: scale(8), paddingVertical: verticalScale(4), borderRadius: moderateScale(6) }]}>
-                        <Text style={[styles.statusText, { color: statusStyle.text, fontSize: moderateScale(9) }]}>{(item.status || 'TODO').replace('_', ' ').toUpperCase()}</Text>
-                    </View>
-                </View>
-
-                <View style={[styles.cardDivider, { height: verticalScale(1), marginVertical: verticalScale(12) }]} />
-
-                <View style={styles.cardBody}>
-                    <View style={styles.infoRow}>
-                        <View style={styles.infoCol}>
-                            <Text style={[styles.infoLabel, { fontSize: moderateScale(8) }]}>ASSIGNED TO</Text>
-                            <View style={[styles.assigneeWrap, { marginTop: verticalScale(4) }]}>
-                                <View style={[styles.avatarMini, { width: scale(20), height: scale(20), borderRadius: scale(10), marginRight: scale(6) }]}>
-                                    <Text style={[styles.avatarTxt, { fontSize: moderateScale(9) }]}>
-                                        {(item.assignedTo?.[0]?.fullName || 'U')[0]}
+                ) : null}
+                <TouchableOpacity
+                    style={[
+                        styles.taskTableRow,
+                        SHADOWS.small,
+                        level > 0 && styles.subtaskCard,
+                        level > 1 && styles.deepSubtaskCard,
+                        isDeepLevel && { padding: 8 },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => goHierarchy(taskIdForNav)}
+                    onLongPress={() => openTaskActions(item)}
+                >
+                    <View style={styles.tableTopRow}>
+                        <View style={styles.tableNameCol}>
+                            <View style={[styles.indicatorLine, { backgroundColor: sc.color }]} />
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <View style={styles.badgeRow}>
+                                    <View
+                                        style={[
+                                            styles.typeBadge,
+                                            {
+                                                backgroundColor:
+                                                    level === 0 ? '#EFF6FF' : level === 1 ? '#F0FDF4' : '#FFF7ED',
+                                            },
+                                        ]}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.typeBadgeText,
+                                                {
+                                                    color: level === 0 ? '#3B82F6' : level === 1 ? '#22C55E' : '#F97316',
+                                                },
+                                            ]}
+                                        >
+                                            {level === 0 ? 'MAIN TASK' : level === 1 ? 'SUBTASK' : `LEVEL ${level}`}
+                                        </Text>
+                                    </View>
+                                    {level > 0 ? (
+                                        <View style={styles.parentTag}>
+                                            <Text style={styles.parentTagText} numberOfLines={1}>
+                                                OF:{' '}
+                                                {(
+                                                    tasks.find(
+                                                        (t) =>
+                                                            String(t._id || t.id) ===
+                                                            String(item.parentTaskId ? item.parentTaskId?._id || item.parentTaskId : '')
+                                                    )?.title || 'Parent'
+                                                ).toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    {item.hasChildren ? (
+                                        <TouchableOpacity
+                                            style={{ padding: 4 }}
+                                            onPress={() => {
+                                                const id = String(item._id || item.id);
+                                                setCollapsedNodes((prev) => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(id)) next.delete(id);
+                                                    else next.add(id);
+                                                    return next;
+                                                });
+                                            }}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name={item.isCollapsed ? 'chevron-right' : 'chevron-down'}
+                                                size={18}
+                                                color="#64748B"
+                                            />
+                                        </TouchableOpacity>
+                                    ) : null}
+                                    <Text
+                                        style={[
+                                            styles.taskTitlePm,
+                                            {
+                                                fontSize: isDeepLevel ? 12 : isCompact ? 13 : 15,
+                                                fontWeight: level === 0 ? '900' : '600',
+                                            },
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {titleText}
                                     </Text>
                                 </View>
-                                <Text style={[styles.infoVal, { fontSize: moderateScale(12) }]} numberOfLines={1}>
-                                    {item.assignedTo?.[0]?.fullName || 'Unassigned'}
+                                <Text style={styles.projectContextPm} numberOfLines={1}>
+                                    {item.projectId?.name || item.project || 'Main Project'}
                                 </Text>
+                                {level === 0 && item.hasChildren ? (
+                                    <View style={{ marginTop: 6 }}>
+                                        <View style={styles.progressTrack}>
+                                            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+                                        </View>
+                                        <Text style={styles.progressLabel}>{Math.round(progressPct)}%</Text>
+                                    </View>
+                                ) : null}
                             </View>
                         </View>
-                        <View style={styles.infoCol}>
-                            <Text style={[styles.infoLabel, { fontSize: moderateScale(8) }]}>PRIORITY</Text>
-                            <View style={[styles.priorityBadge, { backgroundColor: pColor + '20', paddingHorizontal: scale(6), paddingVertical: verticalScale(2), borderRadius: moderateScale(4), marginTop: verticalScale(4) }]}>
-                                <Text style={[styles.priorityText, { color: pColor, fontSize: moderateScale(9) }]}>{(item.priority || 'MEDIUM').toUpperCase()}</Text>
+                        <View style={styles.tableMetricCol}>
+                            <View style={[styles.miniStatusBadge, { backgroundColor: sc.bg, borderColor: sc.color + '20' }]}>
+                                <Text style={[styles.miniStatusText, { color: sc.color }]}>{sc.label}</Text>
                             </View>
                         </View>
                     </View>
-                </View>
-            </TouchableOpacity>
+
+                    <View style={styles.tableBottomRow}>
+                        <View style={[styles.assigneeColPm, { flex: 1.5 }]}>
+                            <MaterialCommunityIcons name="account-circle-outline" size={12} color="#94A3B8" />
+                            <Text style={styles.assigneeTextPm} numberOfLines={1} adjustsFontSizeToFit>
+                                {Array.isArray(item.assignedTo) && item.assignedTo.length > 0
+                                    ? item.assignedTo[0].fullName
+                                    : item.assignedTo?.fullName || 'Unassigned'}
+                            </Text>
+                        </View>
+                        <View style={[styles.dateColPm, { flex: 1 }]}>
+                            <MaterialCommunityIcons name="calendar-clock" size={12} color="#94A3B8" />
+                            <Text style={styles.tableDateTextPm} numberOfLines={1}>
+                                {item.dueDate ? new Date(item.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Date'}
+                            </Text>
+                        </View>
+                        <View style={styles.actionsColPm}>
+                            <TouchableOpacity onPress={() => goHierarchy(taskIdForNav)}>
+                                <MaterialCommunityIcons name="pencil" size={isDeepLevel ? 12 : 14} color="#64748B" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => promptDeleteTask(item)}>
+                                <MaterialCommunityIcons name="trash-can-outline" size={isDeepLevel ? 12 : 14} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </View>
         );
     };
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
-            <WorkerHeader title="Task" showBranding={true} />
+            <WorkerHeader title="Tasks" showBranding={true} />
 
             <ScrollView
-                stickyHeaderIndices={[2]}
+                stickyHeaderIndices={[1]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             >
-                <View style={[styles.headerTitleSection, { padding: scale(20) }]}>
+                <View style={[styles.headerTitleSection, { paddingHorizontal: scale(20), paddingTop: scale(12), paddingBottom: scale(8) }]}>
                     <View style={styles.titleRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.screenTitle, { fontSize: moderateScale(24) }]}>Task Center</Text>
-                            <View style={[styles.breadcrumbRow, { marginTop: verticalScale(4) }]}>
-                                <MaterialCommunityIcons name="layers-triple" size={moderateScale(12)} color="#2563EB" />
-                                <Text style={[styles.breadcrumbText, { fontSize: moderateScale(10), marginLeft: scale(4) }]}>FOREMAN • OPS</Text>
-                            </View>
+                            <Text style={[styles.screenTitle, { fontSize: moderateScale(22) }]}>Task Command Center</Text>
+                            <Text style={[styles.commandSubtitleForeman, { marginTop: verticalScale(4) }]}>TASK TRACKING & ASSIGNMENT</Text>
                         </View>
-                        <TouchableOpacity style={[styles.newTaskBtn, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12) }]} onPress={() => setShowModal(true)} activeOpacity={0.8}>
+                        <TouchableOpacity style={[styles.newTaskBtn, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12) }]} onPress={openCreateModal} activeOpacity={0.8}>
                             <MaterialCommunityIcons name="plus" size={moderateScale(20)} color="#fff" />
                             <Text style={[styles.newTaskBtnText, { fontSize: moderateScale(12), marginLeft: scale(6) }]}>NEW TASK</Text>
                         </TouchableOpacity>
@@ -217,11 +641,9 @@ const ForemanTasksScreen = ({ navigation }) => {
                 </View>
 
                 <Animated.View style={[styles.listContainer, { opacity: fadeAnim, paddingHorizontal: isTablet ? '10%' : scale(20) }]}>
-                    {(filteredTasks || []).length > 0 ? (
-                        filteredTasks.map((task, i) => (
-                            <View key={`task-${task._id || task.id || i}-${i}`}>
-                                {renderTaskCard({ item: task })}
-                            </View>
+                    {taskRows.length > 0 ? (
+                        taskRows.map((item, i) => (
+                            <View key={`task-${item._id || item.id || i}-${i}`}>{renderTaskCard(item)}</View>
                         ))
                     ) : (
                         <View style={[styles.emptyView, { padding: scale(40) }]}>
@@ -234,242 +656,286 @@ const ForemanTasksScreen = ({ navigation }) => {
                 </Animated.View>
             </ScrollView>
 
-            {/* Create Task Modal - Premium Redesign */}
             <Modal visible={showModal} animationType="slide" transparent statusBarTranslucent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContainer, { height: '92%', borderTopLeftRadius: SIZES.radiusLg * 2, borderTopRightRadius: SIZES.radiusLg * 2, width: isTablet ? 600 : '100%', maxWidth: '100%', alignSelf: 'center' }]}>
-                        
-                        {/* Pull Indicator */}
-                        <View style={styles.pullIndicator} />
-
-                        <View style={[styles.modalHeader, { paddingHorizontal: scale(24), paddingTop: verticalScale(16), paddingBottom: verticalScale(8) }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.modalHeaderTitle, { fontSize: moderateScale(24) }]}>New Task</Text>
-                                <Text style={[styles.modalHeaderSub, { fontSize: moderateScale(13) }]}>Assign duties to your team</Text>
-                            </View>
-                            <TouchableOpacity 
-                                onPress={() => setShowModal(false)} 
-                                style={[styles.closeBtn, { width: scale(32), height: scale(32), borderRadius: 16 }]}
-                            >
-                                <MaterialCommunityIcons name="close" size={moderateScale(18)} color={COLORS.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView 
-                            style={[styles.modalForm, { paddingHorizontal: scale(24) }]} 
-                            showsVerticalScrollIndicator={false} 
-                            keyboardShouldPersistTaps="handled"
-                            contentContainerStyle={{ paddingBottom: verticalScale(100) }}
-                        >
-                            {/* Section: Basic Information */}
-                            <View style={styles.formSection}>
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11) }]}>BASIC INFORMATION</Text>
-                                
-                                <View style={styles.inputWrapper}>
-                                    <View style={styles.inputIcon}>
-                                        <MaterialCommunityIcons name="format-title" size={18} color={COLORS.primaryAccent} />
-                                    </View>
-                                    <TextInput
-                                        style={[styles.premiumInput, { fontSize: moderateScale(14) }]}
-                                        placeholder="Task Title"
-                                        value={form.title}
-                                        onChangeText={(val) => setForm({ ...form, title: val })}
-                                        placeholderTextColor={COLORS.textMuted}
-                                    />
-                                </View>
-
-                                <View style={[styles.inputWrapper, { height: verticalScale(100), alignItems: 'flex-start', paddingTop: 12 }]}>
-                                    <View style={styles.inputIcon}>
-                                        <MaterialCommunityIcons name="text-subject" size={18} color={COLORS.primaryAccent} />
-                                    </View>
-                                    <TextInput
-                                        style={[styles.premiumInput, { fontSize: moderateScale(14), textAlignVertical: 'top' }]}
-                                        placeholder="Description (Optional)"
-                                        multiline
-                                        numberOfLines={4}
-                                        value={form.description}
-                                        onChangeText={(val) => setForm({ ...form, description: val })}
-                                        placeholderTextColor={COLORS.textMuted}
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Section: Project & Job */}
-                            <View style={styles.formSection}>
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11) }]}>PROJECT & JOB</Text>
-                                <View style={styles.rowInputs}>
-                                    <TouchableOpacity
-                                        style={[styles.cardSelector, { flex: 1, marginRight: scale(8) }]}
-                                        onPress={() => openSelector('Select Project', 'projectId', (projects || []).map(p => ({ label: p.name, value: p._id || p.id })))}
-                                    >
-                                        <MaterialCommunityIcons name="office-building" size={20} color={form.projectId ? COLORS.primaryAccent : COLORS.textMuted} />
-                                        <Text style={[styles.cardSelectorTxt, !form.projectId && { color: COLORS.textMuted }, { fontSize: moderateScale(13) }]} numberOfLines={1}>
-                                            {projects?.find(p => (p?._id || p?.id) === form.projectId)?.name || 'Project'}
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={[styles.cardSelector, { flex: 1, marginLeft: scale(8) }]}
-                                        onPress={() => openSelector('Select Job', 'jobId', (jobs || []).map(j => ({ label: j.name || j.title, value: j._id || j.id })))}
-                                    >
-                                        <MaterialCommunityIcons name="hammer-wrench" size={20} color={form.jobId ? COLORS.primaryAccent : COLORS.textMuted} />
-                                        <Text style={[styles.cardSelectorTxt, !form.jobId && { color: COLORS.textMuted }, { fontSize: moderateScale(13) }]} numberOfLines={1}>
-                                            {jobs?.find(j => (j?._id || j?.id) === form.jobId)?.name || 'Job'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            {/* Section: Assignment & Priority */}
-                            <View style={styles.formSection}>
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11) }]}>PRIORITY LEVEL</Text>
-                                <View style={styles.priorityContainer}>
-                                    {['low', 'medium', 'high'].map((p) => {
-                                        const isActive = form.priority.toLowerCase() === p;
-                                        const pColor = p === 'high' ? COLORS.badgeRed : (p === 'medium' ? COLORS.badgeOrange : COLORS.badgeGreen);
-                                        return (
-                                            <TouchableOpacity 
-                                                key={p}
-                                                style={[
-                                                    styles.priorityPill, 
-                                                    isActive && { backgroundColor: pColor, borderColor: pColor }
-                                                ]}
-                                                onPress={() => setForm({ ...form, priority: p.charAt(0).toUpperCase() + p.slice(1) })}
-                                            >
-                                                <Text style={[styles.priorityPillTxt, isActive && { color: '#fff' }, { fontSize: moderateScale(12) }]}>
-                                                    {p.toUpperCase()}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11), marginTop: verticalScale(16) }]}>ASSIGN TO ROLE</Text>
-                                <View style={styles.roleSelectionRow}>
-                                    {[
-                                        { label: 'WORKER', icon: 'account-hard-hat' },
-                                        { label: 'FOREMAN', icon: 'account-tie' },
-                                        { label: 'PM', icon: 'account-star' }
-                                    ].map((role) => {
-                                        const isActive = form.assignedRoleType === role.label;
-                                        return (
-                                            <TouchableOpacity 
-                                                key={role.label}
-                                                style={[styles.roleBox, isActive && styles.roleBoxActive]}
-                                                onPress={() => setForm({ ...form, assignedRoleType: role.label })}
-                                            >
-                                                <MaterialCommunityIcons 
-                                                    name={role.icon} 
-                                                    size={22} 
-                                                    color={isActive ? COLORS.primaryAccent : COLORS.textSecondary} 
-                                                />
-                                                <Text style={[styles.roleBoxTxt, isActive && styles.roleBoxTxtActive, { fontSize: moderateScale(10) }]}>
-                                                    {role.label}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11), marginTop: verticalScale(16) }]}>ASSIGN TO USER</Text>
-                                <TouchableOpacity
-                                    style={styles.cardSelector}
-                                    onPress={() => openSelector('Select Team Member', 'assignedTo', (teamMembers || []).map(u => ({ 
-                                        label: u.fullName || u.name || 'Unknown User', 
-                                        value: u._id || u.id 
-                                    })))}
-                                >
-                                    <MaterialCommunityIcons name="account-plus" size={20} color={form.assignedTo.length > 0 ? COLORS.primaryAccent : COLORS.textMuted} />
-                                    <Text style={[styles.cardSelectorTxt, form.assignedTo.length === 0 && { color: COLORS.textMuted }, { fontSize: moderateScale(13) }]} numberOfLines={1}>
-                                        {teamMembers?.find(u => (u._id || u.id) === form.assignedTo[0])?.fullName || 'Select Member'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Section: Timeline */}
-                            <View style={styles.formSection}>
-                                <Text style={[styles.sectionLabel, { fontSize: moderateScale(11) }]}>TIMELINE</Text>
-                                <View style={styles.rowInputs}>
-                                    <TouchableOpacity style={styles.dateCard} onPress={() => openDatePicker('startDate')}>
-                                        <View style={styles.dateIconWrap}>
-                                            <MaterialCommunityIcons name="calendar-play" size={18} color={COLORS.primaryAccent} />
-                                        </View>
-                                        <View>
-                                            <Text style={styles.dateLabelTxt}>Start Date</Text>
-                                            <Text style={styles.dateValTxt}>{form.startDate || 'Set Date'}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.dateCard} onPress={() => openDatePicker('dueDate')}>
-                                        <View style={[styles.dateIconWrap, { backgroundColor: COLORS.dangerLight }]}>
-                                            <MaterialCommunityIcons name="calendar-check" size={18} color={COLORS.danger} />
-                                        </View>
-                                        <View>
-                                            <Text style={styles.dateLabelTxt}>Due Date</Text>
-                                            <Text style={styles.dateValTxt}>{form.dueDate || 'Set Date'}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                        </ScrollView>
-
-                        <View style={[styles.premiumFooter, { paddingHorizontal: scale(24), paddingBottom: verticalScale(30) }]}>
-                            <TouchableOpacity 
-                                style={[styles.createBtnPremium, SHADOWS.medium]} 
-                                onPress={handleCreateTask}
-                                activeOpacity={0.8}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <>
-                                        <MaterialCommunityIcons name="rocket-launch" size={20} color="#fff" style={{ marginRight: 8 }} />
-                                        <Text style={styles.createBtnTxt}>CREATE TASK</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Selection Sub-Modal */}
-            <Modal visible={selectConfig.visible} transparent animationType="fade">
-                <TouchableOpacity style={styles.selectorOverlay} activeOpacity={1} onPress={() => setSelectConfig({ ...selectConfig, visible: false })}>
-                    <View style={[styles.selectorContent, { borderRadius: moderateScale(20), padding: scale(20), maxWidth: 400, alignSelf: 'center', width: '80%' }]}>
-                        <Text style={[styles.selectorTitle, { fontSize: moderateScale(16), marginBottom: verticalScale(12) }]}>{selectConfig.title}</Text>
-                        <ScrollView style={{ maxHeight: verticalScale(300) }}>
-                            {selectConfig.options.map((opt, i) => (
-                                <TouchableOpacity key={i} style={[styles.selectorItem, { paddingVertical: verticalScale(14) }]} onPress={() => handleSelectAction(opt.value)}>
-                                    <Text style={[styles.selectorItemText, { fontSize: moderateScale(14) }, (form[selectConfig.field] === opt.value) && { color: '#2563EB', fontWeight: '900' }]}>{opt.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
-            {loading && <View style={styles.loaderOverlay}><ActivityIndicator color="#2563EB" size="large" /></View>}
-
-            {/* Calendar Modal Picker */}
-            <Modal visible={showDatePicker} transparent animationType="fade">
-                <View style={styles.selectorOverlay}>
-                    <View style={[styles.selectorContent, { padding: scale(10), borderRadius: moderateScale(20) }]}>
-                        <View style={[styles.selectorHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(10) }]}>
-                            <Text style={[styles.selectorTitle, { fontSize: moderateScale(16) }]}>Select Date</Text>
-                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <View style={[styles.sheetContent, isTablet ? { width: 600, maxWidth: '100%', alignSelf: 'center' } : null]}>
+                        <View style={styles.sheetIndicator} />
+                        <View style={styles.sheetHeader}>
+                            <Text style={styles.sheetTitle}>Create New Task</Text>
+                            <TouchableOpacity onPress={closeCreateModal} style={styles.sheetCloseBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                                 <MaterialCommunityIcons name="close" size={moderateScale(22)} color="#64748B" />
                             </TouchableOpacity>
                         </View>
-                        <Calendar
-                            onDayPress={onDateSelect}
-                            markedDates={{ [form[dateTarget]]: { selected: true, selectedColor: '#2563EB' } }}
-                            theme={{ selectedDayBackgroundColor: '#2563EB', todayTextColor: '#2563EB', arrowColor: '#2563EB' }}
-                        />
+
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ paddingBottom: verticalScale(28), paddingHorizontal: scale(4) }}
+                        >
+                            <CustomInput
+                                label="Task Title"
+                                placeholder="e.g. Install Safety Nets Level 3"
+                                value={form.title}
+                                onChangeText={(t) => setForm({ ...form, title: t })}
+                                icon="target"
+                            />
+
+                            <View style={styles.formGrid}>
+                                <DropdownField
+                                    label="Project"
+                                    value={form.project}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Project',
+                                            (projects || []).map((p) => ({ label: p.name, value: p._id || p.id })),
+                                            (val) => {
+                                                const p = projects.find((proj) => (proj._id || proj.id) === val);
+                                                if (p) {
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        project: p.name,
+                                                        projectId: val,
+                                                        parentTaskId: '',
+                                                        jobId: '',
+                                                    }));
+                                                }
+                                            }
+                                        )
+                                    }
+                                />
+                                <DropdownField
+                                    label="Job (optional)"
+                                    value={
+                                        form.jobId
+                                            ? jobsForProject.find((j) => (j._id || j.id) === form.jobId)?.name ||
+                                              jobsForProject.find((j) => (j._id || j.id) === form.jobId)?.title ||
+                                              'Selected'
+                                            : 'None'
+                                    }
+                                    onPress={() => {
+                                        if (!form.projectId) {
+                                            Alert.alert('Select project', 'Choose a project first.');
+                                            return;
+                                        }
+                                        openDropdown(
+                                            'Job (optional)',
+                                            [
+                                                { label: 'None', value: '' },
+                                                ...jobsForProject.map((j) => ({
+                                                    label: j.name || j.title || 'Job',
+                                                    value: j._id || j.id,
+                                                })),
+                                            ],
+                                            (val) => setForm((f) => ({ ...f, jobId: val }))
+                                        );
+                                    }}
+                                />
+                            </View>
+
+                            <DropdownField
+                                label="Parent task (optional)"
+                                value={
+                                    form.parentTaskId
+                                        ? tasks.find((t) => String(t._id || t.id) === String(form.parentTaskId))?.title ||
+                                          'Selected'
+                                        : 'None (top level)'
+                                }
+                                onPress={() =>
+                                    openDropdown(
+                                        'Parent task',
+                                        [
+                                            { label: 'None (top level)', value: 'NONE' },
+                                            ...(tasks || [])
+                                                .filter((t) => String(t.projectId?._id || t.projectId) === String(form.projectId))
+                                                .map((t) => ({ label: t.title, value: t._id || t.id })),
+                                        ],
+                                        (val) => {
+                                            if (val === 'NONE') setForm((f) => ({ ...f, parentTaskId: '' }));
+                                            else setForm((f) => ({ ...f, parentTaskId: val }));
+                                        }
+                                    )
+                                }
+                            />
+
+                            <View style={styles.formGrid}>
+                                <DropdownField
+                                    label="Assign role"
+                                    value={form.assignedRoleType ? ROLE_LABELS[form.assignedRoleType] || form.assignedRoleType : 'Any role'}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Assign role',
+                                            [
+                                                { label: 'Any role', value: '' },
+                                                { label: 'Worker', value: 'WORKER' },
+                                                { label: 'Foreman', value: 'FOREMAN' },
+                                                { label: 'Project Manager', value: 'PM' },
+                                                { label: 'Subcontractor', value: 'SUBCONTRACTOR' },
+                                            ],
+                                            (val) => setForm((f) => ({ ...f, assignedRoleType: val, assignedTo: [] }))
+                                        )
+                                    }
+                                />
+                                <DropdownField
+                                    label="Assign to"
+                                    value={
+                                        form.assignedTo.length > 0
+                                            ? teamMembers.find((m) => (m._id || m.id) === form.assignedTo[0])?.fullName ||
+                                              'Selected'
+                                            : 'Unassigned'
+                                    }
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Assign to',
+                                            filteredTeam.map((m) => ({
+                                                label: m.fullName || m.name || 'User',
+                                                value: m._id || m.id,
+                                            })),
+                                            (val) => setForm((f) => ({ ...f, assignedTo: [val] }))
+                                        )
+                                    }
+                                />
+                            </View>
+
+                            <View style={styles.formGrid}>
+                                <DropdownField
+                                    label="Category"
+                                    value={form.category}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Category',
+                                            [
+                                                { label: 'TASK', value: 'TASK' },
+                                                { label: 'TODO', value: 'TODO' },
+                                            ],
+                                            (val) => setForm((f) => ({ ...f, category: val }))
+                                        )
+                                    }
+                                />
+                                <DropdownField
+                                    label="Priority"
+                                    value={form.priority}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Priority',
+                                            [
+                                                { label: 'Low', value: 'Low' },
+                                                { label: 'Medium', value: 'Medium' },
+                                                { label: 'High', value: 'High' },
+                                            ],
+                                            (val) => setForm((f) => ({ ...f, priority: val }))
+                                        )
+                                    }
+                                />
+                            </View>
+
+                            <DropdownField
+                                label="Status"
+                                value={(form.status || 'todo').replace('_', ' ').toUpperCase()}
+                                onPress={() =>
+                                    openDropdown(
+                                        'Status',
+                                        [
+                                            { label: 'TO DO', value: 'todo' },
+                                            { label: 'IN PROGRESS', value: 'in_progress' },
+                                            { label: 'REVIEW', value: 'review' },
+                                            { label: 'COMPLETED', value: 'completed' },
+                                        ],
+                                        (val) => setForm((f) => ({ ...f, status: val }))
+                                    )
+                                }
+                            />
+
+                            <View style={styles.formGrid}>
+                                <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.7} onPress={() => openDatePicker('startDate')}>
+                                    <CustomInput
+                                        label="Start date"
+                                        placeholder="YYYY-MM-DD"
+                                        value={form.startDate}
+                                        editable={false}
+                                        icon="calendar-start"
+                                    />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.7} onPress={() => openDatePicker('dueDate')}>
+                                    <CustomInput
+                                        label="Due date"
+                                        placeholder="YYYY-MM-DD"
+                                        value={form.dueDate}
+                                        editable={false}
+                                        icon="calendar-check"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {Platform.OS === 'ios' && datePickerMode ? (
+                                <DateTimePicker
+                                    value={parsePickerDate(form[datePickerMode])}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={(event, selectedDate) => {
+                                        if (event.type === 'set' && selectedDate) {
+                                            const mode = datePickerMode;
+                                            setForm((prev) => ({ ...prev, [mode]: formatDate(selectedDate) }));
+                                        }
+                                    }}
+                                />
+                            ) : null}
+
+                            <Text style={styles.label}>Description</Text>
+                            <TextInput
+                                style={styles.descriptionInput}
+                                placeholder="Task description or scope..."
+                                placeholderTextColor="#94A3B8"
+                                multiline
+                                value={form.description}
+                                onChangeText={(t) => setForm({ ...form, description: t })}
+                            />
+
+                            <View style={styles.footerActions}>
+                                <TouchableOpacity onPress={closeCreateModal} style={styles.footerCancel}>
+                                    <Text style={styles.footerCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.footerSaveTpl}
+                                    onPress={() =>
+                                        Alert.alert('Save template', 'Templates are managed from the web app.')
+                                    }
+                                    activeOpacity={0.85}
+                                >
+                                    <MaterialCommunityIcons name="content-save-outline" size={moderateScale(18)} color="#2563EB" />
+                                    <Text style={styles.footerSaveTplText}>Save template</Text>
+                                </TouchableOpacity>
+                                <View style={styles.footerCreateWrap}>
+                                    <CustomButton title="Create task" onPress={handleCreateTask} loading={loading} />
+                                </View>
+                            </View>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
+
+            <Modal visible={selVisible} transparent animationType="fade">
+                <View style={styles.selOverlay}>
+                    <View style={[styles.selBox, { maxWidth: isTablet ? 420 : '88%' }]}>
+                        <Text style={styles.selTitle}>{selTitle}</Text>
+                        <ScrollView style={{ maxHeight: verticalScale(300) }} keyboardShouldPersistTaps="handled">
+                            {selOptions.map((opt, i) => (
+                                <TouchableOpacity key={i} style={styles.selItem} onPress={() => selOnSelect(opt.value)}>
+                                    <Text style={styles.selLabel}>{opt.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity style={styles.selClose} onPress={() => setSelVisible(false)}>
+                            <Text style={styles.selCloseText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {loading && !showModal ? (
+                <View style={styles.loaderOverlay}>
+                    <ActivityIndicator color="#2563EB" size="large" />
+                </View>
+            ) : null}
         </View>
     );
 };
@@ -491,126 +957,167 @@ const styles = StyleSheet.create({
     tabActive: { backgroundColor: '#fff', elevation: 2 },
     tabText: { fontWeight: '800', color: '#94A3B8' },
     tabTextActive: { color: '#1E293B' },
-    listContainer: { },
-    taskCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-    taskTitle: { fontWeight: '800', color: '#0F172A' },
-    projectSubtitle: { color: '#64748B' },
-    statusBadge: { },
-    statusText: { fontWeight: '900' },
-    cardDivider: { backgroundColor: '#F1F5F9' },
-    cardBody: { },
-    infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    infoCol: { flex: 1 },
-    infoLabel: { fontWeight: '900', color: '#94A3B8' },
-    infoVal: { fontWeight: '700', color: '#1E293B' },
-    assigneeWrap: { flexDirection: 'row', alignItems: 'center' },
-    avatarMini: { backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center' },
-    avatarTxt: { fontWeight: '900', color: '#4338CA' },
-    priorityBadge: { alignSelf: 'flex-start' },
-    priorityText: { fontWeight: '900' },
+    listContainer: {},
+    commandSubtitleForeman: { fontSize: moderateScale(9), fontWeight: '800', color: '#64748B', letterSpacing: 1 },
+
+    taskItemWrapper: { position: 'relative', marginBottom: verticalScale(10) },
+    treeConnector: {
+        position: 'absolute',
+        left: scale(-14),
+        top: 0,
+        bottom: 0,
+        width: scale(18),
+        zIndex: 1,
+    },
+    connectorVertical: {
+        position: 'absolute',
+        left: scale(9),
+        top: verticalScale(-8),
+        bottom: verticalScale(22),
+        width: 1.5,
+        backgroundColor: '#CBD5E1',
+    },
+    connectorHorizontal: {
+        position: 'absolute',
+        left: scale(9),
+        top: verticalScale(22),
+        width: scale(11),
+        height: 1.5,
+        backgroundColor: '#CBD5E1',
+    },
+    taskTableRow: {
+        backgroundColor: '#fff',
+        borderRadius: moderateScale(16),
+        padding: moderateScale(12),
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    subtaskCard: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', shadowOpacity: 0.05 },
+    deepSubtaskCard: { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' },
+    tableTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: verticalScale(10) },
+    tableNameCol: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: scale(8), minWidth: 0 },
+    indicatorLine: { width: scale(3), minHeight: moderateScale(22), borderRadius: 2 },
+    badgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: scale(6), marginBottom: 2 },
+    typeBadge: { paddingHorizontal: scale(6), paddingVertical: verticalScale(2), borderRadius: 4 },
+    typeBadgeText: { fontSize: moderateScale(7), fontWeight: '900' },
+    parentTag: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: scale(6),
+        paddingVertical: verticalScale(2),
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        maxWidth: scale(120),
+    },
+    parentTagText: { fontSize: moderateScale(7), fontWeight: '900', color: '#64748B' },
+    taskTitlePm: { color: '#0F172A' },
+    projectContextPm: { fontSize: moderateScale(10), fontWeight: '700', color: '#64748B', marginTop: verticalScale(2) },
+    progressTrack: {
+        height: verticalScale(4),
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    progressFill: { height: '100%', backgroundColor: '#3B82F6', borderRadius: 2 },
+    progressLabel: { fontSize: moderateScale(9), fontWeight: '800', color: '#94A3B8', marginTop: verticalScale(3) },
+    tableMetricCol: { alignItems: 'flex-end', gap: 4 },
+    miniStatusBadge: { paddingHorizontal: scale(8), paddingVertical: verticalScale(2), borderRadius: 6, borderWidth: 1 },
+    miniStatusText: { fontSize: moderateScale(8), fontWeight: '900' },
+    tableBottomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: '#F8FAFC',
+        paddingTop: verticalScale(8),
+    },
+    assigneeColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(4) },
+    assigneeTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: '#64748B', flex: 1 },
+    dateColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(4) },
+    tableDateTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: '#64748B' },
+    actionsColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
     emptyView: { alignItems: 'center' },
     emptyTitle: { fontWeight: '800', color: '#1E293B' },
     emptySub: { color: '#94A3B8', textAlign: 'center' },
     loaderOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
-    // Improved UI Enhancement Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' },
-    pullIndicator: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginTop: 12 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalHeaderTitle: { fontWeight: '900', color: COLORS.textPrimary },
-    modalHeaderSub: { color: COLORS.textSecondary, fontWeight: '600', marginTop: 2 },
-    closeBtn: { backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' },
-    modalForm: { flex: 1 },
-    formSection: { marginBottom: 20 },
-    sectionLabel: { color: COLORS.textSecondary, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
-    
-    inputWrapper: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: COLORS.primaryLight, 
-        borderRadius: 12, 
-        paddingHorizontal: 16,
-        marginBottom: 10,
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', justifyContent: 'flex-end' },
+    sheetContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingHorizontal: scale(18),
+        paddingTop: verticalScale(10),
+        maxHeight: '92%',
+        width: '100%',
+    },
+    sheetIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: verticalScale(12) },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: verticalScale(8) },
+    sheetTitle: { fontSize: moderateScale(20), fontWeight: '900', color: '#0F172A', flex: 1 },
+    sheetCloseBtn: { padding: scale(6), borderRadius: 12, backgroundColor: '#F1F5F9' },
+
+    label: { fontSize: moderateScale(9), fontWeight: '900', color: '#64748B', textTransform: 'uppercase', marginBottom: verticalScale(6), marginTop: verticalScale(8), letterSpacing: 1 },
+    compactDropdown: {
+        height: verticalScale(42),
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#3B82F633',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: scale(12),
+        marginBottom: verticalScale(6),
+    },
+    dropdownValue: { fontSize: moderateScale(13), fontWeight: '800', color: '#1E293B', flex: 1, marginRight: scale(6) },
+    formGrid: { flexDirection: 'row', gap: scale(12), alignItems: 'flex-start' },
+    descriptionInput: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        padding: scale(12),
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        height: 52
+        fontSize: moderateScale(14),
+        fontWeight: '600',
+        color: '#1E293B',
+        textAlignVertical: 'top',
+        minHeight: verticalScale(88),
+        marginBottom: verticalScale(12),
     },
-    inputIcon: { marginRight: 12 },
-    premiumInput: { flex: 1, color: COLORS.textPrimary, fontWeight: '600' },
-    
-    rowInputs: { flexDirection: 'row', justifyContent: 'space-between' },
-    cardSelector: { 
-        backgroundColor: '#fff', 
-        borderWidth: 1, 
-        borderColor: '#E2E8F0', 
-        borderRadius: 12, 
-        paddingHorizontal: 10,
-        paddingVertical: 12, 
-        flexDirection: 'row', 
-        alignItems: 'center',
-        height: 48
-    },
-    cardSelectorTxt: { marginLeft: 6, fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
-    
-    priorityContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-    priorityPill: { 
-        flex: 1, 
-        marginHorizontal: 3, 
-        height: 40, 
-        borderRadius: 20, 
-        borderWidth: 1, 
-        borderColor: '#E2E8F0', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        backgroundColor: '#fff'
-    },
-    priorityPillTxt: { fontWeight: '800', color: COLORS.textSecondary },
-    
-    roleSelectionRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    roleBox: { 
-        flex: 1, 
-        marginHorizontal: 3, 
-        paddingVertical: 12, 
-        borderRadius: 12, 
-        borderWidth: 1, 
-        borderColor: '#E2E8F0', 
-        alignItems: 'center',
-        backgroundColor: '#fff'
-    },
-    roleBoxActive: { borderColor: COLORS.primaryAccent, backgroundColor: COLORS.primaryLight },
-    roleBoxTxt: { fontWeight: '800', color: COLORS.textSecondary, marginTop: 4 },
-    roleBoxTxtActive: { color: COLORS.primaryAccent },
-    
-    dateCard: { 
-        flex: 1, 
-        marginHorizontal: 3, 
-        padding: 10, 
-        borderRadius: 12, 
-        backgroundColor: COLORS.primaryLight, 
-        flexDirection: 'row', 
-        alignItems: 'center' 
-    },
-    dateIconWrap: { width: 30, height: 30, borderRadius: 8, backgroundColor: COLORS.infoLight, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-    dateLabelTxt: { fontSize: 8, fontWeight: '800', color: COLORS.textSecondary },
-    dateValTxt: { fontSize: 12, fontWeight: '800', color: COLORS.textPrimary },
-    
-    premiumFooter: { paddingVertical: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-    createBtnPremium: { 
-        backgroundColor: COLORS.primaryAccent, 
-        height: 56, 
-        borderRadius: 16, 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
-    },
-    createBtnTxt: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
 
-    selectorOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    selectorContent: { backgroundColor: '#fff' },
-    selectorTitle: { fontWeight: '800', color: '#1E293B', textAlign: 'center' },
-    selectorItem: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selectorItemText: { color: '#334155', textAlign: 'center' }
+    footerActions: {
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        gap: scale(8),
+        marginTop: verticalScale(12),
+        flexWrap: 'wrap',
+    },
+    footerCancel: { justifyContent: 'center', paddingVertical: verticalScale(12), paddingHorizontal: scale(4) },
+    footerCancelText: { fontSize: moderateScale(12), fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
+    footerSaveTpl: {
+        flex: 1,
+        minWidth: scale(100),
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: scale(4),
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+        paddingVertical: verticalScale(10),
+        paddingHorizontal: scale(6),
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    footerSaveTplText: { fontSize: moderateScale(10), fontWeight: '800', color: '#2563EB' },
+    footerCreateWrap: { flex: 1.25, minWidth: scale(120) },
+
+    selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: scale(20) },
+    selBox: { width: '88%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 24, padding: scale(20), elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
+    selTitle: { fontSize: moderateScale(15), fontWeight: '900', color: '#0F172A', marginBottom: verticalScale(14), textAlign: 'center', textTransform: 'uppercase' },
+    selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: verticalScale(14), borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    selLabel: { fontSize: moderateScale(14), fontWeight: '700', color: '#334155', flex: 1 },
+    selClose: { marginTop: verticalScale(14), paddingVertical: verticalScale(12), alignItems: 'center' },
+    selCloseText: { fontSize: moderateScale(12), fontWeight: '900', color: '#64748B', textTransform: 'uppercase' },
 });
 
 

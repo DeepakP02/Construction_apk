@@ -8,8 +8,15 @@ import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 import { isTodoVisibleToUser } from '../../utils/todoVisibility';
 
+const sameUserId = (a, b) => String(a ?? '') === String(b ?? '');
+
+const isTaskDone = (t) => {
+    const s = (t?.status || '').toLowerCase();
+    return s === 'completed' || s === 'done' || s === 'cancelled';
+};
+
 const ForemanDashboard = ({ navigation }) => {
-    const { user, tasks, metrics, refreshData, loading, todos, resolveUser, selectedProject, toggleTodo, deleteTodo, addTodo } = useApp();
+    const { user, tasks, refreshData, loading, todos, resolveUser, selectedProject, toggleTodo, deleteTodo, addTodo } = useApp();
     const { width, height } = useWindowDimensions();
     const [refreshing, setRefreshing] = useState(false);
 
@@ -25,21 +32,30 @@ const ForemanDashboard = ({ navigation }) => {
         setRefreshing(false);
     };
 
+    // GET /tasks for FOREMAN already returns job/crew tasks (assignedTo workers), assignedForeman job tasks, etc.
+    // Do not require assignedTo === foreman only — that hid the same "assigned work" the web shows for the site.
     const pendingTasks = (tasks || []).filter(t => {
-        if (t.status === 'completed') return false;
-        
-        // Filter by selected project
-        if (selectedProject && (t.projectId?._id || t.projectId) !== (selectedProject._id || selectedProject.id)) return false;
+        if (isTaskDone(t)) return false;
 
-        const assigned = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
-        const isAssignedToMe = assigned.some(a => {
+        if (selectedProject) {
+            const taskPid = t.projectId?._id || t.projectId;
+            const selPid = selectedProject._id || selectedProject.id;
+            if (!sameUserId(taskPid, selPid)) return false;
+        }
+
+        if (user?.role === 'FOREMAN') {
+            return true;
+        }
+
+        const myId = user?._id || user?.id;
+        const assigned = Array.isArray(t.assignedTo) ? t.assignedTo : t.assignedTo != null ? [t.assignedTo] : [];
+        const isAssignedToMe = assigned.some((a) => {
             const aId = typeof a === 'object' ? (a._id || a.id) : a;
-            return aId === user?._id;
+            return sameUserId(aId, myId);
         });
-
-        // For Foreman, also show tasks on their projects even if not directly assigned?
-        // Actually, let's stick to assigned tasks for clarity on the dashboard, or show all in project.
-        return isAssignedToMe;
+        const assignedForeman = t.assignedForeman?._id || t.assignedForeman;
+        const isForemanOnJobTask = myId && sameUserId(assignedForeman, myId);
+        return isAssignedToMe || isForemanOnJobTask;
     });
 
     const myTodos = (todos || []).filter(t => isTodoVisibleToUser(t, user));
@@ -165,24 +181,6 @@ const ForemanDashboard = ({ navigation }) => {
                     )}
                 </View>
 
-                <Text style={[styles.sectionTitle, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>SITE ACTIVITY</Text>
-                <View style={[styles.activityCard, { borderRadius: moderateScale(20), padding: scale(4), marginBottom: verticalScale(20) }]}>
-                    <View style={[styles.activityRow, { padding: moderateScale(12), gap: scale(10) }]}>
-                        <MaterialCommunityIcons name="calendar-multiselect" size={moderateScale(20)} color="#64748B" />
-                        <Text style={[styles.activityText, { fontSize: moderateScale(13) }]}>Daily Site Log: {metrics?.metrics?.logsSubmittedToday > 0 ? 'Submitted' : 'Pending'}</Text>
-                        <MaterialCommunityIcons 
-                            name={metrics?.metrics?.logsSubmittedToday > 0 ? "check-circle" : "alert-circle-outline"} 
-                            size={moderateScale(18)} 
-                            color={metrics?.metrics?.logsSubmittedToday > 0 ? "#10B981" : "#F59E0B"} 
-                        />
-                    </View>
-                    <View style={[styles.activityRow, { padding: moderateScale(12), gap: scale(10) }]}>
-                        <MaterialCommunityIcons name="camera-outline" size={moderateScale(20)} color="#64748B" />
-                        <Text style={[styles.activityText, { fontSize: moderateScale(13) }]}>Photos Uploaded Today: {metrics?.metrics?.photosUploadedToday || 0}</Text>
-                        <MaterialCommunityIcons name="arrow-right" size={moderateScale(18)} color="#CBD5E1" />
-                    </View>
-                </View>
-                
                 <View style={{ height: verticalScale(40) }} />
             </ScrollView>
         </View>
@@ -225,9 +223,6 @@ const styles = StyleSheet.create({
     emptyTasksSub: { fontWeight: '600', color: '#94A3B8', textAlign: 'center' },
     viewMoreBtn: { alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', backgroundColor: '#FBFDFF' },
     viewMoreText: { fontWeight: '900', color: '#2563EB' },
-    activityCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
-    activityRow: { flexDirection: 'row', alignItems: 'center' },
-    activityText: { fontWeight: '800', color: '#475569', flex: 1 },
     todoRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
     todoCheckbox: { borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
     todoChecked: { backgroundColor: '#6366F1', borderColor: '#6366F1' },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,27 +9,39 @@ import {
     ScrollView,
     Modal,
     Alert,
-    Dimensions,
     TextInput,
     SafeAreaView,
     StatusBar,
-    ImageBackground,
     KeyboardAvoidingView,
     Platform,
     RefreshControl,
-    useWindowDimensions
+    useWindowDimensions,
+    Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SHADOWS, SPACING, SIZES } from '../../constants/theme';
-import api from '../../utils/api';
+import * as ImagePicker from 'expo-image-picker';
+import api, { getServerUrl } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const MAX_LOG_PHOTOS = 5;
+
+const resolveLogPhotoUri = (photo) => {
+    if (photo == null) return '';
+    const raw = typeof photo === 'string' ? photo : photo?.url || photo?.secure_url || photo?.path || '';
+    if (!raw) return '';
+    const resolved = getServerUrl(raw);
+    return resolved || raw;
+};
 
 const DailyLogsScreen = ({ navigation }) => {
     const { user, projects, refreshData, selectedProject: globalSelectedProject } = useApp();
-    const { width, height } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
+    const isCompact = width < 380;
+    const modalSheetMaxWidth = Math.min(width * 0.96, 560);
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -40,13 +52,15 @@ const DailyLogsScreen = ({ navigation }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [weather, setWeather] = useState({ status: 'Sunny', temperature: '70' });
     const [manpowerCount, setManpowerCount] = useState('1');
     const [manpowerHrs, setManpowerHrs] = useState('8');
     const [workPerformed, setWorkPerformed] = useState('');
     const [projectModalVisible, setProjectModalVisible] = useState(false);
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [logPhotoUris, setLogPhotoUris] = useState([]);
+    const [detailLog, setDetailLog] = useState(null);
+    const [photoPreviewUri, setPhotoPreviewUri] = useState(null);
 
     const fetchLogs = async () => {
         try {
@@ -65,6 +79,13 @@ const DailyLogsScreen = ({ navigation }) => {
         fetchLogs();
     }, []);
 
+    useEffect(() => {
+        const id = detailLog?._id;
+        if (!id || !logs.length) return;
+        const fresh = logs.find((l) => String(l._id) === String(id));
+        if (fresh) setDetailLog(fresh);
+    }, [logs, detailLog?._id]);
+
     // Sync filter with global selection
     useEffect(() => {
         if (globalSelectedProject) {
@@ -82,29 +103,69 @@ const DailyLogsScreen = ({ navigation }) => {
         refreshData();
     }, []);
 
+    const pickLogPhotos = async () => {
+        if (logPhotoUris.length >= MAX_LOG_PHOTOS) {
+            Alert.alert('Photo limit', `You can attach up to ${MAX_LOG_PHOTOS} photos per log.`);
+            return;
+        }
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Allow photo library access to attach site photos.');
+                return;
+            }
+            const remaining = MAX_LOG_PHOTOS - logPhotoUris.length;
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                quality: 0.75,
+                allowsMultipleSelection: true,
+                selectionLimit: remaining,
+            });
+            if (result.canceled || !result.assets?.length) return;
+            const newUris = result.assets.map((a) => a.uri).slice(0, remaining);
+            setLogPhotoUris((prev) => [...prev, ...newUris].slice(0, MAX_LOG_PHOTOS));
+        } catch (e) {
+            Alert.alert('Error', 'Could not open photo library.');
+        }
+    };
+
+    const removeLogPhoto = (index) => {
+        setLogPhotoUris((prev) => prev.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = async () => {
-        if (!selectedProject || !workPerformed) {
+        if (!selectedProject || !workPerformed.trim()) {
             Alert.alert('Required Fields', 'Please select a project and describe the work performed.');
             return;
         }
 
         try {
             setSubmitting(true);
-            const payload = {
-                projectId: selectedProject._id || selectedProject.id,
-                date: new Date(date),
-                weather: { 
-                    status: weather.status, 
-                    temperature: parseInt(weather.temperature) || 0 
-                },
-                manpower: [{
-                    role: 'General',
-                    count: parseInt(manpowerCount) || 0,
-                    hours: parseFloat(manpowerHrs) || 0
-                }],
-                workPerformed
-            };
-            await api.post('/dailylogs', payload);
+            const formData = new FormData();
+            formData.append('projectId', String(selectedProject._id || selectedProject.id));
+            formData.append('date', date);
+            formData.append('workPerformed', workPerformed.trim());
+            formData.append(
+                'manpower',
+                JSON.stringify([
+                    {
+                        role: 'General',
+                        count: parseInt(manpowerCount, 10) || 0,
+                        hours: parseFloat(manpowerHrs) || 0,
+                    },
+                ])
+            );
+            logPhotoUris.forEach((uri, idx) => {
+                formData.append('photos', {
+                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+                    name: `daily_log_${idx}_${Date.now()}.jpg`,
+                    type: 'image/jpeg',
+                });
+            });
+
+            await api.post('/dailylogs', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
             setModalVisible(false);
             resetForm();
             fetchLogs();
@@ -121,31 +182,54 @@ const DailyLogsScreen = ({ navigation }) => {
         setWorkPerformed('');
         setManpowerCount('1');
         setManpowerHrs('8');
-        setWeather({ status: 'Sunny', temperature: '70' });
         setDate(new Date().toISOString().split('T')[0]);
+        setLogPhotoUris([]);
     };
 
-    const filteredLogs = logs.filter(log => {
-        const matchesSearch = (log.workPerformed?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                             log.projectId?.name?.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesProject = !selectedFilterProject || log.projectId?._id === selectedFilterProject._id;
+    const filteredLogs = logs.filter((log) => {
+        const matchesSearch =
+            log.workPerformed?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            log.projectId?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+        const logPid = log.projectId?._id || log.projectId;
+        const selPid = selectedFilterProject?._id || selectedFilterProject?.id;
+        const matchesProject = !selectedFilterProject || String(logPid) === String(selPid);
         return matchesSearch && matchesProject;
     });
+
+    const closeDetailLog = () => {
+        setDetailLog(null);
+        setPhotoPreviewUri(null);
+    };
+
+    const detailPhotoUris = useMemo(() => {
+        if (!detailLog?.photos?.length) return [];
+        return detailLog.photos.map(resolveLogPhotoUri).filter(Boolean);
+    }, [detailLog]);
+
+    const detailProjectName = useMemo(() => {
+        if (!detailLog) return 'Site log';
+        if (detailLog.projectId?.name) return detailLog.projectId.name;
+        const pid = detailLog.projectId?._id || detailLog.projectId;
+        if (!pid || !projects?.length) return 'Site log';
+        const p = projects.find((x) => String(x._id || x.id) === String(pid));
+        return p?.name || 'Site log';
+    }, [detailLog, projects]);
 
     const renderLogItem = ({ item }) => {
         const totalManpower = item.manpower?.reduce((acc, m) => acc + (m.count || 0), 0) || 0;
         const logDate = new Date(item.date);
+        const photoCount = Array.isArray(item.photos) ? item.photos.length : 0;
 
         return (
             <TouchableOpacity 
                 style={[styles.tableRow, { paddingVertical: verticalScale(14) }]} 
                 activeOpacity={0.7}
-                onPress={() => {/* Navigate to detail if needed */}}
+                onPress={() => setDetailLog(item)}
             >
                 {/* Column: Date & Reporter */}
                 <View style={[styles.column, { width: scale(70) }]}>
                     <Text style={[styles.cellMainText, { fontSize: moderateScale(13) }]}>{logDate.toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}</Text>
-                    <Text style={[styles.cellSubText, { fontSize: moderateScale(11) }]} numberOfLines={1}>{item.reportedBy?.fullName?.split(' ')[0] || 'Jay'}</Text>
+                    <Text style={[styles.cellSubText, { fontSize: moderateScale(11) }]} numberOfLines={1}>{item.reportedBy?.fullName?.split(' ')[0] || '—'}</Text>
                 </View>
 
                 {/* Column: Project & Work Snippet */}
@@ -155,14 +239,16 @@ const DailyLogsScreen = ({ navigation }) => {
                 </View>
 
                 {/* Column: Stats */}
-                <View style={[styles.column, { width: scale(65), alignItems: 'flex-end' }]}>
+                <View style={[styles.column, { width: scale(isCompact ? 56 : 65), alignItems: 'flex-end' }]}>
                     <View style={[styles.statusChip, { paddingHorizontal: scale(8), paddingVertical: verticalScale(2), borderRadius: moderateScale(6) }]}>
                         <Text style={[styles.statusChipText, { fontSize: moderateScale(10) }]}>{totalManpower} Men</Text>
                     </View>
-                    <View style={styles.weatherMiniTag}>
-                        <MaterialCommunityIcons name="thermometer" size={moderateScale(10)} color="#EA580C" />
-                        <Text style={[styles.weatherMiniText, { fontSize: moderateScale(10) }]}>{item.weather?.temperature || '0'}°</Text>
-                    </View>
+                    {photoCount > 0 && (
+                        <View style={[styles.photoCountRow, { marginTop: verticalScale(4) }]}>
+                            <MaterialCommunityIcons name="image-multiple-outline" size={moderateScale(12)} color="#6366F1" />
+                            <Text style={[styles.photoCountText, { fontSize: moderateScale(9) }]}>{photoCount}</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Arrow */}
@@ -177,7 +263,7 @@ const DailyLogsScreen = ({ navigation }) => {
         <View style={[styles.tableHeader, { paddingVertical: verticalScale(10) }]}>
             <Text style={[styles.headerLabel, { width: scale(70), fontSize: moderateScale(10) }]}>DATE/BY</Text>
             <Text style={[styles.headerLabel, { flex: 1, paddingHorizontal: scale(4), fontSize: moderateScale(10) }]}>PROJECT & ACTIVITY</Text>
-            <Text style={[styles.headerLabel, { width: scale(65), textAlign: 'right', fontSize: moderateScale(10) }]}>STATS</Text>
+            <Text style={[styles.headerLabel, { width: scale(isCompact ? 56 : 65), textAlign: 'right', fontSize: moderateScale(10) }]}>STATS</Text>
             <View style={{ width: scale(16), marginLeft: scale(4) }} />
         </View>
     );
@@ -267,113 +353,352 @@ const DailyLogsScreen = ({ navigation }) => {
                 )}
             </View>
 
+            {/* LOG DETAIL (tap row) */}
+            <Modal visible={!!detailLog} transparent animationType="slide" onRequestClose={closeDetailLog}>
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={closeDetailLog} />
+                    <View
+                        style={[
+                            styles.modalSheet,
+                            {
+                                borderTopLeftRadius: moderateScale(32),
+                                borderTopRightRadius: moderateScale(32),
+                                maxWidth: modalSheetMaxWidth,
+                                width: '100%',
+                                alignSelf: 'center',
+                                height: '90%',
+                                paddingBottom: insets.bottom + 20,
+                            },
+                        ]}
+                    >
+                        <View style={styles.modalHandle} />
+                        <View style={[styles.modalHeader, { paddingHorizontal: scale(20), paddingTop: verticalScale(4), paddingBottom: verticalScale(12) }]}>
+                            <View style={{ flex: 1, paddingRight: scale(8) }}>
+                                <Text style={[styles.modalTitle, { fontSize: moderateScale(isCompact ? 20 : 22) }]} numberOfLines={2}>
+                                    {detailProjectName}
+                                </Text>
+                                <Text style={[styles.modalSubtitle, { fontSize: moderateScale(12), marginTop: verticalScale(4) }]}>Site log details</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={closeDetailLog}
+                                style={[styles.closeModalBtn, { width: scale(36), height: scale(36), borderRadius: 18 }]}
+                                hitSlop={12}
+                            >
+                                <MaterialCommunityIcons name="close" size={moderateScale(22)} color="#0F172A" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView
+                            style={{ flex: 1 }}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{
+                                paddingHorizontal: scale(20),
+                                paddingBottom: verticalScale(28) + insets.bottom,
+                            }}
+                        >
+                            {detailLog && (
+                                <>
+                                    <View style={styles.detailMetaBlock}>
+                                        <View style={styles.detailMetaRow}>
+                                            <MaterialCommunityIcons name="calendar" size={moderateScale(18)} color="#64748B" />
+                                            <Text style={[styles.detailMetaText, { fontSize: moderateScale(14) }]}>
+                                                {new Date(detailLog.date).toLocaleDateString(undefined, {
+                                                    weekday: 'short',
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}
+                                            </Text>
+                                        </View>
+                                        <View style={[styles.detailMetaRow, { marginTop: verticalScale(8) }]}>
+                                            <MaterialCommunityIcons name="account-outline" size={moderateScale(18)} color="#64748B" />
+                                            <Text style={[styles.detailMetaText, { fontSize: moderateScale(14) }]}>
+                                                {detailLog.reportedBy?.fullName || 'Unknown'}
+                                                {detailLog.reportedBy?.role ? ` · ${detailLog.reportedBy.role}` : ''}
+                                            </Text>
+                                        </View>
+                                        {detailLog.isVerified ? (
+                                            <View style={[styles.verifiedPill, { marginTop: verticalScale(12), alignSelf: 'flex-start', paddingHorizontal: scale(10), paddingVertical: verticalScale(6), borderRadius: moderateScale(8) }]}>
+                                                <MaterialCommunityIcons name="check-decagram" size={moderateScale(16)} color="#059669" />
+                                                <Text style={[styles.verifiedPillText, { fontSize: moderateScale(12), marginLeft: scale(6) }]}>Verified</Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
+
+                                    {detailLog.weather?.status ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(16) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Weather</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(15) }]}>{detailLog.weather.status}</Text>
+                                        </View>
+                                    ) : null}
+
+                                    {Array.isArray(detailLog.manpower) && detailLog.manpower.length > 0 ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(16) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Manpower</Text>
+                                            {detailLog.manpower.map((m, i) => (
+                                                <View key={i} style={[styles.manpowerRow, { paddingVertical: verticalScale(8), paddingHorizontal: scale(12), borderRadius: moderateScale(10), marginBottom: verticalScale(6) }]}>
+                                                    <Text style={[styles.manpowerRole, { fontSize: moderateScale(14) }]}>{m.role || 'General'}</Text>
+                                                    <Text style={[styles.manpowerNums, { fontSize: moderateScale(13) }]}>
+                                                        {m.count ?? 0} crew · {m.hours ?? 0} h each
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ) : null}
+
+                                    <View style={[styles.detailSection, { marginTop: verticalScale(16) }]}>
+                                        <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Work performed</Text>
+                                        <Text style={[styles.detailBody, { fontSize: moderateScale(15), lineHeight: moderateScale(22) }]}>
+                                            {detailLog.workPerformed || '—'}
+                                        </Text>
+                                    </View>
+
+                                    <View style={[styles.detailSection, { marginTop: verticalScale(18) }]}>
+                                        <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>
+                                            Site photos{detailPhotoUris.length ? ` (${detailPhotoUris.length})` : ''}
+                                        </Text>
+                                        {detailPhotoUris.length > 0 ? (
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.detailPhotoRow}>
+                                                {detailPhotoUris.map((uri, idx) => (
+                                                    <TouchableOpacity
+                                                        key={`${uri}-${idx}`}
+                                                        activeOpacity={0.85}
+                                                        onPress={() => setPhotoPreviewUri(uri)}
+                                                        style={[styles.detailPhotoThumb, { width: scale(108), height: scale(108), borderRadius: moderateScale(14), marginRight: scale(10) }]}
+                                                    >
+                                                        <Image source={{ uri }} style={[styles.photoThumb, { borderRadius: moderateScale(14) }]} resizeMode="cover" />
+                                                        <View style={styles.detailPhotoZoomHint}>
+                                                            <MaterialCommunityIcons name="magnify-plus-outline" size={moderateScale(18)} color="#fff" />
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        ) : (
+                                            <View style={[styles.detailNoPhotos, { paddingVertical: verticalScale(16), borderRadius: moderateScale(12) }]}>
+                                                <MaterialCommunityIcons name="image-off-outline" size={moderateScale(28)} color="#94A3B8" />
+                                                <Text style={[styles.detailNoPhotosText, { fontSize: moderateScale(13), marginTop: verticalScale(6) }]}>No photos attached</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {detailLog.materialsReceived?.length ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Materials received</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.materialsReceived.join(' · ')}</Text>
+                                        </View>
+                                    ) : null}
+                                    {detailLog.equipmentUsed?.length ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Equipment used</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.equipmentUsed.join(' · ')}</Text>
+                                        </View>
+                                    ) : null}
+                                    {detailLog.safetyObservations ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Safety</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.safetyObservations}</Text>
+                                        </View>
+                                    ) : null}
+                                    {detailLog.delays ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Delays</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.delays}</Text>
+                                        </View>
+                                    ) : null}
+                                    {detailLog.visitors?.length ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Visitors</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.visitors.join(' · ')}</Text>
+                                        </View>
+                                    ) : null}
+                                    {detailLog.location?.address ? (
+                                        <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
+                                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Location</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.location.address}</Text>
+                                        </View>
+                                    ) : null}
+
+                                    {detailLog.createdAt ? (
+                                        <Text style={[styles.detailFooterMeta, { fontSize: moderateScale(11), marginTop: verticalScale(22) }]}>
+                                            Logged {new Date(detailLog.createdAt).toLocaleString()}
+                                        </Text>
+                                    ) : null}
+                                </>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal visible={!!photoPreviewUri} transparent animationType="fade" onRequestClose={() => setPhotoPreviewUri(null)}>
+                <View style={styles.photoPreviewRoot}>
+                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setPhotoPreviewUri(null)} />
+                    <TouchableOpacity style={[styles.photoPreviewClose, { top: verticalScale(52), right: scale(20) }]} onPress={() => setPhotoPreviewUri(null)} hitSlop={16}>
+                        <MaterialCommunityIcons name="close" size={moderateScale(30)} color="#fff" />
+                    </TouchableOpacity>
+                    {photoPreviewUri ? (
+                        <View style={styles.photoPreviewContent} pointerEvents="box-none">
+                            <Image source={{ uri: photoPreviewUri }} style={styles.photoPreviewImage} resizeMode="contain" />
+                        </View>
+                    ) : null}
+                </View>
+            </Modal>
+
             {/* NEW LOG MODAL */}
-            <Modal visible={modalVisible} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                    <View style={styles.modalOverlay}>
-                        <View style={[styles.modalContent, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), maxWidth: scale(600), alignSelf: 'center', width: '100%' }]}>
-                            <View style={[styles.modalHeader, { marginBottom: verticalScale(20) }]}>
-                                <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>Daily Site Record</Text>
-                                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                                    <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#94A3B8" />
+            <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => !submitting && setModalVisible(false)} />
+                    <KeyboardAvoidingView
+                        style={{ width: '100%' }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                    >
+                        <View
+                            style={[
+                                styles.modalSheet,
+                                {
+                                    borderTopLeftRadius: moderateScale(32),
+                                    borderTopRightRadius: moderateScale(32),
+                                    maxWidth: modalSheetMaxWidth,
+                                    width: '100%',
+                                    alignSelf: 'center',
+                                    height: '85%',
+                                    paddingBottom: insets.bottom + 20,
+                                },
+                            ]}
+                        >
+                            <View style={styles.modalHandle} />
+                            <View style={[styles.modalHeader, { paddingHorizontal: scale(20), paddingTop: verticalScale(4), marginBottom: verticalScale(8) }]}>
+                                <Text style={[styles.modalTitle, { fontSize: moderateScale(isCompact ? 20 : 22), flex: 1, paddingRight: scale(8) }]}>Daily Site Record</Text>
+                                <TouchableOpacity onPress={() => !submitting && setModalVisible(false)} style={styles.closeBtn} hitSlop={12}>
+                                    <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#0F172A" />
                                 </TouchableOpacity>
                             </View>
 
-                            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Project</Text>
-                                    <TouchableOpacity 
-                                        style={[styles.selectBtn, { height: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14) }]} 
+                            <ScrollView
+                                style={{ flex: 1 }}
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                                contentContainerStyle={{
+                                    paddingHorizontal: scale(20),
+                                    paddingBottom: verticalScale(30),
+                                }}
+                            >
+                                <View style={[styles.inputGroup, { marginBottom: verticalScale(14) }]}>
+                                    <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Project</Text>
+                                    <TouchableOpacity
+                                        style={[styles.selectBtn, { minHeight: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14) }]}
                                         onPress={() => setProjectModalVisible(true)}
                                     >
-                                        <Text style={[styles.selectBtnText, !selectedProject && { color: '#94A3B8' }, { fontSize: moderateScale(14) }]}>
-                                            {selectedProject?.name || 'Select Project...'}
+                                        <Text
+                                            style={[styles.selectBtnText, !selectedProject && { color: '#94A3B8' }, { fontSize: moderateScale(14), flex: 1 }]}
+                                            numberOfLines={2}
+                                        >
+                                            {selectedProject?.name || 'Select project…'}
                                         </Text>
                                         <MaterialCommunityIcons name="chevron-down" size={moderateScale(20)} color="#0F172A" />
                                     </TouchableOpacity>
                                 </View>
 
-                                <View style={styles.row}>
-                                    <View style={[styles.inputGroup, { flex: 1.2 }]}>
-                                        <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Date</Text>
-                                        <View style={[styles.fieldValue, { height: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14) }]}>
-                                            <MaterialCommunityIcons name="calendar" size={moderateScale(18)} color="#64748B" />
-                                            <Text style={[styles.fieldValueText, { fontSize: moderateScale(14) }]}>{date}</Text>
-                                        </View>
-                                    </View>
-                                    <View style={[styles.inputGroup, { flex: 0.8 }]}>
-                                        <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Temp (°F)</Text>
-                                        <TextInput 
-                                            style={[styles.textInput, { height: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), fontSize: moderateScale(14) }]}
-                                            value={weather.temperature}
-                                            onChangeText={v => setWeather({ ...weather, temperature: v })}
-                                            keyboardType="numeric"
-                                            placeholder="70"
-                                        />
+                                <View style={[styles.inputGroup, { marginBottom: verticalScale(14) }]}>
+                                    <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Date</Text>
+                                    <View style={[styles.fieldValue, { minHeight: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), paddingVertical: verticalScale(10) }]}>
+                                        <MaterialCommunityIcons name="calendar" size={moderateScale(18)} color="#64748B" />
+                                        <Text style={[styles.fieldValueText, { fontSize: moderateScale(14), flex: 1 }]}>{date}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.row}>
-                                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                                        <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Total Crew</Text>
-                                        <TextInput 
-                                            style={[styles.textInput, { height: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), fontSize: moderateScale(14) }]}
+                                <View style={[styles.row, { marginBottom: verticalScale(14), gap: scale(isCompact ? 8 : 10) }]}>
+                                    <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                                        <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Total crew</Text>
+                                        <TextInput
+                                            style={[styles.textInput, { minHeight: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), fontSize: moderateScale(14) }]}
                                             value={manpowerCount}
                                             onChangeText={setManpowerCount}
                                             keyboardType="numeric"
                                             placeholder="Count"
+                                            placeholderTextColor="#94A3B8"
                                         />
                                     </View>
-                                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                                        <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Hours/Person</Text>
-                                        <TextInput 
-                                            style={[styles.textInput, { height: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), fontSize: moderateScale(14) }]}
+                                    <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                                        <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Hours / person</Text>
+                                        <TextInput
+                                            style={[styles.textInput, { minHeight: verticalScale(48), borderRadius: moderateScale(12), paddingHorizontal: scale(14), fontSize: moderateScale(14) }]}
                                             value={manpowerHrs}
                                             onChangeText={setManpowerHrs}
                                             keyboardType="numeric"
                                             placeholder="Hrs"
+                                            placeholderTextColor="#94A3B8"
                                         />
                                     </View>
                                 </View>
 
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, { fontSize: moderateScale(11) }]}>Work Done & Notes</Text>
-                                    <TextInput 
-                                        style={[styles.textArea, { borderRadius: moderateScale(14), padding: scale(14), fontSize: moderateScale(14) }]}
+                                <View style={[styles.inputGroup, { marginBottom: verticalScale(14) }]}>
+                                    <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Site photos (optional, max {MAX_LOG_PHOTOS})</Text>
+                                    <Text style={[styles.hintText, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>
+                                        Same as web: attach progress photos with this log.
+                                    </Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoScrollContent}>
+                                        {logPhotoUris.map((uri, idx) => (
+                                            <View key={`${uri}-${idx}`} style={[styles.photoThumbWrap, { width: scale(72), height: scale(72), borderRadius: moderateScale(12), marginRight: scale(10) }]}>
+                                                <Image source={{ uri }} style={[styles.photoThumb, { borderRadius: moderateScale(12) }]} />
+                                                <TouchableOpacity style={styles.photoRemoveBtn} onPress={() => removeLogPhoto(idx)} hitSlop={8}>
+                                                    <MaterialCommunityIcons name="close-circle" size={moderateScale(22)} color="#fff" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+                                        {logPhotoUris.length < MAX_LOG_PHOTOS && (
+                                            <TouchableOpacity
+                                                style={[styles.addPhotoCard, { width: scale(72), height: scale(72), borderRadius: moderateScale(12) }]}
+                                                onPress={pickLogPhotos}
+                                                activeOpacity={0.85}
+                                            >
+                                                <MaterialCommunityIcons name="camera-plus-outline" size={moderateScale(28)} color="#6366F1" />
+                                                <Text style={[styles.addPhotoLabel, { fontSize: moderateScale(10) }]}>Add</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </ScrollView>
+                                </View>
+
+                                <View style={[styles.inputGroup, { marginBottom: verticalScale(16) }]}>
+                                    <Text style={[styles.label, { fontSize: moderateScale(10) }]}>Work done & notes</Text>
+                                    <TextInput
+                                        style={[styles.textArea, { borderRadius: moderateScale(14), padding: scale(14), fontSize: moderateScale(14), minHeight: verticalScale(isCompact ? 100 : 120) }]}
                                         value={workPerformed}
                                         onChangeText={setWorkPerformed}
                                         multiline
                                         numberOfLines={5}
-                                        placeholder="Detailed log of activities..."
+                                        placeholder="Detailed log of activities…"
                                         placeholderTextColor="#94A3B8"
                                     />
                                 </View>
 
-                                <TouchableOpacity 
-                                    style={[styles.submitBtn, submitting && { opacity: 0.7 }, { height: verticalScale(52), borderRadius: moderateScale(14) }]}
+                                <TouchableOpacity
+                                    style={[styles.submitBtn, submitting && { opacity: 0.7 }, { minHeight: verticalScale(52), borderRadius: moderateScale(14) }]}
                                     onPress={handleSubmit}
                                     disabled={submitting}
                                 >
                                     {submitting ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
-                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(16) }]}>Submit Record</Text>
+                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(16) }]}>Submit record</Text>
                                     )}
                                 </TouchableOpacity>
                             </ScrollView>
                         </View>
-                    </View>
-                </KeyboardAvoidingView>
+                    </KeyboardAvoidingView>
+                </View>
             </Modal>
 
             {/* PROJECT SELECTION MODAL */}
             <Modal visible={projectModalVisible || filterModalVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.selectorCard, { borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), maxWidth: scale(500), alignSelf: 'center', width: '100%' }]}>
-                        <View style={[styles.modalHeader, { marginBottom: verticalScale(20) }]}>
+                    <View style={[styles.selectorCard, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), maxWidth: scale(500), alignSelf: 'center', width: '100%', paddingBottom: insets.bottom + 24 }]}>
+                        <View style={styles.modalHandle} />
+                        <View style={[styles.modalHeader, { paddingHorizontal: scale(20), marginBottom: verticalScale(16), marginTop: verticalScale(4) }]}>
                             <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>{filterModalVisible ? 'Filter' : 'Select Project'}</Text>
-                            <TouchableOpacity onPress={() => { setProjectModalVisible(false); setFilterModalVisible(false); }}>
-                                <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#94A3B8" />
+                            <TouchableOpacity onPress={() => { setProjectModalVisible(false); setFilterModalVisible(false); }} style={styles.closeBtn}>
+                                <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#0F172A" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
@@ -429,17 +754,48 @@ const styles = StyleSheet.create({
     cellWorkText: { fontWeight: '500', color: '#64748B', marginTop: 2 },
     statusChip: { backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD' },
     statusChipText: { fontWeight: '900', color: '#0369A1' },
-    weatherMiniTag: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
-    weatherMiniText: { fontWeight: '800', color: '#EA580C' },
+    photoCountRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    photoCountText: { fontWeight: '800', color: '#6366F1' },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyState: { alignItems: 'center', justifyContent: 'center', padding: 40, marginTop: 40 },
     emptyText: { textAlign: 'center', fontWeight: '700', color: '#94A3B8', marginTop: 16 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', padding: 24, maxHeight: '90%' },
+    detailMetaBlock: { paddingTop: verticalScale(4) },
+    detailMetaRow: { flexDirection: 'row', alignItems: 'center' },
+    detailMetaText: { marginLeft: scale(10), fontWeight: '700', color: '#334155', flex: 1 },
+    verifiedPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0' },
+    verifiedPillText: { fontWeight: '800', color: '#047857' },
+    detailSection: {},
+    detailBody: { fontWeight: '600', color: '#475569' },
+    detailFooterMeta: { fontWeight: '600', color: '#94A3B8' },
+    manpowerRow: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    manpowerRole: { fontWeight: '800', color: '#0F172A' },
+    manpowerNums: { fontWeight: '600', color: '#64748B', marginTop: 2 },
+    detailPhotoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+    detailPhotoThumb: { overflow: 'hidden', backgroundColor: '#E2E8F0' },
+    detailPhotoZoomHint: { position: 'absolute', bottom: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 8, padding: 4 },
+    detailNoPhotos: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' },
+    detailNoPhotosText: { fontWeight: '600', color: '#94A3B8' },
+    photoPreviewRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center' },
+    photoPreviewContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    photoPreviewImage: { width: '100%', height: '72%' },
+    photoPreviewClose: { position: 'absolute', zIndex: 100 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' },
+    modalSheet: {
+        backgroundColor: '#fff',
+        width: '100%',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 20,
+    },
+    modalHandle: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginVertical: 12 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     modalTitle: { fontWeight: '900', color: '#0F172A' },
+    modalSubtitle: { fontWeight: '600', color: '#64748B' },
     closeBtn: { padding: 4 },
-    modalBody: { marginBottom: 20 },
+    closeModalBtn: { backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
     inputGroup: { marginBottom: 16 },
     label: { fontWeight: '900', color: '#64748B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
     selectBtn: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -451,6 +807,13 @@ const styles = StyleSheet.create({
     textArea: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', fontWeight: '600', color: '#334155', textAlignVertical: 'top' },
     submitBtn: { backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
     submitBtnText: { color: '#fff', fontWeight: '900' },
+    hintText: { color: '#94A3B8', fontWeight: '600' },
+    photoScrollContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2 },
+    photoThumbWrap: { overflow: 'hidden', backgroundColor: '#E2E8F0' },
+    photoThumb: { width: '100%', height: '100%', resizeMode: 'cover' },
+    photoRemoveBtn: { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 12 },
+    addPhotoCard: { borderWidth: 2, borderColor: '#C7D2FE', borderStyle: 'dashed', backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+    addPhotoLabel: { fontWeight: '800', color: '#6366F1', marginTop: 2 },
     selectorCard: { backgroundColor: '#fff', padding: 24, paddingBottom: 100 },
     selectorItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     selectorText: { fontWeight: '700', color: '#1E2937' },
