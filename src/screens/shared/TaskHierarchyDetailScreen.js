@@ -11,6 +11,21 @@ import { SHADOWS } from '../../constants/theme';
 const COLLAPSE_KEY = 'taskHierarchyCollapsedV1';
 const PRIORITIES = ['Low', 'Medium', 'High'];
 
+const getAssignableRoleOptions = (currentRole) => {
+    if (['FOREMAN', 'SUBCONTRACTOR'].includes(currentRole)) {
+        return [{ label: 'WORKER', value: 'WORKER' }];
+    }
+    if (['PM', 'COMPANY_OWNER', 'SUPER_ADMIN', 'ADMIN'].includes(currentRole)) {
+        return [
+            { label: 'WORKER', value: 'WORKER' },
+            { label: 'FOREMAN', value: 'FOREMAN' },
+            { label: 'PM', value: 'PM' },
+            { label: 'SUBCONTRACTOR', value: 'SUBCONTRACTOR' }
+        ];
+    }
+    return [{ label: 'WORKER', value: 'WORKER' }];
+};
+
 const STATUS_PALETTE = {
     todo: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
     pending: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
@@ -51,7 +66,7 @@ function cmpTaskNodeOrder(a, b) {
 
 const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     const { taskId } = route.params || {};
-    const { tasks, updateTask, deleteTask, refreshData, teamMembers, fetchTeamMembers } = useApp();
+    const { tasks, updateTask, deleteTask, refreshData, teamMembers, fetchTeamMembers, user } = useApp();
     const insets = useSafeAreaInsets();
     const { width: winW, height: winH } = useWindowDimensions();
     const isCompact = winW < 380;
@@ -651,13 +666,13 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                                 <Text style={styles.fieldLabel}>Assign Role</Text>
                                 <TouchableOpacity
                                     style={styles.dropdownField}
-                                    onPress={() => openDropdown('Assign Role', [
-                                        { label: 'ANY ROLE', value: '' },
-                                        { label: 'WORKER', value: 'WORKER' },
-                                        { label: 'FOREMAN', value: 'FOREMAN' },
-                                        { label: 'PM', value: 'PM' },
-                                        { label: 'SUBCONTRACTOR', value: 'SUBCONTRACTOR' }
-                                    ], (value) => setEditForm(prev => ({ ...prev, assignedRoleType: value, assignedTo: '' })))}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Assign Role',
+                                            [{ label: 'ANY ROLE', value: '' }, ...getAssignableRoleOptions(user?.role)],
+                                            (value) => setEditForm(prev => ({ ...prev, assignedRoleType: value, assignedTo: '' }))
+                                        )
+                                    }
                                 >
                                     <Text style={styles.dropdownValue}>{editForm.assignedRoleType || 'ANY ROLE'}</Text>
                                     <MaterialCommunityIcons name="chevron-down" size={16} color="#3B82F6" />

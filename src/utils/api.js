@@ -7,6 +7,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 2) Known production host candidates (auto-failover)
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
+    // Android emulator to local backend on host machine
+    'http://10.0.2.2:8080',
+    // iOS simulator / same-machine dev fallback
+    'http://127.0.0.1:8080',
+    'http://localhost:8080',
     'https://construction-production-b18f.up.railway.app',
     // 'https://constuctionbackend-production.up.railway.app',
     // 'http://localhost:8080/api',
@@ -29,7 +34,8 @@ const isRailwayAppNotFound = (error) => {
 
 const api = axios.create({
     baseURL: getApiBaseUrl(),
-    timeout: 60000,
+    // Keep chat UX snappy; slow hosts fail over quickly.
+    timeout: 10000,
 });
 
 let inMemoryToken = null;

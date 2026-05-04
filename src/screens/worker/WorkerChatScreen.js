@@ -111,24 +111,36 @@ const WorkerChatScreen = ({ navigation, route }) => {
 
     const handleSend = async () => {
         if (!msgText.trim()) return;
+        const textToSend = msgText;
+        setMsgText('');
         setSending(true);
         try {
+            let resolvedDmRoomId = dmRoomId;
             if (room.type === 'private' && !dmRoomId) {
                 const rid = await ensureDirectChatRoom(room.id);
-                if (rid) setDmRoomId(rid);
+                if (rid) {
+                    resolvedDmRoomId = rid;
+                    setDmRoomId(rid);
+                }
             }
             // Pass correct params: sendMessage(text, projectId, receiverId, roomId)
-            const success = room.type === 'private'
-                ? await sendMessage(msgText, null, room.id, effectiveRoomId || room.id)
-                : await sendMessage(msgText, room.projectId || null, null, room.id);
+            const sendPromise = room.type === 'private'
+                ? sendMessage(textToSend, null, resolvedDmRoomId ? null : room.id, resolvedDmRoomId || room.id)
+                : sendMessage(textToSend, room.projectId || null, null, room.id);
+
+            // Do not block input on network RTT; optimistic message is already inserted in context.
+            setSending(false);
+            setTimeout(() => flatListRef.current?.scrollToEnd(), 200);
+            const success = await sendPromise;
 
             if (success) {
-                setMsgText('');
                 setTimeout(() => flatListRef.current?.scrollToEnd(), 200);
             } else {
+                setMsgText(textToSend);
                 Alert.alert('Error', 'Message could not be sent. Check your connection and permissions.');
             }
         } catch (err) {
+            setMsgText(textToSend);
             Alert.alert("Error", "Message could not be sent.");
         } finally {
             setSending(false);
@@ -189,15 +201,19 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const sendImageMessage = async (uri) => {
         setSending(true);
         try {
+            let resolvedDmRoomId = dmRoomId;
             if (room.type === 'private' && !dmRoomId) {
                 const rid = await ensureDirectChatRoom(room.id);
-                if (rid) setDmRoomId(rid);
+                if (rid) {
+                    resolvedDmRoomId = rid;
+                    setDmRoomId(rid);
+                }
             }
             const fileName = uri.split('/').pop();
             const attachment = await uploadFile(uri, fileName, 'image/jpeg');
 
             const success = room.type === 'private'
-                ? await sendMessage("[Photo Attachment]", null, room.id, effectiveRoomId || room.id, [attachment])
+                ? await sendMessage("[Photo Attachment]", null, resolvedDmRoomId ? null : room.id, resolvedDmRoomId || room.id, [attachment])
                 : await sendMessage("[Photo Attachment]", room.projectId || null, null, room.id, [attachment]);
 
             if (success) {

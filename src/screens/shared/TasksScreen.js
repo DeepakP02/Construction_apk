@@ -16,6 +16,21 @@ const ROLE_LABELS = {
     SUBCONTRACTOR: 'Subcontractor'
 };
 
+const getAssignableRoleOptions = (currentRole) => {
+    if (['FOREMAN', 'SUBCONTRACTOR'].includes(currentRole)) {
+        return [{ label: 'Worker', value: 'WORKER' }];
+    }
+    if (['PM', 'COMPANY_OWNER', 'SUPER_ADMIN', 'ADMIN'].includes(currentRole)) {
+        return [
+            { label: 'Worker', value: 'WORKER' },
+            { label: 'Foreman', value: 'FOREMAN' },
+            { label: 'PM', value: 'PM' },
+            { label: 'Subcontractor', value: 'SUBCONTRACTOR' }
+        ];
+    }
+    return [{ label: 'Worker', value: 'WORKER' }];
+};
+
 const VIEW_MODES = [
     { id: 'list', icon: 'format-list-bulleted', label: 'List' },
     { id: 'board', icon: 'view-column-outline', label: 'Board' },
@@ -694,16 +709,13 @@ const TasksScreen = ({ navigation }) => {
                                 <DropdownField 
                                     label="Role" 
                                     value={form.assignedRoleType ? ROLE_LABELS[form.assignedRoleType] : 'Any Role'} 
-                                    onPress={() => openDropdown('Assign Role', 
-                                        [
-                                            { label: 'Any Role', value: '' },
-                                            { label: 'Worker', value: 'WORKER' },
-                                            { label: 'Foreman', value: 'FOREMAN' },
-                                            { label: 'PM', value: 'PM' },
-                                            { label: 'Subcontractor', value: 'SUBCONTRACTOR' }
-                                        ],
-                                        (val) => setForm({ ...form, assignedRoleType: val, assignedTo: [] })
-                                    )}
+                                    onPress={() =>
+                                        openDropdown(
+                                            'Assign Role',
+                                            [{ label: 'Any Role', value: '' }, ...getAssignableRoleOptions(user?.role)],
+                                            (val) => setForm({ ...form, assignedRoleType: val, assignedTo: [] })
+                                        )
+                                    }
                                 />
                                 <DropdownField 
                                     label="Assign To" 

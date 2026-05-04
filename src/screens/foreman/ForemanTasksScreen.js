@@ -17,6 +17,21 @@ const ROLE_LABELS = {
     SUBCONTRACTOR: 'Subcontractor',
 };
 
+const getAssignableRoleOptions = (currentRole) => {
+    if (['FOREMAN', 'SUBCONTRACTOR'].includes(currentRole)) {
+        return [{ label: 'Worker', value: 'WORKER' }];
+    }
+    if (['PM', 'COMPANY_OWNER', 'SUPER_ADMIN', 'ADMIN'].includes(currentRole)) {
+        return [
+            { label: 'Worker', value: 'WORKER' },
+            { label: 'Foreman', value: 'FOREMAN' },
+            { label: 'Project Manager', value: 'PM' },
+            { label: 'Subcontractor', value: 'SUBCONTRACTOR' },
+        ];
+    }
+    return [{ label: 'Worker', value: 'WORKER' }];
+};
+
 function cmpTaskOrder(a, b) {
     const pa = a.position;
     const pb = b.position;
@@ -786,13 +801,7 @@ const ForemanTasksScreen = ({ navigation }) => {
                                     onPress={() =>
                                         openDropdown(
                                             'Assign role',
-                                            [
-                                                { label: 'Any role', value: '' },
-                                                { label: 'Worker', value: 'WORKER' },
-                                                { label: 'Foreman', value: 'FOREMAN' },
-                                                { label: 'Project Manager', value: 'PM' },
-                                                { label: 'Subcontractor', value: 'SUBCONTRACTOR' },
-                                            ],
+                                            [{ label: 'Any role', value: '' }, ...getAssignableRoleOptions(user?.role)],
                                             (val) => setForm((f) => ({ ...f, assignedRoleType: val, assignedTo: [] }))
                                         )
                                     }

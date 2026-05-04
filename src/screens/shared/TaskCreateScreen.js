@@ -8,6 +8,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRIORITIES = ['Low', 'Medium', 'High'];
 
+const getAssignableRoleOptions = (currentRole) => {
+    if (['FOREMAN', 'SUBCONTRACTOR'].includes(currentRole)) {
+        return [{ label: 'WORKER', value: 'WORKER' }];
+    }
+    if (['PM', 'COMPANY_OWNER', 'SUPER_ADMIN', 'ADMIN'].includes(currentRole)) {
+        return [
+            { label: 'WORKER', value: 'WORKER' },
+            { label: 'FOREMAN', value: 'FOREMAN' },
+            { label: 'PM', value: 'PM' },
+            { label: 'SUBCONTRACTOR', value: 'SUBCONTRACTOR' }
+        ];
+    }
+    return [{ label: 'WORKER', value: 'WORKER' }];
+};
+
 const TaskCreateScreen = ({ route, navigation }) => {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -21,7 +36,7 @@ const TaskCreateScreen = ({ route, navigation }) => {
         projectId: projectIdFromRoute,
         isChild
     } = route.params || {};
-    const { addTask, addChildTask, tasks, projects, jobs, teamMembers, fetchTeamMembers, selectedProject, refreshData } = useApp();
+    const { addTask, addChildTask, tasks, projects, jobs, teamMembers, fetchTeamMembers, selectedProject, refreshData, user } = useApp();
     const [saving, setSaving] = useState(false);
     const [selVisible, setSelVisible] = useState(false);
     const [selTitle, setSelTitle] = useState('');
@@ -367,13 +382,13 @@ const TaskCreateScreen = ({ route, navigation }) => {
                     <Text style={styles.label}>Assign Role</Text>
                     <TouchableOpacity
                         style={styles.dropdownField}
-                        onPress={() => openDropdown('Assign Role', [
-                            { label: 'ANY ROLE', value: '' },
-                            { label: 'WORKER', value: 'WORKER' },
-                            { label: 'FOREMAN', value: 'FOREMAN' },
-                            { label: 'PM', value: 'PM' },
-                            { label: 'SUBCONTRACTOR', value: 'SUBCONTRACTOR' }
-                        ], (value) => setForm(prev => ({ ...prev, assignedRoleType: value, assignedTo: '' })))}
+                        onPress={() =>
+                            openDropdown(
+                                'Assign Role',
+                                [{ label: 'ANY ROLE', value: '' }, ...getAssignableRoleOptions(user?.role)],
+                                (value) => setForm(prev => ({ ...prev, assignedRoleType: value, assignedTo: '' }))
+                            )
+                        }
                     >
                         <Text style={styles.dropdownValue}>{form.assignedRoleType || 'ANY ROLE'}</Text>
                         <MaterialCommunityIcons name="chevron-down" size={16} color="#3B82F6" />

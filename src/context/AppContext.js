@@ -85,6 +85,14 @@ export const AppProvider = ({ children }) => {
         chatRoomsRef.current = Array.isArray(chatRooms) ? chatRooms : [];
     }, [chatRooms]);
 
+    const emitJoinRoom = (roomId) => {
+        const rid = String(roomId || '').trim();
+        if (!rid) return;
+        const socket = socketRef.current;
+        if (!socket || !socket.connected) return;
+        socket.emit('join_room', rid);
+    };
+
     const normalizeNotifications = (rawList) => {
         const list = Array.isArray(rawList) ? rawList : [];
         const map = new Map();
@@ -418,6 +426,13 @@ export const AppProvider = ({ children }) => {
                 timeout: 20000,
             });
 
+            const joinKnownRooms = () => {
+                (chatRoomsRef.current || []).forEach((room) => {
+                    const rid = room?.id || room?._id;
+                    if (rid) socket.emit('join_room', String(rid));
+                });
+            };
+
             socket.on('connect', () => {
                 socket.emit('register_user', {
                     _id: user._id,
@@ -425,15 +440,17 @@ export const AppProvider = ({ children }) => {
                     role: user.role,
                     companyId: user.companyId
                 });
-                (chatRoomsRef.current || []).forEach((room) => {
-                    const rid = room?.id || room?._id;
-                    if (rid) socket.emit('join_room', String(rid));
-                });
+                joinKnownRooms();
             });
 
             socket.on('connect_error', () => {
                 // Keep silent fallback; background refresh handles temporary socket instability.
             });
+            if (socket.io && typeof socket.io.on === 'function') {
+                socket.io.on('reconnect', () => {
+                    joinKnownRooms();
+                });
+            }
 
             socket.on('new_message', (incoming) => {
                 if (!mounted || !incoming) return;
@@ -1268,6 +1285,7 @@ export const AppProvider = ({ children }) => {
             if (!isValidFormat) {
                 return { success: false, message: 'Invalid room format' };
             }
+            emitJoinRoom(finalRoomId);
 
             console.log(`[Fetching Messages] Room ID: ${finalRoomId}`);
 
@@ -1303,6 +1321,15 @@ export const AppProvider = ({ children }) => {
 
             let finalRoomId = rStr || pStr || receiverId?.toString();
 
+            // For direct messages, always resolve to the canonical ChatRoom id early.
+            // This avoids backend-side room resolution on each send (which adds latency).
+            if (receiverId && (!rStr || rStr === receiverId?.toString())) {
+                const directRoomId = await ensureDirectChatRoom(receiverId);
+                if (directRoomId) {
+                    finalRoomId = String(directRoomId);
+                }
+            }
+
             if (pStr && (finalRoomId === pStr || !finalRoomId)) {
                 const existingRoom = (chatRooms || []).find((r) => {
                     const p1 = (r.projectId?._id || r.projectId)?.toString();
@@ -1324,7 +1351,9 @@ export const AppProvider = ({ children }) => {
             };
 
             if (projectId) payload.projectId = pStr;
-            if (receiverId) payload.receiverId = receiverId?.toString();
+            const shouldSendReceiverId = !!receiverId && (!finalRoomId || String(finalRoomId) === String(receiverId));
+            if (shouldSendReceiverId) payload.receiverId = receiverId?.toString();
+            if (finalRoomId) emitJoinRoom(finalRoomId);
 
             const tempId = `optimistic-${Date.now()}`;
             const optimisticMsg = {
@@ -1362,6 +1391,8 @@ export const AppProvider = ({ children }) => {
 
             const res = await api.post('/chat', payload);
             const savedMsg = res.data;
+            const savedRoom = savedMsg?.roomId?._id || savedMsg?.roomId || finalRoomId;
+            if (savedRoom) emitJoinRoom(savedRoom);
 
             setMessages((prev) => {
                 const rawRoom = savedMsg.roomId ?? payload.roomId;
@@ -1392,6 +1423,11 @@ export const AppProvider = ({ children }) => {
                 list.unshift(room);
                 return list;
             });
+
+            // If socket echo is delayed/missed, quick background sync keeps room previews + unreads fresh.
+            if (!socketRef.current?.connected) {
+                refreshBackgroundData();
+            }
 
             return true;
         } catch (e) {
