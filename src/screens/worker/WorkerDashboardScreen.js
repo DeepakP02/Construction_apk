@@ -114,16 +114,25 @@ const WorkerDashboardScreen = ({ navigation }) => {
                 return;
             }
             let pId = null;
+            let tId = null;
+            const opts = {};
             if (assignment) {
                 if (assignment.type === 'task') {
-                    pId = assignment.projectId;
+                    const pidRaw = assignment.projectId?._id || assignment.projectId;
+                    pId = pidRaw != null ? String(pidRaw) : null;
+                    tId = assignment.id != null ? String(assignment.id) : null;
+                    const jidRaw = assignment.jobId?._id || assignment.jobId;
+                    if (jidRaw != null) opts.jobId = String(jidRaw);
+                    if (assignment.taskType) opts.taskType = assignment.taskType;
                 } else if (assignment.type === 'project') {
-                    pId = assignment._id || assignment.id;
-                } else {
+                    pId = assignment._id != null ? String(assignment._id) : assignment.id != null ? String(assignment.id) : null;
+                    const jidRaw = assignment.jobId?._id || assignment.jobId;
+                    if (jidRaw != null) opts.jobId = String(jidRaw);
+                } else if (typeof assignment === 'string') {
                     pId = assignment;
                 }
             }
-            await toggleClock(pId);
+            await toggleClock(pId, tId, opts);
             setClockModal(false);
             refreshData();
         } catch (e) {
@@ -440,12 +449,12 @@ const WorkerDashboardScreen = ({ navigation }) => {
                                                 <MaterialCommunityIcons name="clipboard-check-outline" size={moderateScale(14)} color="#94A3B8" />
                                                 <Text style={[styles.modalSectionText, { fontSize: moderateScale(9) }]}>MY TASKS</Text>
                                             </View>
-                                            {assignedTasks_list.map((t) => {
+                                            {assignedTasks_list.map((t, tIdx) => {
                                                 const prefix = t.type === 'SubTask' ? 'Sub: ' : t.type === 'Task' ? 'Global: ' : 'Task: ';
                                                 const displayName = `${prefix}${t.title}`;
                                                 return (
                                                     <TouchableOpacity
-                                                        key={`task_${t._id}`}
+                                                        key={`task_${String(t._id)}_${tIdx}`}
                                                         style={[styles.projectItem, selectedAssignment?.id === t._id && styles.projectItemSelected, { paddingVertical: verticalScale(14), paddingHorizontal: scale(8) }]}
                                                         onPress={() => {
                                                             const assig = { type: 'task', id: t._id, displayName, projectId: t.projectId, jobId: t.jobId, taskType: t.type || 'JobTask' };
@@ -471,9 +480,9 @@ const WorkerDashboardScreen = ({ navigation }) => {
                                                 <MaterialCommunityIcons name="office-building-outline" size={moderateScale(14)} color="#94A3B8" />
                                                 <Text style={[styles.modalSectionText, { fontSize: moderateScale(9) }]}>GENERAL SITE ATTENDANCE</Text>
                                             </View>
-                                            {assignedProjects_list.map((p) => (
+                                            {assignedProjects_list.map((p, pIdx) => (
                                                 <TouchableOpacity
-                                                    key={`project_${p._id}`}
+                                                    key={`project_${String(p._id)}_${String(p.jobId ?? 'nojob')}_${pIdx}`}
                                                     style={[styles.projectItem, selectedAssignment?.id === p._id && styles.projectItemSelected, { paddingVertical: verticalScale(14), paddingHorizontal: scale(8) }]}
                                                     onPress={() => {
                                                         const assig = { type: 'project', _id: p._id, id: p._id, displayName: `${p.name} (${p.jobName || 'Site'})`, jobId: p.jobId };

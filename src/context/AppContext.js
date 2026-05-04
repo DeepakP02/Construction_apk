@@ -8,6 +8,36 @@ import { io } from 'socket.io-client';
 import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ISSUES, MOCK_MESSAGES, MOCK_USER, MOCK_ACTIVITY } from '../mock/data';
 
 const AppContext = createContext();
+
+/**
+ * POST /tasks only accepts parentTaskId referencing a Task document.
+ * The flat task feed can include SubTask and JobTask rows whose _id is not a Task.
+ */
+function extractUserId(assignee) {
+    if (assignee == null || assignee === '') return '';
+    if (typeof assignee === 'object') return String(assignee._id || assignee.id || '').trim();
+    return String(assignee).trim();
+}
+
+function resolveCanonicalTaskParentId(parentId, taskList) {
+    if (!parentId) return '';
+    let id = String(parentId).trim();
+    const visited = new Set();
+    for (let depth = 0; depth < 24; depth++) {
+        if (!id || visited.has(id)) return '';
+        visited.add(id);
+        const row = (taskList || []).find((x) => String(x._id || x.id) === id);
+        if (!row) return id;
+        if (row.isJobTask) return '';
+        if (!row.isSubTask) return String(row._id || row.id);
+        const ref = row.taskId?._id || row.taskId;
+        if (!ref) return '';
+        if (row.onModel === 'JobTask') return '';
+        id = String(ref);
+    }
+    return '';
+}
+
 const STRICT_SYNC_LABELS = new Set([
     'Projects',
     'Tasks',
@@ -22,6 +52,7 @@ const STRICT_SYNC_LABELS = new Set([
 
 export const AppProvider = ({ children }) => {
     const socketRef = useRef(null);
+    const chatRoomsRef = useRef([]);
     const appStateRef = useRef(AppState.currentState);
     const lastPopupMessageIdRef = useRef(null);
     const [user, setUser] = useState(null);
@@ -48,6 +79,11 @@ export const AppProvider = ({ children }) => {
     const [lastNotifCount, setLastNotifCount] = useState(0);
     const [lastUnreadCount, setLastUnreadCount] = useState(0);
     const [selectedProject, setSelectedProject] = useState(null);
+    const [isClocking, setIsClocking] = useState(false);
+
+    useEffect(() => {
+        chatRoomsRef.current = Array.isArray(chatRooms) ? chatRooms : [];
+    }, [chatRooms]);
 
     const normalizeNotifications = (rawList) => {
         const list = Array.isArray(rawList) ? rawList : [];
@@ -373,11 +409,13 @@ export const AppProvider = ({ children }) => {
             }
 
             const socket = io(base, {
-                transports: ['websocket'],
+                transports: ['websocket', 'polling'],
                 auth: { token },
                 reconnection: true,
                 reconnectionAttempts: Infinity,
                 reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
             });
 
             socket.on('connect', () => {
@@ -387,10 +425,14 @@ export const AppProvider = ({ children }) => {
                     role: user.role,
                     companyId: user.companyId
                 });
-                (chatRooms || []).forEach((room) => {
+                (chatRoomsRef.current || []).forEach((room) => {
                     const rid = room?.id || room?._id;
                     if (rid) socket.emit('join_room', String(rid));
                 });
+            });
+
+            socket.on('connect_error', () => {
+                // Keep silent fallback; background refresh handles temporary socket instability.
             });
 
             socket.on('new_message', (incoming) => {
@@ -624,19 +666,34 @@ export const AppProvider = ({ children }) => {
                 'completed': 'completed'
             };
 
+            const assigneeRaw = Array.isArray(newTask.assignedTo) ? newTask.assignedTo[0] : newTask.assignedTo;
             const payload = {
                 ...newTask,
                 category: (newTask.category || 'TASK').toUpperCase(),
                 status: statusMap[newTask.status] || newTask.status || 'todo',
                 priority: newTask.priority ? (newTask.priority.charAt(0).toUpperCase() + newTask.priority.slice(1).toLowerCase()) : 'Medium',
-                assignedTo: Array.isArray(newTask.assignedTo) ? newTask.assignedTo[0] : newTask.assignedTo,
+                assignedTo: extractUserId(assigneeRaw),
                 dueDate: normalizeDateInput(newTask.dueDate),
                 startDate: normalizeDateInput(newTask.startDate)
             };
 
+            if (payload.parentTaskId) {
+                const canon = resolveCanonicalTaskParentId(payload.parentTaskId, tasks);
+                if (canon) payload.parentTaskId = canon;
+                else delete payload.parentTaskId;
+            }
+
             if (payload.isChild && !payload.parentTaskId) {
                 console.error('Add task rejected: child task missing parentTaskId', payload);
                 return false;
+            }
+
+            const myId = String(user?._id || user?.id || '').trim();
+            if (myId && ['WORKER', 'SUBCONTRACTOR'].includes(user?.role)) {
+                payload.assignedTo = myId;
+                delete payload.assignedRoleType;
+            } else if (!payload.assignedTo) {
+                delete payload.assignedTo;
             }
 
             let res;
@@ -699,13 +756,74 @@ export const AppProvider = ({ children }) => {
 
     const addChildTask = async (parentTaskId, childTaskData = {}) => {
         try {
-            const parentId = String(parentTaskId || '').trim();
-            if (!parentId) {
+            const rawId = String(parentTaskId || '').trim();
+            if (!rawId) {
                 console.error('addChildTask rejected: missing parentTaskId');
                 return false;
             }
 
-            const parent = (tasks || []).find(t => String(t._id || t.id) === parentId);
+            const normDate = (value) => {
+                if (!value || typeof value !== 'string') return value;
+                const trimmed = value.trim();
+                if (!trimmed) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+                const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                if (slashMatch) {
+                    const day = slashMatch[1].padStart(2, '0');
+                    const month = slashMatch[2].padStart(2, '0');
+                    const year = slashMatch[3];
+                    return `${year}-${month}-${day}`;
+                }
+                return trimmed;
+            };
+
+            const parentRow = (tasks || []).find((t) => String(t._id || t.id) === rawId);
+
+            const myIdChild = String(user?._id || user?.id || '').trim();
+            const pickSubtaskAssignee = (at) => {
+                if (myIdChild && ['WORKER', 'SUBCONTRACTOR'].includes(user?.role)) return myIdChild;
+                const raw = Array.isArray(at) ? at[0] : at;
+                return extractUserId(raw) || undefined;
+            };
+
+            if (parentRow?.isJobTask) {
+                const assignedTo = pickSubtaskAssignee(childTaskData.assignedTo);
+                await api.post(`/tasks/${rawId}/subtasks`, {
+                    title: childTaskData.title,
+                    assignedTo: assignedTo || undefined,
+                    startDate: normDate(childTaskData.startDate) || undefined,
+                    dueDate: normDate(childTaskData.dueDate) || undefined,
+                    remarks: childTaskData.description || '',
+                    priority: childTaskData.priority || 'Medium',
+                });
+                await fetchInitialData();
+                return true;
+            }
+
+            if (parentRow?.isSubTask && parentRow.onModel === 'JobTask') {
+                const jtId = String(parentRow.taskId?._id || parentRow.taskId || '');
+                if (!jtId) return false;
+                const assignedTo = pickSubtaskAssignee(childTaskData.assignedTo);
+                await api.post(`/tasks/${jtId}/subtasks`, {
+                    title: childTaskData.title,
+                    assignedTo: assignedTo || undefined,
+                    startDate: normDate(childTaskData.startDate) || undefined,
+                    dueDate: normDate(childTaskData.dueDate) || undefined,
+                    remarks: childTaskData.description || '',
+                    priority: childTaskData.priority || 'Medium',
+                    parentSubTaskId: rawId,
+                });
+                await fetchInitialData();
+                return true;
+            }
+
+            const canonicalParentId = resolveCanonicalTaskParentId(rawId, tasks);
+            if (!canonicalParentId) {
+                console.error('addChildTask: could not resolve Task parent id', rawId);
+                return false;
+            }
+
+            const parent = (tasks || []).find((t) => String(t._id || t.id) === canonicalParentId);
 
             const inheritedProjectId =
                 childTaskData.projectId ||
@@ -714,10 +832,10 @@ export const AppProvider = ({ children }) => {
 
             const payload = {
                 ...childTaskData,
-                parentTaskId: parentId,
+                parentTaskId: canonicalParentId,
                 projectId: inheritedProjectId || undefined,
                 jobId: undefined,
-                isChild: true
+                isChild: true,
             };
 
             return await addTask(payload);
@@ -938,11 +1056,21 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const toggleClock = async (projectId, taskId = null) => {
+    /** @param {string|null|undefined} projectId - Project id (optional if taskId/jobId or emergency reason) */
+    /** @param {string|null|undefined} taskId - Task / job-task / subtask id */
+    /** @param {{ jobId?: string, taskType?: string, reason?: string }} [options] */
+    const toggleClock = async (projectId, taskId = null, options = {}) => {
         const now = new Date();
-        const pId = typeof projectId === 'string' ? projectId : null;
-        const tId = typeof taskId === 'string' ? taskId : null;
+        const opts = options || {};
+        const pRaw = projectId != null && projectId !== '' ? String(projectId) : '';
+        const pId = pRaw && pRaw !== 'undefined' && pRaw !== 'null' ? pRaw : null;
+        const tRaw = taskId != null && taskId !== '' ? String(taskId) : '';
+        const tId = tRaw && tRaw !== 'undefined' && tRaw !== 'null' ? tRaw : null;
+        const jRaw = opts.jobId != null && opts.jobId !== '' ? String(opts.jobId) : '';
+        const jId = jRaw && jRaw !== 'undefined' && jRaw !== 'null' ? jRaw : null;
+        const reason = typeof opts.reason === 'string' ? opts.reason.trim() : '';
 
+        setIsClocking(true);
         try {
             // Check if location services are enabled on the device
             const enabled = await Location.hasServicesEnabledAsync();
@@ -969,14 +1097,19 @@ export const AppProvider = ({ children }) => {
             };
 
             if (!isClockedIn) {
-                if (!pId) {
+                const hasTarget = !!(pId || tId || jId || reason);
+                if (!hasTarget) {
                     throw new Error('Project selection required for clock-in');
                 }
                 const res = await api.post('/timelogs/clock-in', {
-                    projectId: pId,
-                    taskId: tId,
+                    projectId: pId || undefined,
+                    jobId: jId || undefined,
+                    taskId: tId || undefined,
+                    taskType: opts.taskType || undefined,
+                    reason: reason || undefined,
                     latitude: coords.latitude,
-                    longitude: coords.longitude
+                    longitude: coords.longitude,
+                    deviceInfo: `BuildMaster App ${Platform.OS || 'native'}`
                 });
                 
                 const serverLog = res.data;
@@ -990,13 +1123,19 @@ export const AppProvider = ({ children }) => {
                 await AsyncStorage.setItem('localClockIn', JSON.stringify({ isClockedIn: true, time: serverLog.clockIn, pId }));
 
                 // OPTIMISTIC ACTIVITY UPDATE
-                const activeProject = (projects || []).find(p => p._id === pId);
-                setActivities(prev => [{
-                    type: 'clock_in',
-                    createdAt: now.toISOString(),
-                    projectId: { _id: pId, name: activeProject?.name || 'Project Site' },
-                    taskId: tId
-                }, ...prev]);
+                const activeProject = pId ? (projects || []).find((p) => String(p._id || p.id) === String(pId)) : null;
+                setActivities((prev) => [
+                    {
+                        type: 'clock_in',
+                        createdAt: now.toISOString(),
+                        projectId: {
+                            _id: pId || undefined,
+                            name: activeProject?.name || (reason ? 'Emergency / unlisted' : 'Project Site')
+                        },
+                        taskId: tId
+                    },
+                    ...prev
+                ]);
 
                 return serverLog;
             } else {
@@ -1051,6 +1190,8 @@ export const AppProvider = ({ children }) => {
 
             console.error('Clock toggle error', errorMsg);
             throw e;
+        } finally {
+            setIsClocking(false);
         }
     };
 
@@ -1480,7 +1621,7 @@ export const AppProvider = ({ children }) => {
             issues, setIssues, addIssue,
             messages, setMessages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile,
             rfis, rfiStats, addRFI,
-            isClockedIn, toggleClock,
+            isClockedIn, isClocking, toggleClock,
             clockInTime, clockOutTime, getWorkDuration,
             activities,
             timeLogs,

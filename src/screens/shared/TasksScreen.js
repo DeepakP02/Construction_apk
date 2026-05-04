@@ -671,8 +671,14 @@ const TasksScreen = ({ navigation }) => {
                                     [
                                         { label: 'None (Top Level)', value: 'NONE' },
                                         ...(tasks || [])
-                                            .filter(t => (t.projectId?._id || t.projectId) === form.projectId && (t._id || t.id) !== (editingTask?._id || editingTask?.id))
-                                            .map(t => ({ label: t.title, value: t._id || t.id }))
+                                            .filter(
+                                                (t) =>
+                                                    (t.projectId?._id || t.projectId) === form.projectId &&
+                                                    (t._id || t.id) !== (editingTask?._id || editingTask?.id) &&
+                                                    !t.isSubTask &&
+                                                    !t.isJobTask
+                                            )
+                                            .map((t) => ({ label: t.title, value: t._id || t.id }))
                                     ],
                                     (val) => {
                                         if (val === 'NONE') {

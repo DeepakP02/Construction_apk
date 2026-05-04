@@ -9,7 +9,48 @@ import { useApp } from '../../context/AppContext';
 
 const { width } = Dimensions.get('window');
 
-const SubcontractorDashboard = ({ navigation, timer, isClockedIn, isClocking, handleClockToggle, setClockModal, selectedProject }) => {
+/** Supports /reports/stats rows (`action`, `job`, `time`, `date`) and optimistic/socket rows (`type`, `projectId`, `createdAt`). */
+function normalizeActivityRow(act, index) {
+    const actionStr = String(act.action || '').toLowerCase();
+    const typeStr = String(act.type || '').toLowerCase();
+    const isClockOut =
+        typeStr === 'clock_out' ||
+        (actionStr.includes('clock') && actionStr.includes('out'));
+    const title =
+        act.action ||
+        (isClockOut ? 'Clocked Out' : 'Clocked In');
+    const sub =
+        act.projectId?.name ||
+        act.job ||
+        act.target ||
+        '---';
+    let timeLine = act.time;
+    if (!timeLine && act.createdAt) {
+        const d = new Date(act.createdAt);
+        if (!Number.isNaN(d.getTime())) {
+            timeLine = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+    if (!timeLine) timeLine = '---';
+    let dateLine = act.date;
+    if (!dateLine && act.createdAt) {
+        const d = new Date(act.createdAt);
+        if (!Number.isNaN(d.getTime())) dateLine = d.toLocaleDateString();
+    }
+    if (!dateLine) dateLine = '';
+    const key = act.id || act._id || `act-${index}`;
+    return { isClockOut, title, sub, timeLine, dateLine, key };
+}
+
+const SubcontractorDashboard = ({
+    navigation,
+    timer,
+    isClockedIn,
+    isClocking,
+    handleClockToggle,
+    setClockModal,
+    selectedAssignment
+}) => {
     const {
         user, metrics,
         teamMembers, todos, addTodo, toggleTodo, deleteTodo,
@@ -64,9 +105,24 @@ const SubcontractorDashboard = ({ navigation, timer, isClockedIn, isClocking, ha
                     <Text style={styles.timerLarge}>{isClockedIn ? timer : '00:00:00'}</Text>
                     <Text style={styles.timerSub}>{isClockedIn ? 'Session Recording' : 'Not Active'}</Text>
                 </View>
+                {!isClockedIn && (
+                    <>
+                        <Text style={[styles.inputLabel, { marginTop: 12 }]}>SELECT SITE FOR CLOCK IN</Text>
+                        <TouchableOpacity
+                            style={styles.selectorBtn}
+                            onPress={() => setClockModal(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.selectorTxt, !selectedAssignment && { color: '#94A3B8' }]} numberOfLines={1}>
+                                {selectedAssignment?.displayName || '-- Choose Task / Project --'}
+                            </Text>
+                            <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                        </TouchableOpacity>
+                    </>
+                )}
                 <TouchableOpacity
                     style={[styles.clockBtn, { backgroundColor: isClockedIn ? '#475569' : '#0F172A' }, isClocking && { opacity: 0.7 }]}
-                    onPress={() => !isClockedIn ? setClockModal(true) : handleClockToggle(selectedProject?._id)}
+                    onPress={() => (!isClockedIn ? handleClockToggle(selectedAssignment) : handleClockToggle(null))}
                     disabled={isClocking}
                 >
                     {isClocking ? (
@@ -109,7 +165,7 @@ const SubcontractorDashboard = ({ navigation, timer, isClockedIn, isClocking, ha
             <View style={styles.actionsRow}>
                 <TouchableOpacity
                     style={[styles.actionPrimary, SHADOWS.small, isClocking && { opacity: 0.7 }]}
-                    onPress={() => setClockModal(true)}
+                    onPress={() => !isClockedIn ? setClockModal(true) : handleClockToggle(null)}
                     disabled={isClocking}
                 >
                     {isClocking ? (
@@ -257,25 +313,28 @@ const SubcontractorDashboard = ({ navigation, timer, isClockedIn, isClocking, ha
                 </View>
                 {(!activities || activities.length === 0) ? (
                     <Text style={[styles.emptyNote, { textAlign: 'center', paddingVertical: 20 }]}>No recent activity</Text>
-                ) : activities.slice(0, 4).map((act, i) => (
-                    <View key={i} style={styles.actRow}>
-                        <View style={[styles.actIcon, { backgroundColor: act.type === 'clock_out' ? '#FFF1F2' : '#F0FDF4' }]}>
+                ) : activities.slice(0, 4).map((act, i) => {
+                    const row = normalizeActivityRow(act, i);
+                    return (
+                    <View key={row.key} style={styles.actRow}>
+                        <View style={[styles.actIcon, { backgroundColor: row.isClockOut ? '#FFF1F2' : '#F0FDF4' }]}>
                             <MaterialCommunityIcons
-                                name={act.type === 'clock_out' ? 'clock-minus' : 'clock-plus'}
+                                name={row.isClockOut ? 'clock-minus' : 'clock-plus'}
                                 size={16}
-                                color={act.type === 'clock_out' ? '#E11D48' : '#16A34A'}
+                                color={row.isClockOut ? '#E11D48' : '#16A34A'}
                             />
                         </View>
                         <View style={styles.actMid}>
-                            <Text style={styles.actTitle}>{act.type === 'clock_out' ? 'Clocked Out' : 'Clocked In'}</Text>
-                            <Text style={styles.actSub}>{act.projectId?.name || '---'}</Text>
+                            <Text style={styles.actTitle}>{row.title}</Text>
+                            <Text style={styles.actSub}>{row.sub}</Text>
                         </View>
                         <View style={styles.actRight}>
-                            <Text style={styles.actTime}>{new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                            <Text style={styles.actDate}>{new Date(act.createdAt).toLocaleDateString()}</Text>
+                            <Text style={styles.actTime}>{row.timeLine}</Text>
+                            {!!row.dateLine && <Text style={styles.actDate}>{row.dateLine}</Text>}
                         </View>
                     </View>
-                ))}
+                    );
+                })}
             </View>
 
             {/* ── Attention & Alerts ───────────────────────────── */}

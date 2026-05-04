@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Alert, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,25 @@ const WorkerChatScreen = ({ navigation, route }) => {
             });
         };
     }, [room?.id, room?.type, user?._id]);
+
+    useFocusEffect(
+        useCallback(() => {
+            let timer = null;
+            const refreshActiveRoom = async () => {
+                if (!room?.id) return;
+                const fetchId = room.type === 'private' ? (dmRoomId || null) : room.id;
+                if (!fetchId) return;
+                await fetchMessages(fetchId);
+            };
+
+            refreshActiveRoom();
+            timer = setInterval(refreshActiveRoom, 5000);
+
+            return () => {
+                if (timer) clearInterval(timer);
+            };
+        }, [room?.id, room?.type, dmRoomId, fetchMessages])
+    );
 
     const peerId = room?.id?.toString();
     const myId = user?._id?.toString();

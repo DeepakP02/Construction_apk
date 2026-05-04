@@ -26,7 +26,10 @@ function cmpTaskOrder(a, b) {
     return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
 }
 
-const FOREMAN_COLLAPSE_KEY = 'foremanTasksCollapsedV1';
+function taskCollapseStorageKey(role) {
+    if (role === 'SUBCONTRACTOR') return 'subcontractorTasksCollapsedV1';
+    return 'foremanTasksCollapsedV1';
+}
 
 /**
  * Full task tree from allTasks; visibility = entire subtrees whose root is an ancestor of any anchor match
@@ -141,6 +144,7 @@ const ForemanTasksScreen = ({ navigation }) => {
     const { width } = useWindowDimensions();
     const isCompact = width < 380;
     const { tasks, addTask, deleteTask, refreshData, projects, teamMembers, fetchTeamMembers, jobs, user, selectedProject } = useApp();
+    const collapseStorageKey = useMemo(() => taskCollapseStorageKey(user?.role), [user?.role]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
@@ -209,6 +213,7 @@ const ForemanTasksScreen = ({ navigation }) => {
     };
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const subDefaultTabApplied = useRef(false);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
@@ -222,18 +227,24 @@ const ForemanTasksScreen = ({ navigation }) => {
     useEffect(() => {
         const restore = async () => {
             try {
-                const raw = await AsyncStorage.getItem(FOREMAN_COLLAPSE_KEY);
+                const raw = await AsyncStorage.getItem(collapseStorageKey);
                 if (!raw) return;
                 const parsed = JSON.parse(raw);
                 if (Array.isArray(parsed)) setCollapsedNodes(new Set(parsed.map((v) => String(v))));
             } catch (e) {}
         };
         restore();
-    }, []);
+    }, [collapseStorageKey]);
 
     useEffect(() => {
-        AsyncStorage.setItem(FOREMAN_COLLAPSE_KEY, JSON.stringify(Array.from(collapsedNodes))).catch(() => {});
-    }, [collapsedNodes]);
+        AsyncStorage.setItem(collapseStorageKey, JSON.stringify(Array.from(collapsedNodes))).catch(() => {});
+    }, [collapsedNodes, collapseStorageKey]);
+
+    useEffect(() => {
+        if (user?.role !== 'SUBCONTRACTOR' || subDefaultTabApplied.current) return;
+        subDefaultTabApplied.current = true;
+        setActiveTab('MY TASKS');
+    }, [user?.role]);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -260,6 +271,10 @@ const ForemanTasksScreen = ({ navigation }) => {
                     : sameId(t.assignedTo?._id || t.assignedTo?.id || t.assignedTo, myId);
                 const assignedForeman = t.assignedForeman?._id || t.assignedForeman;
                 const isLeadForeman = myId && sameId(assignedForeman, myId);
+                const createdByMe = myId && sameId(t.createdBy?._id || t.createdBy, myId);
+                if (user?.role === 'SUBCONTRACTOR') {
+                    return isAssignedToMe || isLeadForeman || createdByMe;
+                }
                 return isAssignedToMe || isLeadForeman;
             }
             return true;
@@ -609,7 +624,9 @@ const ForemanTasksScreen = ({ navigation }) => {
                     <View style={styles.titleRow}>
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.screenTitle, { fontSize: moderateScale(22) }]}>Task Command Center</Text>
-                            <Text style={[styles.commandSubtitleForeman, { marginTop: verticalScale(4) }]}>TASK TRACKING & ASSIGNMENT</Text>
+                            <Text style={[styles.commandSubtitleForeman, { marginTop: verticalScale(4) }]}>
+                                {user?.role === 'SUBCONTRACTOR' ? 'SUBCONTRACTOR TASK HIERARCHY' : 'TASK TRACKING & ASSIGNMENT'}
+                            </Text>
                         </View>
                         <TouchableOpacity style={[styles.newTaskBtn, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12) }]} onPress={openCreateModal} activeOpacity={0.8}>
                             <MaterialCommunityIcons name="plus" size={moderateScale(20)} color="#fff" />
@@ -746,7 +763,12 @@ const ForemanTasksScreen = ({ navigation }) => {
                                         [
                                             { label: 'None (top level)', value: 'NONE' },
                                             ...(tasks || [])
-                                                .filter((t) => String(t.projectId?._id || t.projectId) === String(form.projectId))
+                                                .filter(
+                                                    (t) =>
+                                                        String(t.projectId?._id || t.projectId) === String(form.projectId) &&
+                                                        !t.isSubTask &&
+                                                        !t.isJobTask
+                                                )
                                                 .map((t) => ({ label: t.title, value: t._id || t.id })),
                                         ],
                                         (val) => {

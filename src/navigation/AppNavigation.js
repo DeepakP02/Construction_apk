@@ -118,7 +118,6 @@ import ClientProjectsScreen from '../screens/client/ClientProjectsScreen';
 // Subcontractor Specific Screens
 import SubcontractorDashboardScreen from '../screens/subcontractor/SubcontractorDashboardScreen';
 import SubcontractorProjectsScreen from '../screens/subcontractor/SubcontractorProjectsScreen';
-import SubcontractorTasksScreen from '../screens/subcontractor/SubcontractorTasksScreen';
 import SubcontractorJobDetailsScreen from '../screens/subcontractor/SubcontractorJobDetailsScreen';
 import SubcontractorRFIScreen from '../screens/subcontractor/SubcontractorRFIScreen';
 
@@ -346,7 +345,7 @@ const ForemanTabs = () => {
             />
             <Tab.Screen
                 name="Tasks"
-                component={ForemanTasksScreen}
+                component={TasksScreen}
                 options={{
                     tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? "calendar-check" : "calendar-check-outline"} color={color} size={24} />
                 }}
@@ -818,17 +817,11 @@ const SubcontractorDrawerContent = (props) => {
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
 
-                    <DrawerSection title="SITE & PROCUREMENT" />
+                    <DrawerSection title="SITE" />
                     <DrawerItem
                         label="Equipment"
                         icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Purchase Orders"
-                        icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('PurchaseOrders')}
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
 
@@ -902,7 +895,7 @@ const SubcontractorTabs = () => {
             />
             <Tab.Screen
                 name="Tasks"
-                component={SubcontractorTasksScreen}
+                component={TasksScreen}
                 options={{
                     tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? "calendar-check" : "calendar-check-outline"} color={color} size={24} />
                 }}
@@ -946,8 +939,6 @@ const SubcontractorDrawer = () => {
             <Drawer.Screen name="Equipment" component={EquipmentScreen} />
             <Drawer.Screen name="RFI" component={SubcontractorRFIScreen} />
             <Drawer.Screen name="Reports" component={ReportsScreen} />
-            <Drawer.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} />
-            <Drawer.Screen name="PurchaseOrderDetail" component={PurchaseOrderDetailScreen} />
         </Drawer.Navigator>
     );
 };

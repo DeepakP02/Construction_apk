@@ -16,11 +16,16 @@ const SubcontractorProjectsScreen = ({ navigation }) => {
     const filters = ['PLANNING', 'ACTIVE', 'ON HOLD', 'COMPLETE'];
 
     const filteredJobs = useMemo(() => {
+        const normalizeStatusForChips = (status) => {
+            const s = (status || 'planning').toUpperCase().replace(/_/g, ' ').trim();
+            if (s === 'COMPLETED' || s === 'DONE' || s === 'CLOSED') return 'COMPLETE';
+            return s;
+        };
         return (jobs || []).filter(j => {
             const matchesSearch = j.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                 (j.projectId?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
             
-            const normalizedStatus = (j.status || 'planning').toUpperCase().replace('_', ' ');
+            const normalizedStatus = normalizeStatusForChips(j.status);
             const matchesFilter = activeFilter === 'ALL' || normalizedStatus === activeFilter;
             
             return matchesSearch && matchesFilter;
