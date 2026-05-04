@@ -54,13 +54,18 @@ const ClientPhotosScreen = ({ navigation }) => {
 
     // Photos that should be visible to the client (role + project + internal check)
     const visiblePhotos = photos.filter(p => {
-        const pId = p.projectId?._id || p.projectId;
-        const uploaderRole = p.userId?.role || 'worker';
+        const pId = String(p.projectId?._id || p.projectId);
+        const uploader = p.uploadedBy || p.userId;
+        const uploaderRole = (uploader?.role || '').toUpperCase();
         const isInternal = p.description?.includes('[INTERNAL_ISSUE_PHOTO]');
-        const isMyProject = clientProjectIds.includes(pId);
+        const isMyProject = clientProjectIds.map(id => String(id)).includes(pId);
         
-        const isOfficialUpdate = ['project_manager', 'foreman', 'admin'].includes(uploaderRole);
-        const isMyOwnPhoto = p.userId?._id === user?._id || p.userId === user?._id;
+        // If backend wasn't restarted, role might be empty. In that case, we show it if it's not internal.
+        // Dashboard shows everything, so let's match dashboard's leniency but keep internal check.
+        const isOfficialUpdate = !uploaderRole || ['PM', 'FOREMAN', 'COMPANY_OWNER', 'SUPER_ADMIN', 'PROJECT_MANAGER', 'ADMIN'].includes(uploaderRole);
+        const uploaderId = uploader?._id || uploader?.id || uploader;
+        const myId = user?._id || user?.id;
+        const isMyOwnPhoto = String(uploaderId) === String(myId);
 
         return isMyProject && !isInternal && (isOfficialUpdate || isMyOwnPhoto);
     });
