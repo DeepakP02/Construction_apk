@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Platform, useWindowDimensions, KeyboardAvoidingView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
@@ -64,6 +64,13 @@ const TaskCreateScreen = ({ route, navigation }) => {
     useEffect(() => {
         fetchTeamMembers();
     }, []);
+
+    useEffect(() => {
+        if (user?.role === 'SUBCONTRACTOR') {
+            Alert.alert('Not Allowed', 'Subcontractor can only view assigned tasks.');
+            handleSafeBack();
+        }
+    }, [user?.role]);
 
     const parentTask = useMemo(() => {
         if (!parentTaskId) return null;
@@ -144,6 +151,10 @@ const TaskCreateScreen = ({ route, navigation }) => {
     };
 
     const onSave = async () => {
+        if (user?.role === 'SUBCONTRACTOR') {
+            Alert.alert('Not Allowed', 'Subcontractor can only view assigned tasks.');
+            return;
+        }
         if (!form.title.trim()) {
             Alert.alert('Validation', 'Task title is required.');
             return;
@@ -276,7 +287,16 @@ const TaskCreateScreen = ({ route, navigation }) => {
                 <View style={{ width: 24 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <KeyboardAvoidingView
+                style={styles.formWrap}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+            >
+            <ScrollView
+                contentContainerStyle={styles.content}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+            >
                 <View style={styles.infoCard}>
                     <Text style={styles.infoLabel}>PROJECT</Text>
                     <Text style={styles.infoValue}>{isChildMode ? resolvedProjectName : ((projects || []).find(p => String(p._id || p.id) === String(form.projectId || ''))?.name || 'Select Project')}</Text>
@@ -439,6 +459,7 @@ const TaskCreateScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+            </KeyboardAvoidingView>
 
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={handleSafeBack} disabled={saving}>
@@ -492,6 +513,7 @@ const TaskCreateScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    formWrap: { flex: 1 },
     headerTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
     content: { padding: 16, paddingBottom: 24 },
     formCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginTop: 10 },

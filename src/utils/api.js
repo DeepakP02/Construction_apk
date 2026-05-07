@@ -8,10 +8,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Android emulator to local backend on host machine
-    'http://10.0.2.2:8080',
-    // iOS simulator / same-machine dev fallback
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
+    // 'http://10.0.2.2:8080',
+    // // iOS simulator / same-machine dev fallback
+    // 'http://127.0.0.1:8080',
+    // 'http://localhost:8080',
     'https://construction-production-b18f.up.railway.app',
     // 'https://constuctionbackend-production.up.railway.app',
     // 'http://localhost:8080/api',

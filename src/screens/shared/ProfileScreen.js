@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -31,13 +31,18 @@ const ProfileItem = ({ icon, label, value, onPress, isDestructive = false, animI
 
 const ProfileScreen = ({ navigation }) => {
     const { user, updateProfile, updatePassword, logout } = useApp();
+    const { width, height } = useWindowDimensions();
+    const isSmallScreen = width < 380;
+    const modalMaxWidth = Math.min(width - 16, 560);
+    const modalMaxHeight = Math.min(height * 0.9, 720);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const [editData, setEditData] = useState({
         fullName: user?.name || user?.fullName || '',
-        email: user?.email || ''
+        email: user?.email || '',
+        phone: user?.phone || ''
     });
 
     const [passwordData, setPasswordData] = useState({
@@ -50,10 +55,26 @@ const ProfileScreen = ({ navigation }) => {
         if (user) {
             setEditData({
                 fullName: user.name || user.fullName || '',
-                email: user.email || ''
+                email: user.email || '',
+                phone: user.phone || ''
             });
         }
     }, [user]);
+
+    const formatRoleLabel = (role) => {
+        if (!role) return 'Member';
+        const roleMap = {
+            PM: 'Project Manager',
+            FOREMAN: 'Foreman',
+            SUBCONTRACTOR: 'Subcontractor',
+            WORKER: 'Worker',
+            CLIENT: 'Client',
+            COMPANY_OWNER: 'Company Owner',
+            SUPER_ADMIN: 'Super Admin',
+            ADMIN: 'Admin',
+        };
+        return roleMap[role] || String(role).replace(/_/g, ' ');
+    };
 
     // Staggered Animations
     const staggeredAnims = useRef([
@@ -137,7 +158,7 @@ const ProfileScreen = ({ navigation }) => {
 
                     <Text style={styles.userName}>{user?.name || user?.fullName || 'User Name'}</Text>
                     <View style={styles.roleBadge}>
-                        <Text style={styles.userRole}>{user?.role?.replace('_', ' ') || 'Member'}</Text>
+                        <Text style={styles.userRole}>{formatRoleLabel(user?.role)}</Text>
                     </View>
                 </Animated.View>
 
@@ -147,7 +168,6 @@ const ProfileScreen = ({ navigation }) => {
                     <ProfileItem
                         icon="account-outline"
                         label="Edit Profile"
-                        value="Name & Email"
                         onPress={() => setIsEditModalVisible(true)}
                         animIndex={1} staggeredAnims={staggeredAnims}
                     />
@@ -163,7 +183,7 @@ const ProfileScreen = ({ navigation }) => {
                 <Animated.View style={[styles.section, { opacity: staggeredAnims[2] }]}>
                     <Text style={styles.sectionTitle}>Status Information</Text>
                     <ProfileItem icon="email-outline" label="Work Email" value={user?.email || 'N/A'} animIndex={2} staggeredAnims={staggeredAnims} />
-                    <ProfileItem icon="shield-check-outline" label="Account Type" value={user?.role} animIndex={2} staggeredAnims={staggeredAnims} />
+                    <ProfileItem icon="shield-check-outline" label="Account Type" value={formatRoleLabel(user?.role)} animIndex={2} staggeredAnims={staggeredAnims} />
                 </Animated.View>
 
                 {/* Company Section */}
@@ -202,42 +222,75 @@ const ProfileScreen = ({ navigation }) => {
                 visible={isEditModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
+                presentationStyle="overFullScreen"
                 onRequestClose={() => setIsEditModalVisible(false)}
             >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Edit Profile</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Full Name"
-                            placeholderTextColor="#94A3B8"
-                            value={editData.fullName}
-                            onChangeText={(t) => setEditData({ ...editData, fullName: t })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email"
-                            placeholderTextColor="#94A3B8"
-                            value={editData.email}
-                            keyboardType="email-address"
-                            onChangeText={(t) => setEditData({ ...editData, email: t })}
-                        />
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#64748B' }]} onPress={() => setIsEditModalVisible(false)}>
-                                <Text style={styles.btnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.primary }]} onPress={handleUpdateProfile}>
-                                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Update</Text>}
-                            </TouchableOpacity>
+                        <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 20 }]}>
+                            <ScrollView
+                                keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.modalScrollContent}
+                            >
+                                <Text style={styles.modalTitle}>Edit Profile</Text>
+
+                                <Text style={styles.inputLabel}>Display Name</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Full Name"
+                                    placeholderTextColor="#94A3B8"
+                                    value={editData.fullName}
+                                    onChangeText={(t) => setEditData({ ...editData, fullName: t })}
+                                />
+
+                                <Text style={styles.inputLabel}>Email Address</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Email"
+                                    placeholderTextColor="#94A3B8"
+                                    value={editData.email}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    onChangeText={(t) => setEditData({ ...editData, email: t })}
+                                />
+
+                                <Text style={styles.inputLabel}>Contact Number</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. +1 234 567 890"
+                                    placeholderTextColor="#94A3B8"
+                                    value={editData.phone}
+                                    keyboardType="phone-pad"
+                                    onChangeText={(t) => setEditData({ ...editData, phone: t })}
+                                />
+
+                                <Text style={styles.inputLabel}>Role</Text>
+                                <View style={styles.readOnlyInput}>
+                                    <Text style={styles.readOnlyText}>{formatRoleLabel(user?.role)}</Text>
+                                </View>
+
+                                <View style={[styles.modalButtons, isSmallScreen && styles.modalButtonsStacked]}>
+                                    <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#64748B' }]} onPress={() => setIsEditModalVisible(false)}>
+                                        <Text style={styles.btnText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.primary }]} onPress={handleUpdateProfile}>
+                                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Update</Text>}
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
                         </View>
-                    </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* Password Modal */}
@@ -245,51 +298,63 @@ const ProfileScreen = ({ navigation }) => {
                 visible={isPasswordModalVisible}
                 animationType="slide"
                 transparent={true}
+                statusBarTranslucent={true}
+                presentationStyle="overFullScreen"
                 onRequestClose={() => setIsPasswordModalVisible(false)}
             >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Change Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Current Password"
-                            placeholderTextColor="#94A3B8"
-                            secureTextEntry
-                            value={passwordData.currentPassword}
-                            onChangeText={(t) => setPasswordData({ ...passwordData, currentPassword: t })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="New Password"
-                            placeholderTextColor="#94A3B8"
-                            secureTextEntry
-                            value={passwordData.newPassword}
-                            onChangeText={(t) => setPasswordData({ ...passwordData, newPassword: t })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Confirm New Password"
-                            placeholderTextColor="#94A3B8"
-                            secureTextEntry
-                            value={passwordData.confirmPassword}
-                            onChangeText={(t) => setPasswordData({ ...passwordData, confirmPassword: t })}
-                        />
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#64748B' }]} onPress={() => setIsPasswordModalVisible(false)}>
-                                <Text style={styles.btnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.primary }]} onPress={handleUpdatePassword}>
-                                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Change</Text>}
-                            </TouchableOpacity>
+                        <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 20 }]}>
+                            <ScrollView
+                                keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.modalScrollContent}
+                            >
+                                <Text style={styles.modalTitle}>Change Password</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Current Password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry
+                                    value={passwordData.currentPassword}
+                                    onChangeText={(t) => setPasswordData({ ...passwordData, currentPassword: t })}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="New Password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry
+                                    value={passwordData.newPassword}
+                                    onChangeText={(t) => setPasswordData({ ...passwordData, newPassword: t })}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Confirm New Password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry
+                                    value={passwordData.confirmPassword}
+                                    onChangeText={(t) => setPasswordData({ ...passwordData, confirmPassword: t })}
+                                />
+                                <View style={[styles.modalButtons, isSmallScreen && styles.modalButtonsStacked]}>
+                                    <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#64748B' }]} onPress={() => setIsPasswordModalVisible(false)}>
+                                        <Text style={styles.btnText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.primary }]} onPress={handleUpdatePassword}>
+                                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Change</Text>}
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
                         </View>
-                    </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
         </View>
     );
@@ -325,12 +390,17 @@ const styles = StyleSheet.create({
     profileItemRight: { flexDirection: 'row', alignItems: 'center' },
     profileItemValue: { fontSize: 14, marginRight: 6, fontWeight: '700', color: COLORS.textSecondary },
     versionText: { textAlign: 'center', fontSize: 12, color: COLORS.textMuted, fontWeight: '700' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
-    modalKeyboardWrap: { width: '100%' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
+    modalScrollContent: { paddingBottom: 12, flexGrow: 1 },
     modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 12, letterSpacing: -0.4 },
+    inputLabel: { fontSize: 13, fontWeight: '800', color: '#334155', marginBottom: 6, marginTop: 6 },
     input: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', color: '#000' },
+    readOnlyInput: { backgroundColor: '#E2E8F0', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#CBD5E1' },
+    readOnlyText: { fontSize: 16, fontWeight: '700', color: '#475569', textTransform: 'uppercase' },
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    modalButtonsStacked: { flexDirection: 'column' },
     modalBtn: { flex: 1, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     btnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', fontSize: 14 }
 });

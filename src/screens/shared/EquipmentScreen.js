@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView, StatusBar, SafeAreaView, Image, Platform, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView, StatusBar, SafeAreaView, Image, Platform, KeyboardAvoidingView, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -11,9 +11,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EquipmentScreen = ({ navigation }) => {
     const { user } = useApp();
-    const { width } = useWindowDimensions();
+    const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const isCompact = width < 390;
+    const modalMaxWidth = Math.min(width - 16, 900);
+    const modalMaxHeight = Math.min(height * 0.9, 780);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -378,14 +380,15 @@ const EquipmentScreen = ({ navigation }) => {
             </ScrollView>
 
             {/* NEW/EDIT MODAL */}
-            <Modal visible={modalVisible} animationType="fade" transparent>
+            <Modal visible={modalVisible} animationType="fade" transparent statusBarTranslucent presentationStyle="overFullScreen">
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={[styles.modalCard, SHADOWS.large]}>
+                    <View style={[styles.modalCard, SHADOWS.large, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>{editingItem ? 'Edit Equipment' : 'Add New Item'}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -396,6 +399,8 @@ const EquipmentScreen = ({ navigation }) => {
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                             contentContainerStyle={styles.modalScroll}
                         >
                             <Text style={styles.inputLabel}>Equipment Photo</Text>
@@ -528,6 +533,7 @@ const EquipmentScreen = ({ navigation }) => {
                     </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
             {Platform.OS === 'ios' && datePickerVisible ? (
                 <View style={styles.iosDatePickerWrap}>
@@ -598,9 +604,9 @@ const styles = StyleSheet.create({
     emptyView: { alignItems: 'center', paddingVertical: 60 },
     emptyText: { fontSize: 14, fontWeight: '800', color: '#94A3B8', marginTop: 16, textAlign: 'center' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' },
-    modalKeyboardWrap: { width: '100%' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     modalScroll: { paddingBottom: 26 },

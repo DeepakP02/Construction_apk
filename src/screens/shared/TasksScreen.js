@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Platform, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Platform, useWindowDimensions, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -8,6 +8,7 @@ import CustomButton from '../../components/CustomButton';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../../utils/api';
 
 const ROLE_LABELS = {
     PM: 'Project Manager',
@@ -44,8 +45,10 @@ const DISPLAY_MODES = [
 ];
 
 const TasksScreen = ({ navigation }) => {
-    const { width } = useWindowDimensions();
+    const { width, height } = useWindowDimensions();
     const isCompact = width < 380;
+    const modalMaxWidth = Math.min(width - 16, 700);
+    const modalMaxHeight = Math.min(height * 0.9, 760);
     const { tasks, addTask, updateTask, deleteTask, projects, teamMembers, fetchTeamMembers, user, refreshData, selectedProject } = useApp();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -54,6 +57,7 @@ const TasksScreen = ({ navigation }) => {
     const [displayMode, setDisplayMode] = useState('comfortable');
     const [filterTab, setFilterTab] = useState('all'); // 'my' or 'all'
     const [collapsedNodes, setCollapsedNodes] = useState(new Set());
+    const [serverTasks, setServerTasks] = useState([]);
     
     // Custom Selector State (Stable)
     const [selVisible, setSelVisible] = useState(false);
@@ -68,7 +72,7 @@ const TasksScreen = ({ navigation }) => {
     const promptDeleteTask = (task) => {
         const id = task?._id || task?.id;
         if (!id) return;
-        const hasChildren = (task?.children && task.children.length > 0) || (tasks || []).some(t => String(t.parentTaskId ? (t.parentTaskId?._id || t.parentTaskId) : '') === String(id));
+        const hasChildren = (task?.children && task.children.length > 0) || (visibleTasks || []).some(t => String(t.parentTaskId ? (t.parentTaskId?._id || t.parentTaskId) : '') === String(id));
 
         if (!hasChildren) {
             Alert.alert('Delete Task', `Delete "${task.title}"?`, [
@@ -90,6 +94,10 @@ const TasksScreen = ({ navigation }) => {
     };
 
     const openTaskActions = (task) => {
+        if (isSubcontractor) {
+            Alert.alert('View Only', 'Subcontractor can only view assigned tasks.');
+            return;
+        }
         Alert.alert(
             task?.title || 'Task Actions',
             'Choose an action',
@@ -167,15 +175,24 @@ const TasksScreen = ({ navigation }) => {
     
     const [loading, setLoading] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const latestFetchSeqRef = useRef(0);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
             refreshData();
             fetchTeamMembers();
+            fetchWebSyncedTasks();
         });
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
         return unsubscribe;
-    }, [navigation]);
+    }, [navigation, fetchWebSyncedTasks]);
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            fetchWebSyncedTasks();
+        }, 220);
+        return () => clearTimeout(t);
+    }, [fetchWebSyncedTasks]);
 
     useEffect(() => {
         const restoreCollapsed = async () => {
@@ -199,6 +216,44 @@ const TasksScreen = ({ navigation }) => {
     const role = user?.role;
     const isManagerial = ['PM', 'FOREMAN', 'OWNER', 'COMPANY_OWNER'].includes(role);
     const isPersonalOnlyRole = ['WORKER', 'SUBCONTRACTOR'].includes(role);
+    const isSubcontractor = role === 'SUBCONTRACTOR';
+    const normalizeTasks = useCallback((data) => {
+        return (data || []).map((t) => {
+            const taskIdRef = t.taskId?._id || t.taskId || null;
+            const parentSubTaskIdRef = t.parentSubTaskId?._id || t.parentSubTaskId || null;
+            const inferredParentId = parentSubTaskIdRef || taskIdRef || null;
+            const normalizedProjectId =
+                typeof t.projectId === 'string'
+                    ? { _id: t.projectId }
+                    : (t.projectId || t.taskId?.projectId || t.taskId?.jobId?.projectId || null);
+            return {
+                ...t,
+                _id: t._id || t.id,
+                projectId: normalizedProjectId,
+                parentTaskId: t.parentTaskId?._id || t.parentTaskId || (t.isSubTask ? inferredParentId : null),
+                level: Number(t.level || 0),
+                path: t.path || '',
+                isSubTask: !!(t.isSubTask || t.parentSubTaskId || t.taskId || t.parentTaskId),
+            };
+        });
+    }, []);
+    const fetchWebSyncedTasks = useCallback(async () => {
+        const seq = ++latestFetchSeqRef.current;
+        try {
+            const params = {
+                q: search?.trim() || undefined,
+                projectId: selectedProject?._id || selectedProject?.id || undefined,
+            };
+            if ((filterTab === 'my' || isSubcontractor) && user?._id) params.assignedTo = user._id;
+            const res = await api.get('/tasks', { params });
+            if (latestFetchSeqRef.current !== seq) return;
+            setServerTasks(normalizeTasks(Array.isArray(res.data) ? res.data : []));
+        } catch {
+            if (latestFetchSeqRef.current !== seq) return;
+            setServerTasks([]);
+        }
+    }, [search, selectedProject, filterTab, isSubcontractor, user?._id, normalizeTasks]);
+    const visibleTasks = (serverTasks && serverTasks.length > 0 ? serverTasks : tasks) || [];
 
     useEffect(() => {
         // Backend already restricts WORKER/SUBCONTRACTOR visibility to "my tasks".
@@ -225,7 +280,7 @@ const TasksScreen = ({ navigation }) => {
         return false;
     };
     
-    const filteredTasks = (tasks || []).filter(t => {
+    const filteredTasks = (visibleTasks || []).filter(t => {
         const isAssignedToMe = isAssignedToUser(t);
         
         const assigneeNames = Array.isArray(t.assignedTo) 
@@ -346,7 +401,7 @@ const TasksScreen = ({ navigation }) => {
         return flatList;
     };
 
-    const hierarchicalTasks = buildHierarchy(tasks || [], filteredTasks);
+    const hierarchicalTasks = buildHierarchy(visibleTasks || [], filteredTasks);
 
     const now = new Date();
     const overdueCount = filteredTasks.filter(t => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now).length;
@@ -359,6 +414,10 @@ const TasksScreen = ({ navigation }) => {
         : (teamMembers || []);
 
     const handleOpenModal = (task = null, preselectedParentId = '') => {
+        if (isSubcontractor) {
+            Alert.alert('View Only', 'Subcontractor can only view assigned tasks.');
+            return;
+        }
         if (task) {
             setEditingTask(task);
             setForm({
@@ -377,7 +436,7 @@ const TasksScreen = ({ navigation }) => {
             });
         } else {
             setEditingTask(null);
-            const parent = preselectedParentId ? tasks.find(t => String(t._id || t.id) === String(preselectedParentId)) : null;
+            const parent = preselectedParentId ? visibleTasks.find(t => String(t._id || t.id) === String(preselectedParentId)) : null;
             
             let parentId = '';
             if (parent) {
@@ -429,7 +488,7 @@ const TasksScreen = ({ navigation }) => {
         
         // Ensure projectId is strictly set (important for filtering)
         if (!payload.projectId && payload.parentTaskId) {
-            const parent = tasks.find(t => String(t._id || t.id) === String(payload.parentTaskId));
+            const parent = visibleTasks.find(t => String(t._id || t.id) === String(payload.parentTaskId));
             if (parent) {
                 payload.projectId = parent.projectId?._id || parent.projectId;
             }
@@ -497,25 +556,29 @@ const TasksScreen = ({ navigation }) => {
                             onChangeText={setSearch}
                         />
                     </View>
-                    <TouchableOpacity
-                        style={[styles.createTaskBtn, { paddingHorizontal: isCompact ? 12 : 16, height: isCompact ? 40 : 44 }]}
-                        activeOpacity={0.8}
-                        onPress={() => navigation.navigate('TaskCreate')}
-                    >
-                        <MaterialCommunityIcons name="plus" size={16} color="#fff" />
-                        <Text style={[styles.createTaskBtnText, { fontSize: isCompact ? 12 : 13 }]}>New</Text>
-                    </TouchableOpacity>
+                    {!isSubcontractor ? (
+                        <TouchableOpacity
+                            style={[styles.createTaskBtn, { paddingHorizontal: isCompact ? 12 : 16, height: isCompact ? 40 : 44 }]}
+                            activeOpacity={0.8}
+                            onPress={() => navigation.navigate('TaskCreate')}
+                        >
+                            <MaterialCommunityIcons name="plus" size={16} color="#fff" />
+                            <Text style={[styles.createTaskBtnText, { fontSize: isCompact ? 12 : 13 }]}>New</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* Sub-Header: Tabs */}
                 <View style={styles.toolbarCompact}>
                     <View style={styles.tabBarCompact}>
-                        <TouchableOpacity 
-                            style={[styles.smallTab, filterTab === 'all' && styles.smallTabActive]} 
-                            onPress={() => setFilterTab('all')}
-                        >
-                            <Text style={[styles.smallTabText, filterTab === 'all' && styles.smallTabTextActive]}>ALL</Text>
-                        </TouchableOpacity>
+                        {!isSubcontractor ? (
+                            <TouchableOpacity 
+                                style={[styles.smallTab, filterTab === 'all' && styles.smallTabActive]} 
+                                onPress={() => setFilterTab('all')}
+                            >
+                                <Text style={[styles.smallTabText, filterTab === 'all' && styles.smallTabTextActive]}>ALL</Text>
+                            </TouchableOpacity>
+                        ) : null}
                         <TouchableOpacity 
                             style={[styles.smallTab, filterTab === 'my' && styles.smallTabActive]} 
                             onPress={() => setFilterTab('my')}
@@ -563,7 +626,7 @@ const TasksScreen = ({ navigation }) => {
                                     ]} 
                                     activeOpacity={0.7}
                                     onPress={() => navigation.navigate('TaskHierarchyDetail', { taskId: item._id || item.id })}
-                                    onLongPress={() => openTaskActions(item)}
+                                    onLongPress={isSubcontractor ? undefined : () => openTaskActions(item)}
                                 >
                                     <View style={styles.tableTopRow}>
                                         <View style={styles.tableNameCol}>
@@ -578,7 +641,7 @@ const TasksScreen = ({ navigation }) => {
                                                     {level > 0 && (
                                                         <View style={styles.parentTag}>
                                                             <Text style={styles.parentTagText} numberOfLines={1}>
-                                                                OF: {(tasks.find(t => String(t._id || t.id) === String(item.parentTaskId ? (item.parentTaskId?._id || item.parentTaskId) : ''))?.title || 'Parent').toUpperCase()}
+                                                                OF: {(visibleTasks.find(t => String(t._id || t.id) === String(item.parentTaskId ? (item.parentTaskId?._id || item.parentTaskId) : ''))?.title || 'Parent').toUpperCase()}
                                                             </Text>
                                                         </View>
                                                     )}
@@ -634,14 +697,16 @@ const TasksScreen = ({ navigation }) => {
                                             <MaterialCommunityIcons name="calendar-clock" size={12} color="#94A3B8" />
                                             <Text style={styles.tableDateText} numberOfLines={1}>{item.dueDate ? new Date(item.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Date'}</Text>
                                         </View>
-                                        <View style={styles.actionsCol}>
-                                            <TouchableOpacity onPress={() => handleOpenModal(item)}>
-                                                <MaterialCommunityIcons name="pencil" size={isDeepLevel ? 12 : 14} color="#64748B" />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => promptDeleteTask(item)}>
-                                                <MaterialCommunityIcons name="trash-can-outline" size={isDeepLevel ? 12 : 14} color="#EF4444" />
-                                            </TouchableOpacity>
-                                        </View>
+                                        {!isSubcontractor ? (
+                                            <View style={styles.actionsCol}>
+                                                <TouchableOpacity onPress={() => handleOpenModal(item)}>
+                                                    <MaterialCommunityIcons name="pencil" size={isDeepLevel ? 12 : 14} color="#64748B" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => promptDeleteTask(item)}>
+                                                    <MaterialCommunityIcons name="trash-can-outline" size={isDeepLevel ? 12 : 14} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        ) : null}
                                     </View>
                                 </TouchableOpacity>
                             </View>
@@ -649,15 +714,26 @@ const TasksScreen = ({ navigation }) => {
                 }}
             />
 
-            <Modal visible={modalVisible} animationType="slide" transparent={true}>
+            <Modal visible={modalVisible} animationType="slide" transparent={true} statusBarTranslucent presentationStyle="overFullScreen">
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <KeyboardAvoidingView
+                        style={styles.modalKeyboardWrap}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+                    >
+                    <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
                         <View style={styles.modalIndicator} />
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>{editingTask ? 'Edit Task' : 'Create New Task'}</Text>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                        >
                             <CustomInput
                                 label="Task Title"
                                 placeholder="e.g. Install Safety Nets Level 3"
@@ -681,11 +757,11 @@ const TasksScreen = ({ navigation }) => {
 
                             <DropdownField 
                                 label="Parent Task (Optional)" 
-                                value={form.parentTaskId ? (tasks.find(t => String(t._id || t.id) === String(form.parentTaskId))?.title || 'Selected') : 'None (Top Level)'} 
+                                value={form.parentTaskId ? (visibleTasks.find(t => String(t._id || t.id) === String(form.parentTaskId))?.title || 'Selected') : 'None (Top Level)'} 
                                 onPress={() => openDropdown('Parent Task', 
                                     [
                                         { label: 'None (Top Level)', value: 'NONE' },
-                                        ...(tasks || [])
+                                        ...(visibleTasks || [])
                                             .filter(
                                                 (t) =>
                                                     (t.projectId?._id || t.projectId) === form.projectId &&
@@ -705,7 +781,7 @@ const TasksScreen = ({ navigation }) => {
                                 )}
                             />
 
-                            <View style={styles.formGrid}>
+                            <View style={[styles.formGrid, isCompact && styles.formGridStacked]}>
                                 <DropdownField 
                                     label="Role" 
                                     value={form.assignedRoleType ? ROLE_LABELS[form.assignedRoleType] : 'Any Role'} 
@@ -727,7 +803,7 @@ const TasksScreen = ({ navigation }) => {
                                 />
                             </View>
 
-                            <View style={styles.formGrid}>
+                            <View style={[styles.formGrid, isCompact && styles.formGridStacked]}>
                                 <DropdownField 
                                     label="Category" 
                                     value={form.category} 
@@ -760,7 +836,7 @@ const TasksScreen = ({ navigation }) => {
                                 )}
                             />
 
-                            <View style={styles.formGrid}>
+                            <View style={[styles.formGrid, isCompact && styles.formGridStacked]}>
                                 <TouchableOpacity 
                                     style={{ flex: 1 }} 
                                     activeOpacity={0.7}
@@ -814,7 +890,7 @@ const TasksScreen = ({ navigation }) => {
                                 onChangeText={t => setForm({ ...form, description: t })}
                             />
 
-                            <View style={styles.modalButtons}>
+                            <View style={[styles.modalButtons, isCompact && styles.modalButtonsStacked]}>
                                 <View style={styles.modalBtnCol}>
                                     <CustomButton title="Cancel" type="outline" onPress={() => setModalVisible(false)} />
                                 </View>
@@ -825,7 +901,9 @@ const TasksScreen = ({ navigation }) => {
                             <View style={{ height: 40 }} />
                         </ScrollView>
                     </View>
+                    </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* STABLE COMPACT SELECTOR MODAL */}
@@ -984,8 +1062,9 @@ const styles = StyleSheet.create({
         color: '#64748B'
     },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, alignSelf: 'center' },
     modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
@@ -1006,6 +1085,7 @@ const styles = StyleSheet.create({
     dropdownValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
 
     formGrid: { flexDirection: 'row', gap: 12 },
+    formGridStacked: { flexDirection: 'column', gap: 8 },
     descriptionInput: { 
         backgroundColor: '#F8FAFC', 
         borderRadius: 12, 
@@ -1033,6 +1113,9 @@ const styles = StyleSheet.create({
     },
     modalBtnColPrimary: {
         flex: 1.4
+    },
+    modalButtonsStacked: {
+        flexDirection: 'column'
     },
 
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },

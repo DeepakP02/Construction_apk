@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, SIZES } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
@@ -84,7 +84,17 @@ const UploadScreen = () => {
     return (
         <View style={styles.container}>
             <AppHeader title="Field Evidence" />
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <KeyboardAvoidingView
+                style={styles.keyboardWrap}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+            >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+            >
                 <View style={styles.syncContainer}>
                     <MaterialCommunityIcons name="cloud-sync-outline" size={20} color={COLORS.success} />
                     <Text style={styles.syncText}>All data captures are automatically synced</Text>
@@ -171,6 +181,7 @@ const UploadScreen = () => {
                 </View>
                 <View style={{ height: 40 }} />
             </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 };
@@ -180,6 +191,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
+    },
+    keyboardWrap: {
+        flex: 1,
     },
     scrollContent: {
         padding: SPACING.m,

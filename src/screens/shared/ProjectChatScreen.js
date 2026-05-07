@@ -187,7 +187,7 @@ const ProjectChatScreen = ({ route }) => {
             <KeyboardAvoidingView 
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 24}
             >
                 <FlatList
                     ref={flatListRef}
@@ -197,6 +197,8 @@ const ProjectChatScreen = ({ route }) => {
                     showsVerticalScrollIndicator={false}
                     renderItem={renderMessage}
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 />
                 
                 <View style={styles.footerContainer}>

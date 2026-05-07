@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,10 +9,12 @@ import {
     useWindowDimensions,
     ActivityIndicator,
     Image,
+    RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHADOWS } from '../../constants/theme';
+import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
 
 const fmtDate = (v) => {
@@ -20,50 +22,229 @@ const fmtDate = (v) => {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 };
+const getTaskParentRef = (t) =>
+    t?.parentSubTaskId?._id ||
+    t?.parentSubTaskId ||
+    t?.parentTaskId?._id ||
+    t?.parentTaskId ||
+    t?.taskId?._id ||
+    t?.taskId;
 
 const ClientProgressScreen = ({ route, navigation }) => {
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+    const { rfis, refreshData } = useApp();
     const isCompact = width < 380;
     const isTablet = width >= 768;
     const { project } = route.params || {};
     const projectId = project?._id || project?.id;
+    const [activeTab, setActiveTab] = useState('activity');
 
     const [loading, setLoading] = useState(true);
+    const [bootstrapped, setBootstrapped] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [progressData, setProgressData] = useState(null);
     const [updates, setUpdates] = useState([]);
+    const [projectTasks, setProjectTasks] = useState([]);
+    const [collapsedMainTaskIds, setCollapsedMainTaskIds] = useState(new Set());
+    const isFetchingRef = useRef(false);
 
-    const load = useCallback(async () => {
+    const asList = (res) => {
+        const d = res?.data;
+        if (Array.isArray(d)) return d;
+        if (Array.isArray(d?.data)) return d.data;
+        return [];
+    };
+
+    const buildHierarchyRows = useCallback((rows, pid) => {
+        const all = Array.isArray(rows) ? rows : [];
+        const byId = new Map(all.map((t) => [String(t._id || t.id), t]));
+        const taskProjectRef = (t) =>
+            t?.projectId?._id ||
+            t?.projectId ||
+            t?.taskId?.projectId?._id ||
+            t?.taskId?.projectId ||
+            t?.jobId?.projectId?._id ||
+            t?.jobId?.projectId;
+
+        const belongsToProject = (task) => {
+            const ownProject = taskProjectRef(task);
+            if (ownProject != null && String(ownProject) === String(pid)) return true;
+
+            let cursor = task;
+            let hop = 0;
+            while (cursor && hop < 12) {
+                const parentRef = getTaskParentRef(cursor);
+                if (!parentRef) break;
+                const parent = byId.get(String(parentRef));
+                if (!parent) break;
+                const parentProject = taskProjectRef(parent);
+                if (parentProject != null && String(parentProject) === String(pid)) return true;
+                cursor = parent;
+                hop += 1;
+            }
+            return false;
+        };
+
+        const relevant = all.filter((t) => belongsToProject(t));
+        const relevantIds = new Set(relevant.map((t) => String(t._id || t.id)));
+        const childrenByParent = new Map();
+        const roots = [];
+
+        relevant.forEach((task) => {
+            const parentRaw = getTaskParentRef(task);
+            const parentId = parentRaw != null ? String(parentRaw) : '';
+            if (parentId && relevantIds.has(parentId)) {
+                const list = childrenByParent.get(parentId) || [];
+                list.push(task);
+                childrenByParent.set(parentId, list);
+            } else {
+                roots.push(task);
+            }
+        });
+
+        const sortTasks = (list) =>
+            [...list].sort((a, b) => {
+                const pathA = String(a.path || '');
+                const pathB = String(b.path || '');
+                if (pathA && pathB && pathA !== pathB) return pathA.localeCompare(pathB);
+                const posA = Number(a.position ?? 0);
+                const posB = Number(b.position ?? 0);
+                if (posA !== posB) return posA - posB;
+                return String(a.title || '').localeCompare(String(b.title || ''));
+            });
+
+        const ordered = [];
+        const walk = (node, level = 0) => {
+            ordered.push({ ...node, _level: level });
+            const id = String(node._id || node.id);
+            const kids = sortTasks(childrenByParent.get(id) || []);
+            kids.forEach((k) => walk(k, level + 1));
+        };
+
+        sortTasks(roots).forEach((r) => walk(r, 0));
+        return ordered;
+    }, []);
+
+    const load = useCallback(async ({ withLoader = false } = {}) => {
         if (!projectId) {
             setLoading(false);
             return;
         }
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
         try {
-            setLoading(true);
-            const [progRes, updateRes] = await Promise.all([
+            if (withLoader) setLoading(true);
+            const tasksReq = api
+                .get(`/tasks/project/${projectId}`)
+                .catch(() => api.get('/tasks', { params: { projectId } }));
+            const [progRes, updateRes, tasksRes] = await Promise.all([
                 api.get(`/projects/${projectId}/client-progress`),
                 api.get(`/projects/${projectId}/client-updates`),
+                tasksReq,
             ]);
             setProgressData(progRes.data);
             setUpdates(Array.isArray(updateRes.data) ? updateRes.data : []);
+            const rootTasks = asList(tasksRes).map((t) => ({ ...t, _id: t._id || t.id }));
+
+            // Mirror web hierarchy: fetch subtasks from each root task endpoint.
+            const subTaskBatches = await Promise.all(
+                rootTasks.map(async (root) => {
+                    const rootId = root?._id || root?.id;
+                    if (!rootId) return [];
+                    try {
+                        const subRes = await api.get(`/tasks/${rootId}/subtasks`);
+                        return asList(subRes).map((s) => ({
+                            ...s,
+                            _id: s._id || s.id,
+                            taskId: s.taskId || rootId,
+                            projectId: s.projectId || root.projectId,
+                        }));
+                    } catch {
+                        return [];
+                    }
+                })
+            );
+            const flatRows = [...rootTasks, ...subTaskBatches.flat()];
+            setProjectTasks(buildHierarchyRows(flatRows, projectId));
+            setBootstrapped(true);
         } catch (e) {
             console.warn('Client progress fetch:', e?.response?.data || e?.message);
             setProgressData(null);
             setUpdates([]);
+            setProjectTasks([]);
+            setBootstrapped(true);
         } finally {
-            setLoading(false);
+            if (withLoader) setLoading(false);
+            isFetchingRef.current = false;
         }
-    }, [projectId]);
+    }, [projectId, buildHierarchyRows]);
+
+    const visibleProjectTasks = useMemo(() => {
+        const all = Array.isArray(projectTasks) ? projectTasks : [];
+        if (collapsedMainTaskIds.size === 0) return all;
+        const byId = new Map(all.map((t) => [String(t._id || t.id), t]));
+        return all.filter((task) => {
+            const level = task._level || 0;
+            if (level === 0) return true;
+            let cursor = task;
+            let hop = 0;
+            while (cursor && hop < 12) {
+                const parentId = getTaskParentRef(cursor);
+                if (!parentId) break;
+                const parent = byId.get(String(parentId));
+                if (!parent) break;
+                if ((parent._level || 0) === 0 && collapsedMainTaskIds.has(String(parent._id || parent.id))) {
+                    return false;
+                }
+                cursor = parent;
+                hop += 1;
+            }
+            return true;
+        });
+    }, [projectTasks, collapsedMainTaskIds]);
+    const tableLayout = useMemo(() => {
+        const task = width < 420 ? 320 : 380;
+        return {
+            task,
+            priority: 95,
+            progress: 85,
+            status: 120,
+            minWidth: task + 95 + 85 + 120,
+        };
+    }, [width]);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        // Initial screen load only once per project change.
+        setBootstrapped(false);
+        load({ withLoader: true });
+    }, [projectId, load]);
 
-    const progress = progressData?.progress ?? project?.progress ?? project?.progressPercentage ?? 0;
-    const currentPhase = progressData?.currentPhase || project?.currentPhase || 'Planning';
+    useEffect(() => {
+        // Silent refresh on focus to keep backend-synced data fresh.
+        const unsubscribe = navigation.addListener('focus', () => {
+            load({ withLoader: false });
+        });
+        return unsubscribe;
+    }, [navigation, load]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            // Manual hard sync only when user explicitly pulls.
+            await refreshData?.();
+            await load({ withLoader: false });
+        } finally {
+            setRefreshing(false);
+        }
+    }, [load, refreshData]);
+
     const displayName = progressData?.projectName || project?.name || 'Project';
     const statusRaw = (progressData?.status || project?.status || 'planning').toString();
-
+    const rfiList = (rfis || []).filter((r) => {
+        const rawProjectId = r?.projectId?._id || r?.projectId || r?.project?._id || r?.project;
+        return rawProjectId != null && String(rawProjectId) === String(projectId);
+    });
     if (!projectId) {
         return (
             <View style={[styles.container, styles.centerMsg]}>
@@ -75,7 +256,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
         );
     }
 
-    if (loading) {
+    if (loading && !bootstrapped) {
         return (
             <View style={[styles.container, styles.centerMsg]}>
                 <ActivityIndicator size="large" color="#2563EB" />
@@ -97,9 +278,6 @@ const ClientProgressScreen = ({ route, navigation }) => {
             </View>
         );
     }
-
-    const completed = progressData.completedWork || [];
-    const upcoming = progressData.upcomingWork || [];
 
     return (
         <View style={styles.container}>
@@ -127,152 +305,187 @@ const ClientProgressScreen = ({ route, navigation }) => {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 contentContainerStyle={[
                     styles.scrollContent,
                     { paddingHorizontal: isCompact ? 12 : 16, maxWidth: isTablet ? 980 : undefined, alignSelf: 'center', width: '100%' },
                 ]}
             >
-                <View style={styles.topDashboardRow}>
-                    <View style={[styles.progressCard, SHADOWS.medium, { padding: isCompact ? 18 : 30 }]}>
-                        <View style={[styles.circularContainer, { width: isCompact ? 150 : 180, height: isCompact ? 150 : 180 }]}>
-                            <View
-                                style={[
-                                    styles.outerCircle,
-                                    {
-                                        width: isCompact ? 132 : 160,
-                                        height: isCompact ? 132 : 160,
-                                        borderRadius: isCompact ? 66 : 80,
-                                    },
-                                ]}
-                            >
-                                <View
-                                    style={[
-                                        styles.innerCircle,
-                                        {
-                                            width: isCompact ? 106 : 130,
-                                            height: isCompact ? 106 : 130,
-                                            borderRadius: isCompact ? 53 : 65,
-                                        },
-                                    ]}
-                                >
-                                    <Text style={[styles.percentText, { fontSize: isCompact ? 34 : 44 }]}>{progress}%</Text>
-                                    <Text style={styles.overallLabel}>OVERALL</Text>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.datesRow}>
-                            <View>
-                                <Text style={styles.dateLabel}>STARTED: {fmtDate(progressData.startDate)}</Text>
-                            </View>
-                            <View style={styles.dateSpacer} />
-                            <View>
-                                <Text style={styles.dateLabel}>EST. FINISH: {fmtDate(progressData.endDate)}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={[styles.phaseCard, SHADOWS.medium, { padding: isCompact ? 18 : 30 }]}>
-                        <Text style={styles.phaseHeaderLabel}>CURRENT PHASE</Text>
-                        <Text style={[styles.phaseTitle, { fontSize: isCompact ? 24 : 32 }]}>{currentPhase}</Text>
-
-                        <View style={styles.inProgressBadge}>
-                            <View style={styles.greenDot} />
-                            <Text style={styles.inProgressText}>IN PROGRESS</Text>
-                        </View>
-
-                        <Text style={styles.phaseDesc}>
-                            Our team is currently focused on <Text style={{ fontWeight: '900' }}>{currentPhase}</Text>. Progress
-                            reflects completed job tasks across your sites.
+                <View style={styles.tabRow}>
+                    <TouchableOpacity
+                        style={[styles.tabChip, activeTab === 'activity' && styles.tabChipActive]}
+                        onPress={() => setActiveTab('activity')}
+                    >
+                        <Text style={[styles.tabChipText, activeTab === 'activity' && styles.tabChipTextActive]}>
+                            Recent Site Activity
                         </Text>
-                    </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabChip, activeTab === 'deliverables' && styles.tabChipActive]}
+                        onPress={() => setActiveTab('deliverables')}
+                    >
+                        <Text style={[styles.tabChipText, activeTab === 'deliverables' && styles.tabChipTextActive]}>
+                            Project Deliverables & Tasks
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabChip, activeTab === 'rfis' && styles.tabChipActive]}
+                        onPress={() => setActiveTab('rfis')}
+                    >
+                        <Text style={[styles.tabChipText, activeTab === 'rfis' && styles.tabChipTextActive]}>Project RFIs</Text>
+                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.secondaryRow}>
-                    <View style={[styles.milestoneCard, SHADOWS.small, { minHeight: isCompact ? 180 : 220 }]}>
-                        <View style={styles.cardIconHeader}>
-                            <MaterialCommunityIcons name="check-circle-outline" size={20} color="#10B981" />
-                            <Text style={styles.cardHeading}>Completed milestones</Text>
+                {activeTab === 'activity' ? (
+                    <>
+                        <View style={styles.activityHeader}>
+                            <MaterialCommunityIcons name="comment-outline" size={18} color="#3B82F6" />
+                            <Text style={styles.activitySectionTitle}>Recent site activity</Text>
                         </View>
-                        {completed.length === 0 ? (
-                            <View style={styles.milestoneEmptyState}>
-                                <Text style={styles.emptyNoteText}>No milestones completed yet.</Text>
-                                <MaterialCommunityIcons name="shield-check-outline" size={60} color="#F1F5F9" style={styles.shieldDecoration} />
+
+                        {updates.length === 0 ? (
+                            <View style={styles.emptyActivityBox}>
+                                <MaterialCommunityIcons name="comment-text-outline" size={32} color="#E2E8F0" style={{ marginBottom: 16 }} />
+                                <Text style={styles.emptyActivityText}>NO UPDATES POSTED YET.</Text>
                             </View>
                         ) : (
-                            <View style={{ gap: 12 }}>
-                                {completed.map((item, idx) => (
-                                    <View key={`c-${idx}`} style={styles.stepItem}>
-                                        <View style={styles.dotContainer}>
-                                            <MaterialCommunityIcons name="check" size={14} color="#10B981" />
+                            <View style={{ gap: 16, marginBottom: 24 }}>
+                                {updates.map((update) => (
+                                    <View key={update._id || update.id} style={[styles.updateCard, SHADOWS.small]}>
+                                        <View style={styles.updateCardHead}>
+                                            <Text style={styles.updateTitle} numberOfLines={2}>
+                                                {update.title || 'Update'}
+                                            </Text>
+                                            <Text style={styles.updateDatePill}>{fmtDate(update.date)}</Text>
                                         </View>
-                                        <Text style={styles.stepText} numberOfLines={3}>
-                                            {item}
-                                        </Text>
+                                        <Text style={styles.updateBody}>{update.description}</Text>
+                                        {update.images?.length > 0 ? (
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                                                {update.images.map((img, i) => (
+                                                    <Image
+                                                        key={i}
+                                                        source={{ uri: getServerUrl(img) || img }}
+                                                        style={styles.updateThumb}
+                                                    />
+                                                ))}
+                                            </ScrollView>
+                                        ) : null}
                                     </View>
                                 ))}
                             </View>
                         )}
-                    </View>
-
-                    <View style={[styles.nextStepsCard, SHADOWS.small, { minHeight: isCompact ? 180 : 220 }]}>
-                        <View style={styles.cardIconHeader}>
-                            <MaterialCommunityIcons name="clock-outline" size={20} color="#3B82F6" />
-                            <Text style={styles.cardHeading}>Next steps</Text>
-                        </View>
-                        {upcoming.length === 0 ? (
-                            <Text style={styles.emptyNoteText}>No upcoming tasks scheduled.</Text>
-                        ) : (
-                            <View style={styles.stepsList}>
-                                {upcoming.map((item, idx) => (
-                                    <View key={`u-${idx}`} style={styles.stepItem}>
-                                        <View style={styles.dotContainer}>
-                                            <View style={[styles.blueDot, { opacity: 0.8 }]} />
-                                        </View>
-                                        <Text style={styles.stepText} numberOfLines={3}>
-                                            {item}
-                                        </Text>
+                    </>
+                ) : activeTab === 'deliverables' ? (
+                    <View style={{ gap: 12, marginBottom: 24 }}>
+                        <View style={[styles.tableCard, SHADOWS.small]}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                                <View style={{ minWidth: Math.max(width - (isCompact ? 40 : 52), tableLayout.minWidth) }}>
+                                    <View style={styles.tableHeaderRow}>
+                                        <Text style={[styles.tableHeadTxt, { width: tableLayout.task }]}>Task Details</Text>
+                                        <Text style={[styles.tableHeadTxt, styles.tableHeadCenter, { width: tableLayout.priority }]}>Priority</Text>
+                                        <Text style={[styles.tableHeadTxt, styles.tableHeadCenter, { width: tableLayout.progress }]}>Progress</Text>
+                                        <Text style={[styles.tableHeadTxt, styles.tableHeadCenter, { width: tableLayout.status }]}>Status</Text>
                                     </View>
-                                ))}
-                            </View>
-                        )}
-                        <MaterialCommunityIcons name="format-list-bulleted" size={60} color="#F8FAFC" style={styles.listDecoration} />
-                    </View>
-                </View>
-
-                <View style={styles.activityHeader}>
-                    <MaterialCommunityIcons name="comment-outline" size={18} color="#3B82F6" />
-                    <Text style={styles.activitySectionTitle}>Recent site activity</Text>
-                </View>
-
-                {updates.length === 0 ? (
-                    <View style={styles.emptyActivityBox}>
-                        <MaterialCommunityIcons name="comment-text-outline" size={32} color="#E2E8F0" style={{ marginBottom: 16 }} />
-                        <Text style={styles.emptyActivityText}>NO UPDATES POSTED YET.</Text>
+                                    {visibleProjectTasks.length === 0 ? (
+                                        <Text style={styles.emptyNoteText}>No project tasks found.</Text>
+                                    ) : (
+                                        visibleProjectTasks.map((task) => {
+                                    const status = String(task.status || 'todo')
+                                        .replace(/_/g, ' ')
+                                        .toLowerCase();
+                                    const progressVal = Number(task.progress ?? task.progressPercentage ?? 0);
+                                    const safeProgress = Number.isFinite(progressVal)
+                                        ? Math.max(0, Math.min(100, Math.round(progressVal)))
+                                        : 0;
+                                    const level = task._level || 0;
+                                    const leftPad = 8 + (level * 14);
+                                    const levelLabel =
+                                        level === 0 ? 'Main task' : level === 1 ? 'Subtask' : `Nested subtask L${level}`;
+                                    const id = String(task._id || task.id);
+                                    const hasChildren = projectTasks.some(
+                                        (t) => (t._level || 0) > level && String(getTaskParentRef(t) || '') === id
+                                    );
+                                    const isCollapsed = collapsedMainTaskIds.has(id);
+                                    return (
+                                        <View
+                                            key={task._id || task.id}
+                                            style={[styles.tableDataRow, level === 0 && styles.mainTaskDataRow]}
+                                        >
+                                            <View style={{ width: tableLayout.task, paddingLeft: leftPad }}>
+                                                {level === 0 ? (
+                                                    <TouchableOpacity
+                                                        style={styles.mainTaskRow}
+                                                        activeOpacity={hasChildren ? 0.7 : 1}
+                                                        onPress={() => {
+                                                            if (!hasChildren) return;
+                                                            setCollapsedMainTaskIds((prev) => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(id)) next.delete(id);
+                                                                else next.add(id);
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    >
+                                                        {hasChildren ? (
+                                                            <MaterialCommunityIcons
+                                                                name={isCollapsed ? 'chevron-right' : 'chevron-down'}
+                                                                size={16}
+                                                                color="#64748B"
+                                                            />
+                                                        ) : (
+                                                            <View style={{ width: 16 }} />
+                                                        )}
+                                                        <Text style={styles.taskCell} numberOfLines={2}>
+                                                            {task.title}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ) : (
+                                                    <Text style={styles.subTaskCell} numberOfLines={2}>
+                                                        {level > 0 ? `↳ ${task.title}` : task.title}
+                                                    </Text>
+                                                )}
+                                                <Text style={[styles.levelPill, level === 0 && styles.levelPillMain]}>{levelLabel}</Text>
+                                            </View>
+                                            <Text style={[styles.cellTxt, styles.cellCenter, { width: tableLayout.priority }]} numberOfLines={1}>
+                                                {task.priority || 'Medium'}
+                                            </Text>
+                                            <Text style={[styles.cellTxt, styles.cellCenter, { width: tableLayout.progress }]}>{safeProgress}%</Text>
+                                            <Text style={[styles.cellTxt, styles.cellCenter, { width: tableLayout.status }]} numberOfLines={1}>
+                                                {status}
+                                            </Text>
+                                        </View>
+                                    );
+                                        })
+                                    )}
+                                </View>
+                            </ScrollView>
+                        </View>
                     </View>
                 ) : (
-                    <View style={{ gap: 16, marginBottom: 24 }}>
-                        {updates.map((update) => (
-                            <View key={update._id || update.id} style={[styles.updateCard, SHADOWS.small]}>
-                                <View style={styles.updateCardHead}>
-                                    <Text style={styles.updateTitle} numberOfLines={2}>
-                                        {update.title || 'Update'}
-                                    </Text>
-                                    <Text style={styles.updateDatePill}>{fmtDate(update.date)}</Text>
-                                </View>
-                                <Text style={styles.updateBody}>{update.description}</Text>
-                                {update.images?.length > 0 ? (
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                                        {update.images.map((img, i) => (
-                                            <Image
-                                                key={i}
-                                                source={{ uri: getServerUrl(img) || img }}
-                                                style={styles.updateThumb}
-                                            />
-                                        ))}
-                                    </ScrollView>
-                                ) : null}
+                    <View style={{ gap: 12, marginBottom: 24 }}>
+                        {rfiList.length === 0 ? (
+                            <View style={styles.emptyActivityBox}>
+                                <MaterialCommunityIcons name="file-question-outline" size={32} color="#E2E8F0" style={{ marginBottom: 16 }} />
+                                <Text style={styles.emptyActivityText}>NO PROJECT RFIS FOUND.</Text>
                             </View>
-                        ))}
+                        ) : (
+                            rfiList.map((rfi) => (
+                                <View key={rfi._id || rfi.id} style={[styles.updateCard, SHADOWS.small]}>
+                                    <View style={styles.updateCardHead}>
+                                        <Text style={styles.updateTitle} numberOfLines={2}>
+                                            {rfi.subject || rfi.title || 'RFI'}
+                                        </Text>
+                                        <Text style={styles.updateDatePill}>{(rfi.status || 'open').toString().toUpperCase()}</Text>
+                                    </View>
+                                    <Text style={styles.updateBody}>
+                                        Priority: {(rfi.priority || 'normal').toString()} {rfi.dueDate ? `• Due ${fmtDate(rfi.dueDate)}` : ''}
+                                    </Text>
+                                </View>
+                            ))
+                        )}
+                        <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('RFIList')}>
+                            <Text style={styles.linkBtnText}>Open full RFI list</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
 
@@ -298,71 +511,18 @@ const styles = StyleSheet.create({
     breadcrumbText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
 
     scrollContent: { padding: 16 },
-
-    topDashboardRow: { flexDirection: 'column', gap: 16, marginBottom: 16 },
-
-    progressCard: { backgroundColor: '#FFFFFF', borderRadius: 32, padding: 30, alignItems: 'center', flex: 1 },
-    circularContainer: { width: 180, height: 180, justifyContent: 'center', alignItems: 'center' },
-    outerCircle: {
-        width: 160,
-        height: 160,
-        borderRadius: 80,
-        borderWidth: 12,
-        borderColor: '#F8FAFC',
-        justifyContent: 'center',
-        alignItems: 'center',
+    tabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    tabChip: {
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-    innerCircle: { width: 130, height: 130, borderRadius: 65, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
-    percentText: { fontSize: 44, fontWeight: '900', color: '#0F172A', letterSpacing: -2 },
-    overallLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginTop: -4 },
-    datesRow: {
-        flexDirection: 'row',
-        width: '100%',
-        justifyContent: 'center',
-        gap: 20,
-        marginTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-        paddingTop: 16,
-    },
-    dateLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
-    dateSpacer: { width: 1, height: 12, backgroundColor: '#E2E8F0' },
-
-    phaseCard: { backgroundColor: '#1E293B', borderRadius: 32, padding: 30, flex: 1 },
-    phaseHeaderLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 12 },
-    phaseTitle: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1, marginBottom: 16 },
-    inProgressBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        alignSelf: 'flex-start',
-        marginBottom: 30,
-    },
-    greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
-    inProgressText: { fontSize: 10, fontWeight: '900', color: '#10B981', letterSpacing: 0.5 },
-    phaseDesc: { fontSize: 12, color: '#94A3B8', lineHeight: 18, fontWeight: '500' },
-
-    secondaryRow: { flexDirection: 'column', gap: 16, marginBottom: 24 },
-    milestoneCard: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 24, flex: 1 },
-    nextStepsCard: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 24, flex: 1, position: 'relative', overflow: 'hidden' },
-    cardIconHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-    cardHeading: { fontSize: 16, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-
-    milestoneEmptyState: { flex: 1, justifyContent: 'center', position: 'relative' },
-    emptyNoteText: { fontSize: 11, fontStyle: 'italic', color: '#94A3B8', fontWeight: '500' },
-    shieldDecoration: { position: 'absolute', right: -10, bottom: -10, opacity: 0.5 },
-
-    stepsList: { gap: 16 },
-    stepItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-    dotContainer: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    blueDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6' },
-    stepText: { fontSize: 12, fontWeight: '800', color: '#475569', flex: 1 },
-    listDecoration: { position: 'absolute', right: -10, top: 20, opacity: 0.2 },
-
+    tabChipActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+    tabChipText: { fontSize: 11, fontWeight: '800', color: '#64748B' },
+    tabChipTextActive: { color: '#1D4ED8' },
     activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginBottom: 16 },
     activitySectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
     emptyActivityBox: {
@@ -396,6 +556,77 @@ const styles = StyleSheet.create({
     },
     updateBody: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '600' },
     updateThumb: { width: 72, height: 72, borderRadius: 12, marginRight: 8, backgroundColor: '#F1F5F9' },
+    tableCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    tableHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        marginBottom: 6,
+    },
+    tableHeadTxt: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#64748B',
+        textTransform: 'uppercase',
+    },
+    tableHeadCenter: { textAlign: 'center' },
+    tableDataRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFC',
+    },
+    mainTaskDataRow: {
+        backgroundColor: '#FCFDFF',
+    },
+    taskCol: { flex: 2.8 },
+    priorityCol: { flex: 1.1 },
+    progressCol: { flex: 0.9 },
+    statusCol: { flex: 1.2 },
+    taskCell: { fontSize: 13, fontWeight: '900', color: '#0F172A', paddingRight: 8 },
+    subTaskCell: { fontSize: 12, fontWeight: '700', color: '#334155', paddingRight: 8 },
+    mainTaskRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    levelPill: {
+        alignSelf: 'flex-start',
+        marginTop: 3,
+        fontSize: 8,
+        fontWeight: '800',
+        color: '#64748B',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 1,
+        textTransform: 'uppercase',
+    },
+    levelPillMain: {
+        backgroundColor: '#EFF6FF',
+        borderColor: '#BFDBFE',
+        color: '#1D4ED8',
+    },
+    cellCenter: { textAlign: 'center' },
+    cellTxt: { fontSize: 12, color: '#475569', fontWeight: '600', textTransform: 'capitalize' },
+    emptyNoteText: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic', fontWeight: '600' },
+    linkBtn: {
+        marginTop: 4,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    linkBtnText: { color: '#1D4ED8', fontSize: 12, fontWeight: '900' },
 });
 
 export default ClientProgressScreen;

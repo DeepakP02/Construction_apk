@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -36,7 +36,6 @@ const ClientDashboardScreen = ({ navigation }) => {
     const { user, projects, refreshData } = useApp();
     const [dashLoading, setDashLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [invoices, setInvoices] = useState([]);
     const [photos, setPhotos] = useState([]);
     const [drawings, setDrawings] = useState([]);
     const [updates, setUpdates] = useState([]);
@@ -46,12 +45,10 @@ const ClientDashboardScreen = ({ navigation }) => {
     const loadDashboardExtras = useCallback(async () => {
         try {
             setDashLoading(true);
-            const [invRes, photoRes, drawRes] = await Promise.all([
-                api.get('/invoices').catch(() => ({ data: [] })),
+            const [photoRes, drawRes] = await Promise.all([
                 api.get('/photos').catch(() => ({ data: [] })),
                 api.get('/drawings').catch(() => ({ data: [] })),
             ]);
-            setInvoices(asList(invRes));
             setPhotos(asList(photoRes));
             setDrawings(asList(drawRes));
 
@@ -87,17 +84,6 @@ const ClientDashboardScreen = ({ navigation }) => {
             setRefreshing(false);
         }
     }, [refreshData, loadDashboardExtras]);
-
-    const stats = useMemo(() => {
-        const list = projects || [];
-        const totalBudget = list.reduce((acc, p) => acc + (Number(p.budget) || 0), 0);
-        const avgProgress =
-            list.length > 0
-                ? Math.round(list.reduce((acc, p) => acc + projectProgress(p), 0) / list.length)
-                : 0;
-        const unpaid = (invoices || []).filter((i) => (i.status || '').toLowerCase() !== 'paid').length;
-        return { totalBudget, avgProgress, unpaid, projectCount: list.length };
-    }, [projects, invoices]);
 
     const latestUpdate = updates[0];
     const galleryPhotos = (photos || []).slice(0, 4);
@@ -137,30 +123,6 @@ const ClientDashboardScreen = ({ navigation }) => {
                             ? `Synced with your projects on the web portal.`
                             : "You don't have any projects assigned yet. When your PM links you to a job, it will appear here."}
                     </Text>
-
-                    {/* Quick stats — mirrors web client portal dashboard metrics */}
-                    <View style={styles.statsGrid}>
-                        <View style={[styles.statCell, SHADOWS.small]}>
-                            <Text style={styles.statLabel}>Portfolio</Text>
-                            <Text style={styles.statValue}>{stats.projectCount}</Text>
-                            <Text style={styles.statSub}>project(s)</Text>
-                        </View>
-                        <View style={[styles.statCell, SHADOWS.small]}>
-                            <Text style={styles.statLabel}>Avg progress</Text>
-                            <Text style={styles.statValue}>{stats.avgProgress}%</Text>
-                            <Text style={styles.statSub}>across sites</Text>
-                        </View>
-                        <View style={[styles.statCell, SHADOWS.small]}>
-                            <Text style={styles.statLabel}>Open invoices</Text>
-                            <Text style={styles.statValue}>{stats.unpaid}</Text>
-                            <Text style={styles.statSub}>not paid</Text>
-                        </View>
-                        <View style={[styles.statCell, SHADOWS.small]}>
-                            <Text style={styles.statLabel}>Site photos</Text>
-                            <Text style={styles.statValue}>{photos.length}</Text>
-                            <Text style={styles.statSub}>in gallery</Text>
-                        </View>
-                    </View>
 
                     {primaryProject ? (
                         <View style={[styles.mainCard, SHADOWS.card]}>
@@ -296,19 +258,6 @@ const styles = StyleSheet.create({
     welcome: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 6 },
     welcomeName: { color: '#2563EB' },
     welcomeSub: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 16, lineHeight: 18 },
-    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
-    statCell: {
-        width: '48%',
-        flexGrow: 1,
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-    },
-    statLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8 },
-    statValue: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginTop: 4 },
-    statSub: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 2 },
     mainCard: {
         backgroundColor: '#fff',
         borderRadius: 24,

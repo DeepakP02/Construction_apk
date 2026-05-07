@@ -14,7 +14,9 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
-    useWindowDimensions
+    useWindowDimensions,
+    TouchableWithoutFeedback,
+    Keyboard
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SHADOWS } from '../../constants/theme';
@@ -36,9 +38,11 @@ const PO_STATUS_FILTERS = [
 ];
 
 const PurchaseOrdersScreen = ({ navigation }) => {
-    const { width } = useWindowDimensions();
+    const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const isCompact = width < 380;
+    const createSheetMaxWidth = Math.min(width - 16, 980);
+    const createSheetMaxHeight = Math.min(height * 0.92, 840);
     const { projects } = useApp();
     const [pos, setPos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -457,14 +461,15 @@ const PurchaseOrdersScreen = ({ navigation }) => {
             </Modal>
 
             {/* CREATE PO MODAL */}
-            <Modal visible={createVisible} animationType="slide" transparent onRequestClose={closeCreateModal}>
+            <Modal visible={createVisible} animationType="slide" transparent statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={closeCreateModal}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.createOverlay}>
                     <KeyboardAvoidingView
                         style={styles.createKeyboard}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={[styles.createSheet, { width: '100%', alignSelf: 'center', maxWidth: 980 }]}>
+                    <View style={[styles.createSheet, { width: createSheetMaxWidth, alignSelf: 'center', maxWidth: createSheetMaxWidth, maxHeight: createSheetMaxHeight }]}>
                     <View style={styles.createHeader}>
                         <View style={styles.createHeaderText}>
                             <Text style={styles.createTitle} numberOfLines={2}>Create Purchase Order</Text>
@@ -482,6 +487,8 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.createScroll}
                             keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                         >
                         {/* BASIC DETAILS */}
                         <View style={styles.sectionCard}>
@@ -658,6 +665,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                     </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
 
                 {/* Project Select Nested Modal */}
                 <Modal visible={selProjectVisible} transparent animationType="fade">
@@ -773,9 +781,9 @@ const styles = StyleSheet.create({
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     // Modal Create PO
-    createOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
-    createKeyboard: { width: '100%' },
-    createSheet: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '92%' },
+    createOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    createKeyboard: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    createSheet: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
     createHeader: {
         flexDirection: 'row',
         alignItems: 'center',

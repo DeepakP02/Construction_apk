@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator, useWindowDimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { COLORS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
@@ -220,42 +220,50 @@ const ChatScreen = ({ navigation }) => {
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Site Communications" hideSearch showBack={true} />
-
-            <View style={[styles.searchSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 10 : 15 }]}>
-                <View style={[styles.searchBar, { height: isCompact ? 48 : 54, borderRadius: isCompact ? 14 : 18 }]}>
-                    <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
-                    <TextInput
-                        style={[styles.searchInput, { fontSize: isCompact ? 13 : 14 }]}
-                        placeholder="Search chats or members..."
-                        placeholderTextColor="#94A3B8"
-                        value={search}
-                        onChangeText={setSearch}
-                    />
+            <KeyboardAvoidingView
+                style={styles.keyboardWrap}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+            >
+                <View style={[styles.searchSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 10 : 15 }]}>
+                    <View style={[styles.searchBar, { height: isCompact ? 48 : 54, borderRadius: isCompact ? 14 : 18 }]}>
+                        <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
+                        <TextInput
+                            style={[styles.searchInput, { fontSize: isCompact ? 13 : 14 }]}
+                            placeholder="Search chats or members..."
+                            placeholderTextColor="#94A3B8"
+                            value={search}
+                            onChangeText={setSearch}
+                        />
+                    </View>
                 </View>
-            </View>
 
-            <SectionList
-                sections={listSections}
-                keyExtractor={(item, index) => item._id || item.id || index.toString()}
-                renderItem={renderChatMember}
-                renderSectionHeader={({ section: { title, data } }) =>
-                    data.length > 0 ? (
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { fontSize: isCompact ? 10 : 11 }]}>{title}</Text>
-                            <View style={styles.sectionLine} />
-                        </View>
-                    ) : null
-                }
-                contentContainerStyle={styles.list}
-                showsVerticalScrollIndicator={false}
-                stickySectionHeadersEnabled={false}
-            />
+                <SectionList
+                    sections={listSections}
+                    keyExtractor={(item, index) => item._id || item.id || index.toString()}
+                    renderItem={renderChatMember}
+                    renderSectionHeader={({ section: { title, data } }) =>
+                        data.length > 0 ? (
+                            <View style={styles.sectionHeader}>
+                                <Text style={[styles.sectionTitle, { fontSize: isCompact ? 10 : 11 }]}>{title}</Text>
+                                <View style={styles.sectionLine} />
+                            </View>
+                        ) : null
+                    }
+                    contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
+                    stickySectionHeadersEnabled={false}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                />
+            </KeyboardAvoidingView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
+    keyboardWrap: { flex: 1 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     searchSection: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFFFFF' },

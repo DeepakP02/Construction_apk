@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions, StatusBar, SafeAreaView, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, StatusBar, SafeAreaView, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -7,12 +7,18 @@ import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
+import { canCreateRFI } from '../../utils/rfiPermissions';
 
-const { width } = Dimensions.get('window');
 const RFI_CATEGORIES = ['design', 'structural', 'mechanical', 'electrical', 'civil', 'safety', 'material', 'other'];
 
 const RFIScreen = ({ navigation }) => {
-    const { user, projects } = useApp();
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const isCompactLayout = windowWidth < 700;
+    const isSmallScreen = windowWidth < 380;
+    const modalMaxWidth = Math.min(windowWidth - 16, 900);
+    const modalMaxHeight = Math.min(windowHeight * 0.9, 760);
+    const { user, projects, refreshData } = useApp();
+    const allowCreateRFI = canCreateRFI(user?.role);
     const [rfis, setRfis] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -37,8 +43,11 @@ const RFIScreen = ({ navigation }) => {
         assignedTo: '',
         dueDate: ''
     });
+    const normalizeId = (v) =>
+        String(v?._id || v?.id || v?.$oid || v?.toString?.() || v || '');
+    const normalizeRole = (r) => String(r || '').toUpperCase();
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get('/rfis');
@@ -49,18 +58,29 @@ const RFIScreen = ({ navigation }) => {
             setLoading(false);
             setRefreshing(false);
         }
-    };
-
-    useEffect(() => {
-        fetchData();
     }, []);
 
     useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchData();
+        });
+        return unsubscribe;
+    }, [navigation, fetchData]);
+
+    useEffect(() => {
         const fetchAssignableUsers = async () => {
+            if (!allowCreateRFI) {
+                setAssignableUsers([]);
+                return;
+            }
             try {
                 const res = await api.get('/auth/users');
                 const users = (Array.isArray(res.data) ? res.data : []).filter(u =>
-                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(normalizeRole(u.role))
                 );
                 setAssignableUsers(users);
             } catch (e) {
@@ -68,7 +88,7 @@ const RFIScreen = ({ navigation }) => {
             }
         };
         fetchAssignableUsers();
-    }, []);
+    }, [allowCreateRFI]);
 
     const resetCreateForm = () => {
         setForm({
@@ -109,7 +129,17 @@ const RFIScreen = ({ navigation }) => {
                 copyToCacheDirectory: true
             });
             if (result.canceled || !result.assets?.length) return;
-            setFiles(prev => [...prev, ...result.assets]);
+            const MAX_SIZE = 50 * 1024 * 1024;
+            const valid = [];
+            const oversized = [];
+            result.assets.forEach((f) => {
+                if ((f.size || 0) > MAX_SIZE) oversized.push(f.name || 'File');
+                else valid.push(f);
+            });
+            if (oversized.length > 0) {
+                Alert.alert('File Too Large', `${oversized[0]} exceeds 50MB limit.`);
+            }
+            if (valid.length > 0) setFiles(prev => [...prev, ...valid]);
         } catch (e) {
             Alert.alert('Error', 'Could not pick files');
         }
@@ -147,7 +177,7 @@ const RFIScreen = ({ navigation }) => {
     };
 
     const handleCreateRFI = async () => {
-        if (!form.projectId || !form.subject || !form.description) {
+        if (!form.projectId || !form.subject.trim() || !form.description.trim()) {
             Alert.alert('Required', 'Please fill in Project, Subject, and Description');
             return;
         }
@@ -155,7 +185,10 @@ const RFIScreen = ({ navigation }) => {
             setSubmitting(true);
             const payload = new FormData();
             Object.entries(form).forEach(([key, value]) => {
-                if (value !== '' && value != null) payload.append(key, value);
+                if (value === '' || value == null) return;
+                if (key === 'category') payload.append(key, String(value).toLowerCase());
+                else if (key === 'assignedTo') payload.append(key, String(value));
+                else payload.append(key, value);
             });
             files.forEach((file, index) => {
                 payload.append('files', {
@@ -164,12 +197,13 @@ const RFIScreen = ({ navigation }) => {
                     type: file.mimeType || 'application/octet-stream'
                 });
             });
-            await api.post('/rfis', payload, {
+            const res = await api.post('/rfis', payload, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             closeCreateModal();
-            fetchData();
+            await Promise.all([fetchData(), refreshData?.()]);
             Alert.alert('Success', 'RFI submitted successfully');
+            if (res?.data?._id) navigation.navigate('RFIDetail', { rfiId: res.data._id });
         } catch (e) {
             Alert.alert('Error', 'Failed to submit RFI');
         } finally {
@@ -246,20 +280,6 @@ const RFIScreen = ({ navigation }) => {
         </TouchableOpacity>
     );
 
-    if (user?.role !== 'PM') {
-        return (
-            <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" />
-                <WorkerHeader title="RFI Dashboard" showBranding={true} />
-                <View style={styles.emptyContainer}>
-                    <MaterialCommunityIcons name="file-question-outline" size={80} color="#E2E8F0" />
-                    <Text style={styles.emptyTitle}>RFI Center</Text>
-                    <Text style={styles.emptySubtitle}>Content is being updated by the Project Manager.</Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
-
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
@@ -277,10 +297,12 @@ const RFIScreen = ({ navigation }) => {
                         <Text style={styles.mainTitle}>RFI Console</Text>
                         <Text style={styles.mainSubtitle}>Monitoring information requests across jobs</Text>
                     </View>
-                    <TouchableOpacity style={styles.newBtn} onPress={openCreateModal}>
-                        <MaterialCommunityIcons name="plus-circle" size={18} color="#fff" />
-                        <Text style={styles.newBtnText}>NEW RFI</Text>
-                    </TouchableOpacity>
+                    {allowCreateRFI ? (
+                        <TouchableOpacity style={styles.newBtn} onPress={openCreateModal}>
+                            <MaterialCommunityIcons name="plus-circle" size={18} color="#fff" />
+                            <Text style={styles.newBtnText}>NEW RFI</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* OVERDUE / ALERTS SECTION */}
@@ -348,14 +370,15 @@ const RFIScreen = ({ navigation }) => {
             </ScrollView>
 
             {/* CREATE RFI MODAL */}
-            <Modal visible={showCreateModal} animationType="slide" transparent>
+            <Modal visible={showCreateModal} animationType="slide" transparent statusBarTranslucent presentationStyle="overFullScreen">
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={styles.modalCard}>
+                    <View style={[styles.modalCard, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 14 : 20 }]}>
                         <View style={styles.modalHeader}>
                             <View>
                                 <Text style={styles.modalTitle}>New RFI</Text>
@@ -370,7 +393,8 @@ const RFIScreen = ({ navigation }) => {
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={{ paddingBottom: 26 }}
                             keyboardShouldPersistTaps="handled"
-                            keyboardDismissMode="none"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                         >
                             <Text style={styles.inputLabel}>Project *</Text>
                             <TouchableOpacity style={styles.dropdownField} onPress={() => setIsSelectingProject(true)}>
@@ -399,7 +423,7 @@ const RFIScreen = ({ navigation }) => {
                                 onChangeText={t => setForm({ ...form, description: t })}
                             />
 
-                            <View style={styles.rowTwoCols}>
+                            <View style={[styles.rowTwoCols, isCompactLayout && styles.stackCols]}>
                                 <View style={styles.rowCol}>
                                     <Text style={styles.inputLabel}>Location (Optional)</Text>
                                     <TextInput
@@ -421,7 +445,7 @@ const RFIScreen = ({ navigation }) => {
                                 </View>
                             </View>
 
-                            <View style={styles.rowThreeCols}>
+                            <View style={[styles.rowThreeCols, isCompactLayout && styles.stackCols]}>
                                 <View style={styles.rowCol}>
                                     <Text style={styles.inputLabel}>Priority</Text>
                                     <View style={styles.priorityRow}>
@@ -443,7 +467,7 @@ const RFIScreen = ({ navigation }) => {
                                     <TouchableOpacity style={styles.dropdownField} onPress={() => setIsSelectingAssignee(true)}>
                                         <Text style={[styles.dropdownFieldText, !form.assignedTo && styles.dropdownPlaceholder]} numberOfLines={1}>
                                             {form.assignedTo
-                                                ? (assignableUsers.find(u => u._id === form.assignedTo)?.fullName || 'Assigned user')
+                                                ? (assignableUsers.find(u => normalizeId(u) === normalizeId(form.assignedTo))?.fullName || 'Assigned user')
                                                 : 'Unassigned'}
                                         </Text>
                                         <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
@@ -502,6 +526,7 @@ const RFIScreen = ({ navigation }) => {
                     </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             <Modal visible={isSelectingProject} transparent animationType="fade" onRequestClose={() => setIsSelectingProject(false)}>
@@ -570,10 +595,10 @@ const RFIScreen = ({ navigation }) => {
                         <ScrollView showsVerticalScrollIndicator={false}>
                             {assignableUsers.map((member) => (
                                 <TouchableOpacity
-                                    key={member._id}
-                                    style={[styles.selectOption, form.assignedTo === member._id && styles.selectOptionActive]}
+                                    key={member._id || member.id}
+                                    style={[styles.selectOption, normalizeId(form.assignedTo) === normalizeId(member) && styles.selectOptionActive]}
                                     onPress={() => {
-                                        setForm(prev => ({ ...prev, assignedTo: member._id }));
+                                        setForm(prev => ({ ...prev, assignedTo: normalizeId(member) }));
                                         setIsSelectingAssignee(false);
                                     }}
                                 >
@@ -654,9 +679,9 @@ const styles = StyleSheet.create({
     footerLinkSub: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '800', marginTop: 4 },
 
     // Create Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
-    modalKeyboardWrap: { width: '100%' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
     modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     modalSubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
@@ -675,8 +700,9 @@ const styles = StyleSheet.create({
     },
     dropdownFieldText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B', marginRight: 8 },
     dropdownPlaceholder: { color: '#94A3B8', fontWeight: '600' },
-    rowTwoCols: { flexDirection: width < 700 ? 'column' : 'row', gap: 10 },
-    rowThreeCols: { flexDirection: width < 700 ? 'column' : 'row', gap: 10 },
+    rowTwoCols: { flexDirection: 'row', gap: 10 },
+    rowThreeCols: { flexDirection: 'row', gap: 10 },
+    stackCols: { flexDirection: 'column' },
     rowCol: { flex: 1, minWidth: 0 },
     priorityRow: { flexDirection: 'row', gap: 10 },
     priorityBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },

@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, StatusBar, SafeAreaView, TextInput,
-    Alert, Dimensions, Platform, Image, KeyboardAvoidingView, Linking
+    Alert, Platform, Image, KeyboardAvoidingView, Linking, useWindowDimensions, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
-
-const { width } = Dimensions.get('window');
+import { canCommentOnRFI, canManageRFI } from '../../utils/rfiPermissions';
 
 const RFIDetailScreen = ({ route, navigation }) => {
+    const { width } = useWindowDimensions();
     const { rfiId } = route.params;
-    const { user } = useApp();
-    const isAdmin = ['COMPANY_OWNER', 'PM'].includes(user?.role);
+    const { user, refreshData } = useApp();
+    const isAdmin = canManageRFI(user?.role);
+    const canComment = canCommentOnRFI(user?.role);
     const [rfi, setRfi] = useState(null);
     const [loading, setLoading] = useState(true);
     const [commentText, setCommentText] = useState('');
@@ -26,8 +27,12 @@ const RFIDetailScreen = ({ route, navigation }) => {
     const [reassignTo, setReassignTo] = useState('');
     const [showReassign, setShowReassign] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const normalizeId = (v) =>
+        String(v?._id || v?.id || v?.$oid || v?.toString?.() || v || '');
+    const normalizeRole = (r) => String(r || '').toUpperCase();
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(`/rfis/${rfiId}`);
@@ -39,11 +44,18 @@ const RFIDetailScreen = ({ route, navigation }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [rfiId]);
 
     useEffect(() => {
         fetchData();
-    }, [rfiId]);
+    }, [fetchData]);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchData();
+        });
+        return unsubscribe;
+    }, [navigation, fetchData]);
 
     useEffect(() => {
         const fetchAssignableUsers = async () => {
@@ -51,7 +63,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             try {
                 const res = await api.get('/auth/users');
                 const list = (Array.isArray(res.data) ? res.data : []).filter(u =>
-                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(normalizeRole(u.role))
                 );
                 setUsers(list);
             } catch (e) {
@@ -68,6 +80,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             const res = await api.post(`/rfis/${rfiId}/comments`, { text: commentText });
             setRfi(res.data);
             setCommentText('');
+            await refreshData?.();
         } catch (e) {
             Alert.alert('Error', 'Failed to post comment');
         } finally {
@@ -100,6 +113,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             setActionLoading(true);
             const res = await api.patch(`/rfis/${rfiId}`, { status: nextStatus });
             setRfi(res.data);
+            await refreshData?.();
         } catch (e) {
             Alert.alert('Error', 'Failed to update status');
         } finally {
@@ -115,6 +129,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             const res = await api.patch(`/rfis/${rfiId}`, payload);
             setRfi(res.data);
             setShowResponseBox(false);
+            await refreshData?.();
         } catch (e) {
             Alert.alert('Error', 'Failed to save official response');
         } finally {
@@ -130,6 +145,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             setRfi(res.data);
             setShowReassign(false);
             setReassignTo('');
+            await refreshData?.();
         } catch (e) {
             Alert.alert('Error', 'Failed to reassign RFI');
         } finally {
@@ -160,6 +176,15 @@ const RFIDetailScreen = ({ route, navigation }) => {
         }
     };
 
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await fetchData();
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.loadingContainer}>
@@ -172,6 +197,15 @@ const RFIDetailScreen = ({ route, navigation }) => {
 
     const statusSt = getStatusStyles(rfi.status);
     const prioritySt = getPriorityStyles(rfi.priority);
+    const rawAssigned = rfi?.assignedTo || rfi?.assigned_to || rfi?.assignee || '';
+    const assignedDisplayName =
+        (typeof rawAssigned === 'object' ? rawAssigned?.fullName : null) ||
+        users.find((u) => normalizeId(u) === normalizeId(rawAssigned))?.fullName ||
+        'Unassigned';
+    const assignedDisplayRole =
+        (typeof rawAssigned === 'object' ? rawAssigned?.role : null) ||
+        users.find((u) => normalizeId(u) === normalizeId(rawAssigned))?.role ||
+        'Awaiting assignee';
 
     return (
         <SafeAreaView style={styles.container}>
@@ -185,8 +219,10 @@ const RFIDetailScreen = ({ route, navigation }) => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="always"
-                keyboardDismissMode="none"
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             >
                 {/* HEADER INFO */}
                 <View style={[styles.mainCard, SHADOWS.medium]}>
@@ -222,6 +258,13 @@ const RFIDetailScreen = ({ route, navigation }) => {
                             </View>
                         </View>
                     )}
+                    <View style={styles.projectInfoRow}>
+                        <MaterialCommunityIcons name="shape-outline" size={20} color="#64748B" />
+                        <View style={{ marginLeft: 12 }}>
+                            <Text style={styles.infoLabel}>CATEGORY</Text>
+                                <Text style={styles.infoValue}>{String(rfi.category || rfi.rfiCategory || rfi.type || 'other')}</Text>
+                        </View>
+                    </View>
                 </View>
 
                 {/* DESCRIPTION */}
@@ -279,9 +322,9 @@ const RFIDetailScreen = ({ route, navigation }) => {
                     </View>
                     <View style={styles.assignmentCard}>
                         <Text style={styles.infoLabel}>ASSIGNED TO</Text>
-                        <Text style={styles.assignmentName}>{rfi.assignedTo?.fullName || 'Unassigned'}</Text>
-                        <Text style={[styles.assignmentRole, !rfi.assignedTo && { color: '#94A3B8' }]}>
-                            {rfi.assignedTo ? rfi.assignedTo.role : 'Awaiting assignee'}
+                        <Text style={styles.assignmentName}>{assignedDisplayName}</Text>
+                        <Text style={[styles.assignmentRole, assignedDisplayName === 'Unassigned' && { color: '#94A3B8' }]}>
+                            {assignedDisplayRole}
                         </Text>
                     </View>
                 </View>
@@ -329,27 +372,29 @@ const RFIDetailScreen = ({ route, navigation }) => {
                     </View>
 
                     {/* Comment Area */}
-                    <View style={styles.commentInputWrap}>
-                        <TextInput
-                            style={styles.commentInput}
-                            placeholder="Add your comment..."
-                            placeholderTextColor="#94A3B8"
-                            multiline
-                            value={commentText}
-                            onChangeText={setCommentText}
-                        />
-                        <TouchableOpacity 
-                            style={[styles.sendBtn, (!commentText.trim() || submittingComment) && { opacity: 0.5 }]}
-                            onPress={handleAddComment}
-                            disabled={!commentText.trim() || submittingComment}
-                        >
-                            {submittingComment ? (
-                                <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                                <MaterialCommunityIcons name="send" size={20} color="#fff" />
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                    {canComment ? (
+                        <View style={styles.commentInputWrap}>
+                            <TextInput
+                                style={styles.commentInput}
+                                placeholder="Add your comment..."
+                                placeholderTextColor="#94A3B8"
+                                multiline
+                                value={commentText}
+                                onChangeText={setCommentText}
+                            />
+                            <TouchableOpacity 
+                                style={[styles.sendBtn, (!commentText.trim() || submittingComment) && { opacity: 0.5 }]}
+                                onPress={handleAddComment}
+                                disabled={!commentText.trim() || submittingComment}
+                            >
+                                {submittingComment ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <MaterialCommunityIcons name="send" size={20} color="#fff" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : null}
 
                     {/* Comments List */}
                     <View style={styles.commentsList}>

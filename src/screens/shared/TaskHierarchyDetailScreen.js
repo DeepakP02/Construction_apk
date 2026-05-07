@@ -70,6 +70,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     const insets = useSafeAreaInsets();
     const { width: winW, height: winH } = useWindowDimensions();
     const isCompact = winW < 380;
+    const isSubcontractor = user?.role === 'SUBCONTRACTOR';
 
     const navigateRoot = useCallback(
         (name, params) => {
@@ -266,6 +267,10 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     };
 
     const openEdit = (task) => {
+        if (isSubcontractor) {
+            Alert.alert('View Only', 'Subcontractor can only view assigned tasks.');
+            return;
+        }
         const assigned = Array.isArray(task.assignedTo) ? task.assignedTo[0] : task.assignedTo;
         setEditTarget(task);
         setEditForm({
@@ -350,6 +355,10 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     };
 
     const handleDelete = (task) => {
+        if (isSubcontractor) {
+            Alert.alert('View Only', 'Subcontractor can only view assigned tasks.');
+            return;
+        }
         if (task?.__isSubTaskNode) {
             Alert.alert('Delete SubTask', `Delete "${task.title}"?`, [
                 { text: 'Cancel', style: 'cancel' },
@@ -470,35 +479,37 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                                 {dueShort(item)}
                             </Text>
                         </View>
-                        <View style={styles.actionsColHier}>
-                            <TouchableOpacity
-                                onPress={() =>
-                                    isApiSubtask
-                                        ? navigateRoot('TaskCreate', {
-                                              isChild: true,
-                                              isSubTaskParent: true,
-                                              parentTaskId: id,
-                                              parentSubTaskId: id,
-                                              rootTaskId: selectedTask._id || selectedTask.id,
-                                              parentTitle: item.title,
-                                              projectId: selectedTask?.projectId?._id || selectedTask?.projectId
-                                          })
-                                        : navigateRoot('TaskCreate', {
-                                              isChild: true,
-                                              parentTaskId: id,
-                                              projectId: item?.projectId?._id || item?.projectId || selectedTask?.projectId?._id || selectedTask?.projectId
-                                          })
-                                }
-                            >
-                                <MaterialCommunityIcons name="plus-box-outline" size={isCompact ? 16 : 18} color="#2563EB" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => openEdit(item)}>
-                                <MaterialCommunityIcons name="pencil" size={isCompact ? 16 : 18} color="#10B981" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleDelete(item)}>
-                                <MaterialCommunityIcons name="delete-outline" size={isCompact ? 16 : 18} color="#EF4444" />
-                            </TouchableOpacity>
-                        </View>
+                        {!isSubcontractor ? (
+                            <View style={styles.actionsColHier}>
+                                <TouchableOpacity
+                                    onPress={() =>
+                                        isApiSubtask
+                                            ? navigateRoot('TaskCreate', {
+                                                  isChild: true,
+                                                  isSubTaskParent: true,
+                                                  parentTaskId: id,
+                                                  parentSubTaskId: id,
+                                                  rootTaskId: selectedTask._id || selectedTask.id,
+                                                  parentTitle: item.title,
+                                                  projectId: selectedTask?.projectId?._id || selectedTask?.projectId
+                                              })
+                                            : navigateRoot('TaskCreate', {
+                                                  isChild: true,
+                                                  parentTaskId: id,
+                                                  projectId: item?.projectId?._id || item?.projectId || selectedTask?.projectId?._id || selectedTask?.projectId
+                                              })
+                                    }
+                                >
+                                    <MaterialCommunityIcons name="plus-box-outline" size={isCompact ? 16 : 18} color="#2563EB" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => openEdit(item)}>
+                                    <MaterialCommunityIcons name="pencil" size={isCompact ? 16 : 18} color="#10B981" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDelete(item)}>
+                                    <MaterialCommunityIcons name="delete-outline" size={isCompact ? 16 : 18} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : null}
                     </View>
                 </View>
             </View>
@@ -573,25 +584,27 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                             <Text style={styles.progressLabel}>{Math.round(rootProgress)}% · {directChildCount} subtask{directChildCount !== 1 ? 's' : ''}</Text>
                         </View>
                     ) : null}
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={styles.primaryBtn}
-                            onPress={() => navigateRoot('TaskCreate', {
-                                isChild: true,
-                                parentTaskId: selectedTask._id || selectedTask.id,
-                                projectId: selectedTask?.projectId?._id || selectedTask?.projectId
-                            })}
-                        >
-                            <MaterialCommunityIcons name="plus" size={16} color="#fff" />
-                            <Text style={styles.primaryBtnText}>Add SubTask</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(selectedTask)}>
-                            <MaterialCommunityIcons name="pencil-outline" size={18} color="#2563EB" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(selectedTask)}>
-                            <MaterialCommunityIcons name="trash-can-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
-                    </View>
+                    {!isSubcontractor ? (
+                        <View style={styles.actions}>
+                            <TouchableOpacity
+                                style={styles.primaryBtn}
+                                onPress={() => navigateRoot('TaskCreate', {
+                                    isChild: true,
+                                    parentTaskId: selectedTask._id || selectedTask.id,
+                                    projectId: selectedTask?.projectId?._id || selectedTask?.projectId
+                                })}
+                            >
+                                <MaterialCommunityIcons name="plus" size={16} color="#fff" />
+                                <Text style={styles.primaryBtnText}>Add SubTask</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(selectedTask)}>
+                                <MaterialCommunityIcons name="pencil-outline" size={18} color="#2563EB" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(selectedTask)}>
+                                <MaterialCommunityIcons name="trash-can-outline" size={18} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : null}
                 </View>
 
                 {rows.length > 0 ? (
@@ -611,17 +624,19 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                 {(rows.length === 0 && subTaskRows.length === 0) ? <Text style={styles.emptyText}>No child tasks yet.</Text> : null}
             </ScrollView>
 
-            <Modal visible={!!editTarget} transparent animationType="slide" onRequestClose={() => setEditTarget(null)}>
+            <Modal visible={!!editTarget} transparent animationType="slide" statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={() => setEditTarget(null)}>
                 <KeyboardAvoidingView
                     style={styles.modalOverlay}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 12 : 0}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 12 : 24}
                 >
                     <View style={styles.modalOverlayInner}>
                         <View style={styles.modalBody}>
                             <Text style={styles.modalTitle}>Edit Task</Text>
                             <ScrollView
                                 keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                                 showsVerticalScrollIndicator={false}
                                 style={{ maxHeight: Math.min(winH * 0.48, 340) }}
                                 contentContainerStyle={styles.modalScrollContent}

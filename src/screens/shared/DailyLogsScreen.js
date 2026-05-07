@@ -17,6 +17,8 @@ import {
     RefreshControl,
     useWindowDimensions,
     Image,
+    TouchableWithoutFeedback,
+    Keyboard,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -39,9 +41,10 @@ const resolveLogPhotoUri = (photo) => {
 const DailyLogsScreen = ({ navigation }) => {
     const { user, projects, refreshData, selectedProject: globalSelectedProject } = useApp();
     const insets = useSafeAreaInsets();
-    const { width } = useWindowDimensions();
+    const { width, height } = useWindowDimensions();
     const isCompact = width < 380;
-    const modalSheetMaxWidth = Math.min(width * 0.96, 560);
+    const modalSheetMaxWidth = Math.min(width - 16, 560);
+    const modalSheetMaxHeight = Math.min(height * 0.9, 760);
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -545,13 +548,14 @@ const DailyLogsScreen = ({ navigation }) => {
             </Modal>
 
             {/* NEW LOG MODAL */}
-            <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+            <Modal visible={modalVisible} transparent animationType="slide" statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={() => setModalVisible(false)}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => !submitting && setModalVisible(false)} />
                     <KeyboardAvoidingView
-                        style={{ width: '100%' }}
+                        style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                         <View
                             style={[
@@ -562,7 +566,7 @@ const DailyLogsScreen = ({ navigation }) => {
                                     maxWidth: modalSheetMaxWidth,
                                     width: '100%',
                                     alignSelf: 'center',
-                                    height: '85%',
+                                    maxHeight: modalSheetMaxHeight,
                                     paddingBottom: insets.bottom + 20,
                                 },
                             ]}
@@ -579,6 +583,8 @@ const DailyLogsScreen = ({ navigation }) => {
                                 style={{ flex: 1 }}
                                 showsVerticalScrollIndicator={false}
                                 keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                                 contentContainerStyle={{
                                     paddingHorizontal: scale(20),
                                     paddingBottom: verticalScale(30),
@@ -688,6 +694,7 @@ const DailyLogsScreen = ({ navigation }) => {
                         </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* PROJECT SELECTION MODAL */}
@@ -779,7 +786,8 @@ const styles = StyleSheet.create({
     photoPreviewContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     photoPreviewImage: { width: '100%', height: '72%' },
     photoPreviewClose: { position: 'absolute', zIndex: 100 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
     modalSheet: {
         backgroundColor: '#fff',
         width: '100%',

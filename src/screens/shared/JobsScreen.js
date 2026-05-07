@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, Dimensions, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
@@ -7,11 +7,11 @@ import { useApp } from '../../context/AppContext';
 import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
 
-const { width } = Dimensions.get('window');
-
 const JobsScreen = ({ navigation }) => {
-    const { width: windowWidth } = useWindowDimensions();
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
     const isCompact = windowWidth < 390;
+    const modalMaxWidth = Math.min(windowWidth - 16, 760);
+    const modalMaxHeight = Math.min(windowHeight * 0.9, 760);
     const { jobs, projects, teamMembers, user, loading, addJob, refreshData } = useApp();
     const [modalVisible, setModalVisible] = useState(false);
     const [search, setSearch] = useState('');
@@ -159,14 +159,15 @@ const JobsScreen = ({ navigation }) => {
             )}
 
             {/* CREATE JOB MODAL */}
-            <Modal visible={modalVisible} animationType="slide" transparent>
+            <Modal visible={modalVisible} animationType="slide" transparent statusBarTranslucent presentationStyle="overFullScreen">
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Create New Job</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -177,6 +178,8 @@ const JobsScreen = ({ navigation }) => {
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                             contentContainerStyle={styles.modalFormContent}
                         >
                             <CustomInput 
@@ -265,7 +268,7 @@ const JobsScreen = ({ navigation }) => {
                                 onChangeText={t => setForm({ ...form, description: t })}
                             />
 
-                            <View style={styles.modalActions}>
+                            <View style={[styles.modalActions, isCompact && styles.modalActionsStack]}>
                                 <TouchableOpacity
                                     style={styles.modalCancelBtn}
                                     onPress={() => setModalVisible(false)}
@@ -281,6 +284,7 @@ const JobsScreen = ({ navigation }) => {
                     </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* SELECTOR MODAL */}
@@ -353,15 +357,16 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
     emptyText: { color: '#94A3B8', fontSize: 16, marginTop: 12, fontWeight: '600' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end' },
-    modalKeyboardWrap: { width: '100%' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '90%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
     modalFormContent: { paddingBottom: 26 },
     assignRow: { flexDirection: 'row', gap: 12, marginTop: 15 },
     assignRowStack: { flexDirection: 'column' },
     modalActions: { marginTop: 24, flexDirection: 'row', gap: 10, alignItems: 'center' },
+    modalActionsStack: { flexDirection: 'column' },
     modalCancelBtn: { flex: 1, height: 56, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
     modalCancelText: { color: '#475569', fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
     label: { fontSize: 12, fontWeight: '800', color: '#64748B', marginBottom: 8, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.5 },

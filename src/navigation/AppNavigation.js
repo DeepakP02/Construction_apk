@@ -100,8 +100,6 @@ import TradeManagementScreen from '../screens/foreman/TradeManagementScreen';
 import CrewClockScreen from '../screens/foreman/CrewClockScreen';
 import ForemanPhotosScreen from '../screens/foreman/ForemanPhotosScreen';
 import ForemanTasksScreen from '../screens/foreman/ForemanTasksScreen';
-import RFIDashboardScreen from '../screens/foreman/RFIDashboardScreen';
-import ForemanRFIListScreen from '../screens/foreman/RFIListScreen';
 import ForemanIssuesScreen from '../screens/foreman/ForemanIssuesScreen';
 import ForemanJobsScreen from '../screens/foreman/ForemanJobsScreen';
 import ForemanJobDetailScreen from '../screens/foreman/ForemanJobDetailScreen';
@@ -110,7 +108,6 @@ import ForemanJobDetailScreen from '../screens/foreman/ForemanJobDetailScreen';
 import ClientDashboardScreen from '../screens/client/ClientDashboardScreen';
 import ClientJobsScreen from '../screens/client/ClientJobsScreen';
 import ClientInvoicesScreen from '../screens/client/ClientInvoicesScreen';
-import ClientRFIScreen from '../screens/client/ClientRFIScreen';
 import ClientPhotosScreen from '../screens/client/ClientPhotosScreen';
 import ClientDrawingsScreen from '../screens/client/ClientDrawingsScreen';
 import ClientProjectsScreen from '../screens/client/ClientProjectsScreen';
@@ -119,7 +116,6 @@ import ClientProjectsScreen from '../screens/client/ClientProjectsScreen';
 import SubcontractorDashboardScreen from '../screens/subcontractor/SubcontractorDashboardScreen';
 import SubcontractorProjectsScreen from '../screens/subcontractor/SubcontractorProjectsScreen';
 import SubcontractorJobDetailsScreen from '../screens/subcontractor/SubcontractorJobDetailsScreen';
-import SubcontractorRFIScreen from '../screens/subcontractor/SubcontractorRFIScreen';
 
 // PM Specific Screens
 import ProjectManagerDashboardScreen from '../screens/project-manager/ProjectManagerDashboardScreen';
@@ -466,8 +462,8 @@ const ForemanDrawer = () => {
             <Drawer.Screen name="TradeManagement" component={TradeManagementScreen} />
             <Drawer.Screen name="Tasks" component={TasksScreen} />
             <Drawer.Screen name="ForemanTasks" component={ForemanTasksScreen} />
-            <Drawer.Screen name="RFIDashboard" component={RFIDashboardScreen} />
-            <Drawer.Screen name="RFIList" component={ForemanRFIListScreen} />
+            <Drawer.Screen name="RFIDashboard" component={RFIScreen} />
+            <Drawer.Screen name="RFIList" component={RFIListScreen} />
             <Drawer.Screen name="ForemanIssues" component={ForemanIssuesScreen} />
             <Drawer.Screen name="ForemanJobDetail" component={ForemanJobDetailScreen} />
             <Drawer.Screen name="Photos" component={ForemanPhotosScreen} />
@@ -604,7 +600,7 @@ const ClientDrawer = () => {
         >
             <Drawer.Screen name="MainTabs" component={ClientTabs} />
             <Drawer.Screen name="ClientInvoices" component={ClientInvoicesScreen} />
-            <Drawer.Screen name="ClientRFI" component={ClientRFIScreen} />
+            <Drawer.Screen name="ClientRFI" component={RFIScreen} />
             <Drawer.Screen name="Chatboard" component={WorkerChatboard} />
         </Drawer.Navigator>
     );
@@ -909,7 +905,7 @@ const SubcontractorTabs = () => {
             />
             <Tab.Screen
                 name="RFI"
-                component={SubcontractorRFIScreen}
+                component={RFIScreen}
                 options={{
                     tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? "file-document-alert" : "file-document-alert-outline"} color={color} size={24} />
                 }}
@@ -937,7 +933,7 @@ const SubcontractorDrawer = () => {
             <Drawer.Screen name="MainTabs" component={SubcontractorTabs} />
             <Drawer.Screen name="Chatboard" component={WorkerChatboard} />
             <Drawer.Screen name="Equipment" component={EquipmentScreen} />
-            <Drawer.Screen name="RFI" component={SubcontractorRFIScreen} />
+            <Drawer.Screen name="RFI" component={RFIScreen} />
             <Drawer.Screen name="Reports" component={ReportsScreen} />
         </Drawer.Navigator>
     );

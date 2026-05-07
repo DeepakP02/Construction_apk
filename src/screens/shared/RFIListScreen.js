@@ -1,15 +1,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ScrollView, StatusBar, SafeAreaView, TextInput, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform
+    ScrollView, StatusBar, SafeAreaView, TextInput, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableWithoutFeedback, Keyboard, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
+import { canCreateRFI, canManageRFI } from '../../utils/rfiPermissions';
 
 const RFIListScreen = ({ navigation }) => {
+    const { width, height } = useWindowDimensions();
+    const isSmallScreen = width < 380;
+    const modalMaxWidth = Math.min(width - 16, 860);
+    const modalMaxHeight = Math.min(height * 0.9, 780);
     const { rfis, projects, teamMembers, user, refreshData } = useApp();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +25,9 @@ const RFIListScreen = ({ navigation }) => {
     const [showFilterModal, setShowFilterModal] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [assignableUsers, setAssignableUsers] = useState([]);
+    const [files, setFiles] = useState([]);
     const [formData, setFormData] = useState({
         projectId: '',
         subject: '',
@@ -30,16 +38,20 @@ const RFIListScreen = ({ navigation }) => {
         assignedTo: '',
         dueDate: ''
     });
+    const normalizeId = (v) =>
+        String(v?._id || v?.id || v?.$oid || v?.toString?.() || v || '');
+    const normalizeRole = (r) => String(r || '').toUpperCase();
 
-    const canManage = user?.role === 'COMPANY_OWNER' || user?.role === 'PM';
+    const canManage = canManageRFI(user?.role);
+    const canCreate = canCreateRFI(user?.role);
 
     useEffect(() => {
         const fetchAssignableUsers = async () => {
-            if (!canManage) return;
+            if (!canCreate) return;
             try {
                 const res = await api.get('/auth/users');
                 const users = (Array.isArray(res.data) ? res.data : []).filter(u =>
-                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(u.role)
+                    ['PM', 'COMPANY_OWNER', 'FOREMAN'].includes(normalizeRole(u.role))
                 );
                 setAssignableUsers(users);
             } catch (e) {
@@ -47,14 +59,18 @@ const RFIListScreen = ({ navigation }) => {
             }
         };
         fetchAssignableUsers();
-    }, [canManage]);
+    }, [canCreate]);
 
+    const getRfiCategory = (r) => String(r?.category || r?.rfiCategory || r?.type || 'other');
+    const getRfiAssignedId = (r) => r?.assignedTo || r?.assigned_to || r?.assignee || '';
     const filteredRFIs = useMemo(() => {
         return (rfis || []).filter(r => {
             const matchesSearch =
                 r.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 r.rfiNumber?.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesProject = selectedProject === 'all' || r.projectId?._id === selectedProject || r.projectId === selectedProject;
+            const matchesProject =
+                selectedProject === 'all' ||
+                normalizeId(r.projectId) === normalizeId(selectedProject);
             const matchesStatus = selectedStatus === 'all' || r.status === selectedStatus;
             const matchesPriority = selectedPriority === 'all' || r.priority === selectedPriority;
             return matchesSearch && matchesProject && matchesStatus && matchesPriority;
@@ -68,7 +84,23 @@ const RFIListScreen = ({ navigation }) => {
         }
         setSubmitting(true);
         try {
-            await api.post('/rfis', formData);
+            const payload = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                if (value === '' || value == null) return;
+                if (key === 'category') payload.append(key, String(value).toLowerCase());
+                else if (key === 'assignedTo') payload.append(key, String(value));
+                else payload.append(key, value);
+            });
+            files.forEach((file, index) => {
+                payload.append('files', {
+                    uri: file.uri,
+                    name: file.name || `attachment-${index + 1}`,
+                    type: file.mimeType || 'application/octet-stream',
+                });
+            });
+            const res = await api.post('/rfis', payload, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
             await refreshData?.();
             setShowCreateModal(false);
             setFormData({
@@ -81,12 +113,41 @@ const RFIListScreen = ({ navigation }) => {
                 assignedTo: '',
                 dueDate: ''
             });
+            setFiles([]);
             Alert.alert('Success', 'RFI submitted successfully');
+            if (res?.data?._id) navigation.navigate('RFIDetail', { rfiId: res.data._id });
         } catch (e) {
             Alert.alert('Error', 'Failed to submit RFI');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await refreshData?.();
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    const pickFiles = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                multiple: true,
+                copyToCacheDirectory: true,
+            });
+            if (result.canceled || !result.assets?.length) return;
+            setFiles((prev) => [...prev, ...result.assets]);
+        } catch {
+            Alert.alert('Error', 'Could not pick files');
+        }
+    };
+
+    const removeFile = (index) => {
+        setFiles((prev) => prev.filter((_, i) => i !== index));
     };
 
     const handleStatusChange = async (rfi) => {
@@ -144,9 +205,12 @@ const RFIListScreen = ({ navigation }) => {
         const raisedBy = typeof item.raisedBy === 'object'
             ? item.raisedBy?.fullName
             : (teamMembers || []).find(u => u._id === item.raisedBy)?.fullName || '—';
-        const assignedTo = typeof item.assignedTo === 'object'
-            ? item.assignedTo?.fullName
-            : (teamMembers || []).find(u => u._id === item.assignedTo)?.fullName || 'Unassigned';
+        const rawAssigned = getRfiAssignedId(item);
+        const assignedTo = typeof rawAssigned === 'object'
+            ? rawAssigned?.fullName
+            : (teamMembers || []).find(u => normalizeId(u) === normalizeId(rawAssigned))?.fullName ||
+              (assignableUsers || []).find(u => normalizeId(u) === normalizeId(rawAssigned))?.fullName ||
+              'Unassigned';
 
         return (
             <View style={[styles.rfiCard, SHADOWS.small, isOverdue && styles.rfiCardOverdue]}>
@@ -209,6 +273,10 @@ const RFIListScreen = ({ navigation }) => {
                             <Text style={styles.infoLabel}>CREATED</Text>
                             <Text style={styles.infoVal}>{formatDate(item.createdAt)}</Text>
                         </View>
+                        <View style={styles.infoCol}>
+                            <Text style={styles.infoLabel}>CATEGORY</Text>
+                            <Text style={styles.infoVal}>{getRfiCategory(item)}</Text>
+                        </View>
                     </View>
 
                     {/* Action Row */}
@@ -247,7 +315,7 @@ const RFIListScreen = ({ navigation }) => {
                     <Text style={styles.pageSubtitle}>Filter, search and manage all requests</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    {canManage && (
+                    {canCreate && (
                         <TouchableOpacity style={styles.newBtn} onPress={() => setShowCreateModal(true)}>
                             <MaterialCommunityIcons name="plus" size={18} color="#fff" />
                             <Text style={styles.newBtnTxt}>New RFI</Text>
@@ -307,6 +375,7 @@ const RFIListScreen = ({ navigation }) => {
                 renderItem={renderRFICard}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
                     <View style={styles.emptyWrap}>
                         <MaterialCommunityIcons name="file-search-outline" size={56} color="#E2E8F0" />
@@ -317,14 +386,15 @@ const RFIListScreen = ({ navigation }) => {
             />
 
             {/* CREATE MODAL */}
-            <Modal visible={showCreateModal} animationType="slide" transparent>
+            <Modal visible={showCreateModal} animationType="slide" transparent statusBarTranslucent presentationStyle="overFullScreen">
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
-                    <View style={styles.modalCard}>
+                    <View style={[styles.modalCard, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 24 }]}>
                         <View style={styles.modalHeader}>
                             <View>
                                 <Text style={styles.modalTitle}>Create New RFI</Text>
@@ -337,8 +407,9 @@ const RFIListScreen = ({ navigation }) => {
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={{ paddingBottom: 20 }}
-                            keyboardShouldPersistTaps="always"
-                            keyboardDismissMode="none"
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                         >
                             <Text style={styles.inputLabel}>Select Project *</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList}>
@@ -379,12 +450,19 @@ const RFIListScreen = ({ navigation }) => {
                             />
 
                             <Text style={styles.inputLabel}>Category (Optional)</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. design / structural / material"
-                                value={formData.category}
-                                onChangeText={t => setFormData({ ...formData, category: t.toLowerCase() })}
-                            />
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipList}>
+                                {['design', 'structural', 'mechanical', 'electrical', 'civil', 'safety', 'material', 'other'].map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[styles.chip, formData.category === cat && styles.chipActive]}
+                                        onPress={() => setFormData({ ...formData, category: cat })}
+                                    >
+                                        <Text style={[styles.chipTxt, formData.category === cat && styles.chipTxtActive]}>
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
 
                             <Text style={styles.inputLabel}>Priority</Text>
                             <View style={styles.selectorRow}>
@@ -414,9 +492,9 @@ const RFIListScreen = ({ navigation }) => {
                                     <TouchableOpacity
                                         key={u._id || u.id}
                                         style={[styles.chip, formData.assignedTo === (u._id || u.id) && styles.chipActive]}
-                                        onPress={() => setFormData({ ...formData, assignedTo: u._id || u.id })}
+                                            onPress={() => setFormData({ ...formData, assignedTo: normalizeId(u) })}
                                     >
-                                        <Text style={[styles.chipTxt, formData.assignedTo === (u._id || u.id) && styles.chipTxtActive]}>
+                                        <Text style={[styles.chipTxt, normalizeId(formData.assignedTo) === normalizeId(u) && styles.chipTxtActive]}>
                                             {u.fullName}
                                         </Text>
                                     </TouchableOpacity>
@@ -431,6 +509,25 @@ const RFIListScreen = ({ navigation }) => {
                                 onChangeText={t => setFormData({ ...formData, dueDate: t })}
                             />
 
+                            <Text style={styles.inputLabel}>Attachments</Text>
+                            <TouchableOpacity style={styles.attachDropzone} onPress={pickFiles}>
+                                <MaterialCommunityIcons name="upload" size={18} color="#94A3B8" />
+                                <Text style={styles.attachTitle}>Click to upload files</Text>
+                                <Text style={styles.attachSub}>PDF, DWG, Images, etc.</Text>
+                            </TouchableOpacity>
+                            {files.length > 0 ? (
+                                <View style={{ marginTop: 10, gap: 8 }}>
+                                    {files.map((file, idx) => (
+                                        <View key={`${file.uri}-${idx}`} style={styles.fileRow}>
+                                            <Text style={styles.fileName} numberOfLines={1}>{file.name || `Attachment ${idx + 1}`}</Text>
+                                            <TouchableOpacity onPress={() => removeFile(idx)}>
+                                                <MaterialCommunityIcons name="close" size={16} color="#64748B" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : null}
+
                             <TouchableOpacity
                                 style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
                                 onPress={handleSubmit}
@@ -444,6 +541,7 @@ const RFIListScreen = ({ navigation }) => {
                     </View>
                     </KeyboardAvoidingView>
                 </View>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* FILTER SELECTION MODAL */}
@@ -563,9 +661,9 @@ const styles = StyleSheet.create({
     emptySubtitle: { fontSize: 13, fontWeight: '700', color: '#CBD5E1', marginTop: 6, textAlign: 'center' },
 
     // Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.7)', justifyContent: 'flex-end' },
-    modalKeyboardWrap: { width: '100%' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '85%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.7)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
+    modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
+    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
     modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
     modalSubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
@@ -581,6 +679,33 @@ const styles = StyleSheet.create({
     selectorRow: { flexDirection: 'row', gap: 10 },
     selectorBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
     selectorBtnTxt: { fontSize: 13, fontWeight: '900', color: '#64748B' },
+    attachDropzone: {
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderColor: '#CBD5E1',
+        borderRadius: 14,
+        minHeight: 90,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 14,
+        marginTop: 2
+    },
+    attachTitle: { fontSize: 12, fontWeight: '800', color: '#475569', marginTop: 6 },
+    attachSub: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 3 },
+    fileRow: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10
+    },
+    fileName: { flex: 1, fontSize: 12, color: '#334155', fontWeight: '700' },
 
     submitBtn: { height: 58, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 28 },
     submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
