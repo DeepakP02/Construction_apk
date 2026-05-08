@@ -1,7 +1,7 @@
 {
   "expo": {
     "sdkVersion": "55.0.0",
-    "name": "BuildMaster PRO",
+    "name": "Kaal-ca",
     "slug": "buildmaster-pro",
     "version": "2.1.0",
     "orientation": "portrait",
@@ -26,7 +26,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "softwareKeyboardLayoutMode": "resize",
-      "package": "com.buildmaster.pro",
+      "package": "com.kaal.construction",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
