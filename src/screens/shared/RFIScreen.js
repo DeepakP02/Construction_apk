@@ -197,9 +197,7 @@ const RFIScreen = ({ navigation }) => {
                     type: file.mimeType || 'application/octet-stream'
                 });
             });
-            const res = await api.post('/rfis', payload, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const res = await api.post('/rfis', payload);
             closeCreateModal();
             await Promise.all([fetchData(), refreshData?.()]);
             Alert.alert('Success', 'RFI submitted successfully');

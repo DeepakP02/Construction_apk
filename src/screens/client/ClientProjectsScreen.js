@@ -69,7 +69,7 @@ const ClientProjectsScreen = ({ navigation }) => {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                         <View style={styles.locRow}>
                             <MaterialCommunityIcons name="map-marker" size={12} color="#2563EB" />
-                            <Text style={styles.locTxt} numberOfLines={1}>{project.location || 'SITE TBD'}</Text>
+                            <Text style={styles.locTxt} numberOfLines={1}>{(typeof project.location === 'object' ? project.location?.address : project.location) || 'SITE TBD'}</Text>
                         </View>
                         <View style={[styles.statusBadge, { position: 'relative', top: 0, left: 0, paddingVertical: 2, paddingHorizontal: 6 }]}>
                             <Text style={[styles.statusText, { fontSize: 8 }]}>{(project.status || 'PLANNING').toUpperCase()}</Text>

@@ -31,8 +31,9 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
     }, [navigation]);
 
     const filteredProjects = (projects || []).filter(proj => {
+        const loc = typeof proj.location === 'object' ? proj.location?.address : proj.location;
         const matchesSearch = proj.name?.toLowerCase().includes(search.toLowerCase()) ||
-            proj.location?.toLowerCase().includes(search.toLowerCase());
+            (loc || '').toLowerCase().includes(search.toLowerCase());
 
         const statusMap = {
             'PRE-CON': 'planning',
@@ -50,7 +51,7 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
     const openEditModal = (project) => {
         setEditingProject(project);
         setEditName(project.name);
-        setEditLocation(project.location || '');
+        setEditLocation((typeof project.location === 'object' ? project.location?.address : project.location) || '');
         setEditBudget(project.budget?.toString() || '');
         setIsEditModalVisible(true);
     };
@@ -98,7 +99,7 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
                         <View style={[styles.indicatorLine, { backgroundColor: config.color }]} />
                         <View>
                             <Text style={[styles.tinyName, { fontSize: width < 380 ? 12 : 13 }]} numberOfLines={1} adjustsFontSizeToFit>{item.name}</Text>
-                            <Text style={styles.tinyLoc} numberOfLines={1}>{item.location || 'Site'}</Text>
+                            <Text style={styles.tinyLoc} numberOfLines={1}>{(typeof item.location === 'object' ? item.location?.address : item.location) || 'Site'}</Text>
                         </View>
                     </View>
 

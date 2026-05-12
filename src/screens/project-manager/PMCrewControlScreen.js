@@ -522,7 +522,7 @@ const PMCrewControlScreen = ({ navigation }) => {
                                     <TouchableOpacity style={[styles.projectItem, isActive && styles.projectItemActive, { padding: scale(16), borderRadius: moderateScale(16) }]} onPress={() => { setSelectedProject(item); setProjectModalVisible(false); }}>
                                         <View>
                                             <Text style={[styles.projectName, isActive && { color: '#fff' }, { fontSize: moderateScale(15) }]}>{item.name}</Text>
-                                            <Text style={[styles.projectLoc, isActive && { color: 'rgba(255,255,255,0.7)' }, { fontSize: moderateScale(11) }]}>{item.location || 'Site Location'}</Text>
+                                            <Text style={[styles.projectLoc, isActive && { color: 'rgba(255,255,255,0.7)' }, { fontSize: moderateScale(11) }]}>{(typeof item.location === 'object' ? item.location?.address : item.location) || 'Site Location'}</Text>
                                         </View>
                                         {isActive && <MaterialCommunityIcons name="check-circle" size={moderateScale(20)} color="#fff" />}
                                     </TouchableOpacity>

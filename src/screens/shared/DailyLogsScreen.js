@@ -166,9 +166,7 @@ const DailyLogsScreen = ({ navigation }) => {
                 });
             });
 
-            await api.post('/dailylogs', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            await api.post('/dailylogs', formData);
             setModalVisible(false);
             resetForm();
             fetchLogs();
@@ -517,7 +515,7 @@ const DailyLogsScreen = ({ navigation }) => {
                                     {detailLog.location?.address ? (
                                         <View style={[styles.detailSection, { marginTop: verticalScale(14) }]}>
                                             <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(6) }]}>Location</Text>
-                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{detailLog.location.address}</Text>
+                                            <Text style={[styles.detailBody, { fontSize: moderateScale(14) }]}>{(typeof detailLog.location === 'object' ? detailLog.location?.address : detailLog.location) || ''}</Text>
                                         </View>
                                     ) : null}
 

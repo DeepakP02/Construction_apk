@@ -143,9 +143,7 @@ const ProjectManagerPhotosScreen = () => {
                 formData.append('projectId', idKey(uploadProjectId));
             }
 
-            const res = await api.post('/photos/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const res = await api.post('/photos/upload', formData);
 
             setPhotos((prev) => [enrichPhotoWithProject(res.data, projects), ...prev]);
             Alert.alert('Success', 'Photo uploaded successfully!');

@@ -104,7 +104,7 @@ export const OverviewTab = ({ project }) => {
                     <MaterialCommunityIcons name="map-marker-radius" size={24} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.locText}>{project.location?.address || project.location || 'Ontario, Canada'}</Text>
+                    <Text style={styles.locText}>{(typeof project.location === 'object' ? project.location?.address : project.location) || 'Ontario, Canada'}</Text>
                     <View style={styles.gpsRow}>
                         <View style={styles.gpsPulse} />
                         <Text style={styles.gpsText}>GPS ACTIVE • REAL-TIME SYNC</Text>

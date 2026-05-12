@@ -174,9 +174,7 @@ const EquipmentScreen = ({ navigation }) => {
                     name: `equipment_${Date.now()}.jpg`,
                     type: 'image/jpeg'
                 });
-                await api.post(`/equipment/${savedId}/upload-image`, fd, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await api.post(`/equipment/${savedId}/upload-image`, fd);
             }
             
             setModalVisible(false);
@@ -347,7 +345,7 @@ const EquipmentScreen = ({ navigation }) => {
                                         <View style={styles.infoBox}>
                                             <Text style={styles.infoLabel}>LOCATION</Text>
                                             <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
-                                                {item.location || 'Warehouse'}
+                                                {(typeof item.location === 'object' ? item.location?.address : item.location) || 'Warehouse'}
                                             </Text>
                                         </View>
                                         <View style={styles.infoBox}>

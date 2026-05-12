@@ -407,7 +407,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.jobTitle}>{job.name || job.title || 'Untitled Job'}</Text>
                     <Text style={styles.jobSubtitle}>
-                        {job.location || job.description || 'No location/notes added'}
+                        {(typeof job.location === 'object' ? job.location?.address : job.location) || job.description || 'No location/notes added'}
                     </Text>
                 </View>
                 <View style={styles.jobStatusWrap}>

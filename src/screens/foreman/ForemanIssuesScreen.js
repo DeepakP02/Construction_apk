@@ -122,9 +122,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                 });
             });
 
-            await api.post('/issues', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await api.post('/issues', formData);
 
             setModalVisible(false);
             setForm({ title: '', description: '', priority: 'Medium', projectId: null, location: '', attachments: [] });

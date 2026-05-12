@@ -156,9 +156,7 @@ const WorkerPhotosScreen = () => {
             formData.append('description', description || 'Site Progress Photo');
             formData.append('projectId', idKey(targetProjectId));
 
-            const res = await api.post('/photos/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const res = await api.post('/photos/upload', formData);
 
             setPhotos(prev => [res.data, ...prev]);
             setUploadModal(false);

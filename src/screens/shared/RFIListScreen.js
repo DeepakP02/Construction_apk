@@ -98,9 +98,7 @@ const RFIListScreen = ({ navigation }) => {
                     type: file.mimeType || 'application/octet-stream',
                 });
             });
-            const res = await api.post('/rfis', payload, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const res = await api.post('/rfis', payload);
             await refreshData?.();
             setShowCreateModal(false);
             setFormData({

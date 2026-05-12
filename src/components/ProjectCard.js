@@ -48,7 +48,7 @@ const ProjectCard = ({ project, onPress, onEdit, index = 0 }) => {
                         <Text style={styles.name} numberOfLines={1}>{project.name}</Text>
                         <View style={styles.locationRow}>
                             <MaterialCommunityIcons name="earth" size={12} color="#64748B" />
-                            <Text style={styles.locationText} numberOfLines={1}>{project.location?.address || 'Site Address TBD'}</Text>
+                            <Text style={styles.locationText} numberOfLines={1}>{(typeof project.location === 'object' ? project.location?.address : project.location) || 'Site Address TBD'}</Text>
                         </View>
                     </View>
                     <StatusBadge status={project.status || 'Planning'} />

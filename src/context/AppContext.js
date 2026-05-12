@@ -1449,9 +1449,7 @@ export const AppProvider = ({ children }) => {
             if (projectId) formData.append('projectId', projectId);
 
             console.log('--- UPLOADING FILE ---', { uri: fileUri, type: fileType, description, projectId });
-            const res = await api.post('/photos/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const res = await api.post('/photos/upload', formData);
 
             return {
                 url: res.data.imageUrl,

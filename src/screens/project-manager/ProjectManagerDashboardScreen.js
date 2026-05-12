@@ -92,7 +92,7 @@ const ProjectManagerDashboardScreen = ({ navigation }) => {
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>
                                         <Text style={[styles.projectName, selectedProject?._id === (p._id || p.id) && { color: '#fff' }]}>{p.name}</Text>
-                                        <Text style={[styles.projectLoc, selectedProject?._id === (p._id || p.id) && { color: 'rgba(255,255,255,0.7)' }]}>{p.location || 'Site Location'}</Text>
+                                        <Text style={[styles.projectLoc, selectedProject?._id === (p._id || p.id) && { color: 'rgba(255,255,255,0.7)' }]}>{(typeof p.location === 'object' ? p.location?.address : p.location) || 'Site Location'}</Text>
                                     </View>
                                     {selectedProject?._id === (p._id || p.id) && <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />}
                                 </TouchableOpacity>

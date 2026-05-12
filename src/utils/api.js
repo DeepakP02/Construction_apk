@@ -61,7 +61,15 @@ api.interceptors.request.use(
         }
 
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            if (config.headers) {
+                if (typeof config.headers.set === 'function') {
+                    config.headers.set('Authorization', `Bearer ${token}`);
+                } else {
+                    config.headers['Authorization'] = `Bearer ${token}`;
+                }
+            } else {
+                config.headers = { Authorization: `Bearer ${token}` };
+            }
         } else {
             console.log(`DEBUG [api]: No token found for request to ${config.url}`);
         }

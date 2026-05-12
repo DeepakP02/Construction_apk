@@ -202,9 +202,7 @@ const ProjectManagerDrawingsScreen = () => {
             formData.append('category', uploadForm.category);
             formData.append('status', uploadForm.status);
 
-            await api.post('/drawings', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await api.post('/drawings', formData);
 
             Alert.alert('Success', 'Drawing uploaded successfully!');
             setIsUploadVisible(false);

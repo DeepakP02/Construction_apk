@@ -19,16 +19,16 @@ const WorkerTimeClockScreen = ({ navigation }) => {
 
     useEffect(() => {
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-        if (!isClockedIn && projects.length === 1 && !selectedSite) {
-            setSelectedSite(projects[0]);
+        if (!isClockedIn && (projects || []).length === 1 && !selectedSite) {
+            setSelectedSite((projects || [])[0]);
         }
     }, [projects, isClockedIn]);
 
     useEffect(() => {
-        if (isClockedIn && timeLogs.length > 0) {
-            const activeLog = timeLogs.find(log => !log.clockOut);
+        if (isClockedIn && (timeLogs || []).length > 0) {
+            const activeLog = (timeLogs || []).find(log => !log.clockOut);
             if (activeLog && activeLog.projectId) {
-                const project = projects.find(p => (p._id || p.id) === (activeLog.projectId._id || activeLog.projectId));
+                const project = (projects || []).find(p => (p._id || p.id) === (activeLog.projectId._id || activeLog.projectId));
                 if (project) setSelectedSite(project);
             }
         }
@@ -52,7 +52,7 @@ const WorkerTimeClockScreen = ({ navigation }) => {
             setSelectedSite(item);
             setSelectedTask(null);
         } else {
-            const project = projects.find(p => (p._id || p.id) === (item.projectId?._id || item.projectId));
+            const project = (projects || []).find(p => (p._id || p.id) === (item.projectId?._id || item.projectId));
             setSelectedSite(project || item.projectId);
             setSelectedTask(item);
         }
@@ -83,8 +83,8 @@ const WorkerTimeClockScreen = ({ navigation }) => {
         return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
-    const sortedLogs = [...timeLogs].sort((a, b) => new Date(b.clockIn) - new Date(a.clockIn)).slice(0, 5);
-    const myTasks = tasks.filter(t => t.status !== 'completed');
+    const sortedLogs = [...(timeLogs || [])].sort((a, b) => new Date(b.clockIn) - new Date(a.clockIn)).slice(0, 5);
+    const myTasks = (tasks || []).filter(t => t.status !== 'completed');
 
     return (
         <View style={styles.container}>
@@ -153,7 +153,7 @@ const WorkerTimeClockScreen = ({ navigation }) => {
                     <View style={styles.bottomStats}>
                         <View style={styles.statCol}>
                             <Text style={[styles.statLabel, { fontSize: moderateScale(8) }]}>STARTED AT</Text>
-                            <Text style={[styles.statValue, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>{isClockedIn && timeLogs.length > 0 ? formatTime(timeLogs.find(l => !l.clockOut)?.clockIn) : '--:--'}</Text>
+                            <Text style={[styles.statValue, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>{isClockedIn && (timeLogs || []).length > 0 ? formatTime((timeLogs || []).find(l => !l.clockOut)?.clockIn) : '--:--'}</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statCol}>
@@ -239,7 +239,7 @@ const WorkerTimeClockScreen = ({ navigation }) => {
                             ))}
 
                             <Text style={[styles.sectionHeader, { fontSize: moderateScale(13), paddingVertical: verticalScale(8), paddingHorizontal: scale(12), borderRadius: moderateScale(8), marginTop: verticalScale(15), marginBottom: verticalScale(5) }]}>General Site Attendance</Text>
-                            {projects.map((p) => (
+                            {(projects || []).map((p) => (
                                 <TouchableOpacity 
                                     key={p._id || p.id} 
                                     style={[styles.dropdownOption, { paddingVertical: verticalScale(12), paddingHorizontal: scale(15) }]}

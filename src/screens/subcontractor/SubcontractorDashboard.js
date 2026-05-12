@@ -82,8 +82,8 @@ const SubcontractorDashboard = ({
     // ── Todo split ───────────────────────────────────────────────
     const myTodos = (todos || []).filter(t => (t.assignedTo?._id || t.assignedTo) === user?._id);
     const assignedByMe = (todos || []).filter(t =>
-        (t.createdBy?._id || t.createdBy) === user?._id &&
-        (t.assignedTo?._id || t.assignedTo) !== user?._id
+        String(t.createdBy?._id || t.createdBy) === String(user?._id) &&
+        String(t.assignedTo?._id || t.assignedTo) !== String(user?._id)
     );
 
     return (

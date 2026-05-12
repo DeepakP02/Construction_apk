@@ -104,7 +104,7 @@ const ForemanPhotosScreen = () => {
             formData.append('description', description || 'Site Update');
             if (uploadProjectId !== 'none') formData.append('projectId', idKey(uploadProjectId));
 
-            const res = await api.post('/photos/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const res = await api.post('/photos/upload', formData);
             setPhotos(prev => [enrichPhotoWithProject(res.data, projects), ...prev]);
             setUploadModal(false);
         } catch (e) { Alert.alert('Error', 'Sync failed.'); } finally {

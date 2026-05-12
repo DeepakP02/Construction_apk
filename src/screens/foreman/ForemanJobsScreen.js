@@ -117,7 +117,8 @@ const ForemanJobsScreen = ({ navigation }) => {
     const filteredJobs = useMemo(() => {
         return (jobs || []).filter((j) => {
             const title = (j.name || j.title || '').toLowerCase();
-            const loc = (j.location || j.projectId?.name || '').toLowerCase();
+            const locStr = typeof j.location === 'object' ? j.location?.address : j.location;
+            const loc = (locStr || j.projectId?.name || '').toLowerCase();
             const q = search.toLowerCase().trim();
             const matchesSearch = !q || title.includes(q) || loc.includes(q);
             const matchesSelected =
@@ -143,7 +144,8 @@ const ForemanJobsScreen = ({ navigation }) => {
     const renderJobCard = (item) => {
         const pct = getJobProgressPct(item);
         const su = statusUi(item.status);
-        const loc = formatLocationText(item.location || item.projectId?.name || '');
+        const locStr = typeof item.location === 'object' ? item.location?.address : item.location;
+        const loc = formatLocationText(locStr || item.projectId?.name || '');
         const title = item.name || item.title || 'Untitled job';
         const jid = item._id || item.id;
         const saving = statusSavingId && String(jid) === statusSavingId;

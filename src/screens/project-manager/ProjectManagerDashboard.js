@@ -77,7 +77,8 @@ const ProjectManagerDashboard = ({ navigation }) => {
     const assignedByMe = (todos || []).filter(t => {
         const assignerId = typeof t.assignedBy === 'object' ? (t.assignedBy?._id || t.assignedBy?.id) : t.assignedBy;
         const assignedId = typeof t.assignedTo === 'object' ? (t.assignedTo?._id || t.assignedTo?.id) : t.assignedTo;
-        return assignerId === user?._id && assignedId !== user?._id;
+        const currentUserId = user?._id || user?.id;
+        return String(assignerId) === String(currentUserId) && String(assignedId) !== String(currentUserId);
     });
 
     const openEditTodo = (item) => {

@@ -290,7 +290,7 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
                                         <View style={[styles.statusDot, { backgroundColor: getStatusColor(p.status), width: scale(8), height: scale(8), borderRadius: scale(4) }]} />
                                         <View style={{ flex: 1, marginLeft: scale(12) }}>
                                             <Text style={[styles.projectName, { fontSize: moderateScale(14) }]} numberOfLines={1}>{p.name}</Text>
-                                            {p.location && <Text style={[styles.projectLocation, { fontSize: moderateScale(11) }]} numberOfLines={1}>{p.location}</Text>}
+                                            {p.location && <Text style={[styles.projectLocation, { fontSize: moderateScale(11) }]} numberOfLines={1}>{(typeof p.location === 'object' ? p.location?.address : p.location)}</Text>}
                                         </View>
                                         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(p.status) + '18', borderColor: getStatusColor(p.status) + '40' }]}>
                                             <Text style={[styles.statusBadgeText, { color: getStatusColor(p.status), fontSize: moderateScale(9) }]}>

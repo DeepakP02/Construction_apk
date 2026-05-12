@@ -191,7 +191,7 @@ const WorkerLogsScreen = ({ navigation }) => {
                                         <MaterialCommunityIcons name="office-building" size={20} color="#2563EB" />
                                         <Text style={styles.detailValue}>{selectedLog.projectId?.name || 'Project Site'}</Text>
                                     </View>
-                                    <Text style={styles.detailSubValue}>{(selectedLog.projectId?.location || 'Assigned Location').toUpperCase()}</Text>
+                                    <Text style={styles.detailSubValue}>{((typeof selectedLog.projectId?.location === 'object' ? selectedLog.projectId.location.address : selectedLog.projectId?.location) || 'Assigned Location').toUpperCase()}</Text>
 
                                     <View style={styles.detailDivider} />
 
