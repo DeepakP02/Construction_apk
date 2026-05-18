@@ -3,7 +3,7 @@
     "sdkVersion": "55.0.0",
     "name": "Kaal-ca",
     "slug": "buildmaster-pro",
-    "version": "2.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kaal.construction",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
