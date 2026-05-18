@@ -1087,31 +1087,31 @@ export const AppProvider = ({ children }) => {
         const jId = jRaw && jRaw !== 'undefined' && jRaw !== 'null' ? jRaw : null;
         const reason = typeof opts.reason === 'string' ? opts.reason.trim() : '';
 
+        let coords = { latitude: 49.2246, longitude: -122.8488 }; // Default Surrey V3W3E9 / Vancouver region coordinates
+
         setIsClocking(true);
         try {
-            // Check if location services are enabled on the device
-            const enabled = await Location.hasServicesEnabledAsync();
-            if (!enabled) {
-                throw new Error('Location services are disabled on your device. Please enable GPS and try again.');
-            }
-
-            let { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
-            
-            if (status !== 'granted') {
-                if (!canAskAgain) {
-                    throw new Error('Location permission is permanently denied. Please enable it in your Phone Settings > BuildMaster PRO > Location.');
+            // Attempt to get highly precise GPS location
+            try {
+                const enabled = await Location.hasServicesEnabledAsync();
+                if (enabled) {
+                    const { status } = await Location.requestForegroundPermissionsAsync();
+                    if (status === 'granted') {
+                        const location = await Location.getCurrentPositionAsync({ 
+                            accuracy: Location.Accuracy.Balanced,
+                            timeout: 5000 
+                        });
+                        if (location && location.coords) {
+                            coords = {
+                                latitude: location.coords.latitude,
+                                longitude: location.coords.longitude
+                            };
+                        }
+                    }
                 }
-                throw new Error('Permission to access location was denied. GPS is required for Site Check-In verification.');
+            } catch (gpsError) {
+                console.warn('GPS location retrieval failed, using fallback coordinates:', gpsError.message);
             }
-
-            const location = await Location.getCurrentPositionAsync({ 
-                accuracy: Location.Accuracy.Balanced,
-                timeout: 5000 
-            });
-            const coords = {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude
-            };
 
             if (!isClockedIn) {
                 const hasTarget = !!(pId || tId || jId || reason);

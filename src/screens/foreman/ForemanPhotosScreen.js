@@ -79,9 +79,9 @@ const ForemanPhotosScreen = () => {
     });
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') { Alert.alert('Permission Denied'); return; }
-        let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') { Alert.alert('Permission Denied', 'Please grant camera access to take a live photo.'); return; }
+        let result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8 });
         if (!result.canceled && result.assets?.[0]) {
             setTempImage(result.assets[0].uri);
             setExternalUrl('');
@@ -89,23 +89,33 @@ const ForemanPhotosScreen = () => {
     };
 
     const uploadImage = async () => {
-        if (!tempImage && !externalUrl?.trim()) {
-            Alert.alert('Required', 'Choose a photo from your library or paste an image URL.');
+        if (!tempImage) {
+            Alert.alert('Required', 'Please capture a live photo first.');
             return;
         }
         try {
             setUploading(true);
             const formData = new FormData();
             if (tempImage) {
-                formData.append('image', { uri: Platform.OS === 'android' ? tempImage : tempImage.replace('file://', ''), name: 'photo.jpg', type: 'image/jpeg' });
-            } else {
-                formData.append('imageUrl', externalUrl.trim());
+                const filename = tempImage.split('/').pop() || 'photo.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+                formData.append('images', {
+                    uri: tempImage,
+                    name: filename,
+                    type: fileType
+                });
             }
             formData.append('description', description || 'Site Update');
             if (uploadProjectId !== 'none') formData.append('projectId', idKey(uploadProjectId));
 
-            const res = await api.post('/photos/upload', formData);
-            setPhotos(prev => [enrichPhotoWithProject(res.data, projects), ...prev]);
+            const res = await api.post('/photos/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const uploadedPhoto = Array.isArray(res.data) ? res.data[0] : res.data;
+            if (uploadedPhoto) {
+                setPhotos(prev => [enrichPhotoWithProject(uploadedPhoto, projects), ...prev]);
+            }
             setUploadModal(false);
         } catch (e) { Alert.alert('Error', 'Sync failed.'); } finally {
             setUploading(false);
@@ -227,23 +237,11 @@ const ForemanPhotosScreen = () => {
                             <TouchableOpacity style={[styles.dropZone, { height: verticalScale(220), borderRadius: moderateScale(20), marginBottom: verticalScale(20) }]} onPress={pickImage} disabled={uploading}>
                                 {tempImage ? <Image source={{ uri: tempImage }} style={styles.previewImage} resizeMode="contain" /> : (
                                     <View style={{ alignItems: 'center' }}>
-                                        <MaterialCommunityIcons name="camera-plus" size={moderateScale(40)} color="#94A3B8" />
-                                        <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(16), marginTop: verticalScale(10) }]}>Snap or Choose Photo</Text>
+                                        <MaterialCommunityIcons name="camera" size={moderateScale(40)} color="#94A3B8" />
+                                        <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(16), marginTop: verticalScale(10) }]}>Capture Live Photo</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
-
-                            <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Or Image URL (External)</Text>
-                            <TextInput
-                                style={[styles.inputField, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(16), marginBottom: verticalScale(20), fontSize: moderateScale(14) }]}
-                                placeholder="https://images.unsplash.com/..."
-                                placeholderTextColor="#94A3B8"
-                                value={externalUrl}
-                                onChangeText={handleExternalUrlChange}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                keyboardType="url"
-                            />
 
                             <Text style={[styles.fieldLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(8) }]}>Brief Note / Activity</Text>
                             <TextInput style={[styles.inputField, { height: verticalScale(50), borderRadius: moderateScale(12), paddingHorizontal: scale(16), marginBottom: verticalScale(20) }]} placeholder="e.g. Scaffolding complete" value={description} onChangeText={setDescription} />

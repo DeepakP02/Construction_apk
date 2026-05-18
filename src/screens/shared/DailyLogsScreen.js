@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import api, { getServerUrl } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -51,10 +52,18 @@ const DailyLogsScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null);
     
+    const getLocalDateString = () => {
+        const d = new Date();
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    };
+
+    const canViewLogs = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
+    const canCreateLog = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role);
+
     // Form States
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(getLocalDateString());
     const [manpowerCount, setManpowerCount] = useState('1');
     const [manpowerHrs, setManpowerHrs] = useState('8');
     const [workPerformed, setWorkPerformed] = useState('');
@@ -158,15 +167,42 @@ const DailyLogsScreen = ({ navigation }) => {
                     },
                 ])
             );
+
+            // Fetch and append GPS location automatically
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const loc = await Location.getCurrentPositionAsync({ 
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 3000 
+                    });
+                    if (loc && loc.coords) {
+                        formData.append('location', JSON.stringify({
+                            latitude: loc.coords.latitude,
+                            longitude: loc.coords.longitude,
+                            address: 'Captured from Mobile GPS'
+                        }));
+                    }
+                }
+            } catch (locErr) {
+                console.warn('Auto location capture for daily log failed:', locErr.message);
+            }
+
+            // Append photos with cross-platform URI structures
             logPhotoUris.forEach((uri, idx) => {
+                const filename = uri.split('/').pop() || `photo_${idx}.jpg`;
+                const match = /\.(\w+)$/.exec(filename);
+                const fileType = match ? `image/${match[1]}` : `image/jpeg`;
                 formData.append('photos', {
-                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-                    name: `daily_log_${idx}_${Date.now()}.jpg`,
-                    type: 'image/jpeg',
+                    uri: uri,
+                    name: filename,
+                    type: fileType,
                 });
             });
 
-            await api.post('/dailylogs', formData);
+            await api.post('/dailylogs', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setModalVisible(false);
             resetForm();
             fetchLogs();
@@ -183,7 +219,7 @@ const DailyLogsScreen = ({ navigation }) => {
         setWorkPerformed('');
         setManpowerCount('1');
         setManpowerHrs('8');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(getLocalDateString());
         setLogPhotoUris([]);
     };
 
@@ -269,7 +305,7 @@ const DailyLogsScreen = ({ navigation }) => {
         </View>
     );
 
-    if (user?.role !== 'PM' && user?.role !== 'FOREMAN') {
+    if (!canViewLogs) {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar barStyle="dark-content" />
@@ -294,10 +330,12 @@ const DailyLogsScreen = ({ navigation }) => {
                         <Text style={[styles.title, { fontSize: moderateScale(24) }]}>Daily Site Logs</Text>
                         <Text style={[styles.subtitle, { fontSize: moderateScale(13) }]}>Consolidated site operations record</Text>
                     </View>
-                    <TouchableOpacity style={[styles.actionBtn, { paddingHorizontal: scale(14), paddingVertical: verticalScale(10), borderRadius: moderateScale(12) }]} onPress={() => setModalVisible(true)}>
-                        <MaterialCommunityIcons name="plus" size={moderateScale(18)} color="#fff" />
-                        <Text style={[styles.actionBtnText, { fontSize: moderateScale(12) }]}>New Log</Text>
-                    </TouchableOpacity>
+                    {canCreateLog && (
+                        <TouchableOpacity style={[styles.actionBtn, { paddingHorizontal: scale(14), paddingVertical: verticalScale(10), borderRadius: moderateScale(12) }]} onPress={() => setModalVisible(true)}>
+                            <MaterialCommunityIcons name="plus" size={moderateScale(18)} color="#fff" />
+                            <Text style={[styles.actionBtnText, { fontSize: moderateScale(12) }]}>New Log</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <View style={[styles.filterArea, { marginBottom: verticalScale(16) }]}>
@@ -547,13 +585,11 @@ const DailyLogsScreen = ({ navigation }) => {
 
             {/* NEW LOG MODAL */}
             <Modal visible={modalVisible} transparent animationType="slide" statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={() => setModalVisible(false)}>
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => !submitting && setModalVisible(false)} />
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     >
                         <View
                             style={[
@@ -564,6 +600,7 @@ const DailyLogsScreen = ({ navigation }) => {
                                     maxWidth: modalSheetMaxWidth,
                                     width: '100%',
                                     alignSelf: 'center',
+                                    height: '90%',
                                     maxHeight: modalSheetMaxHeight,
                                     paddingBottom: insets.bottom + 20,
                                 },
@@ -692,7 +729,6 @@ const DailyLogsScreen = ({ navigation }) => {
                         </View>
                     </KeyboardAvoidingView>
                 </View>
-                </TouchableWithoutFeedback>
             </Modal>
 
             {/* PROJECT SELECTION MODAL */}
@@ -707,7 +743,7 @@ const DailyLogsScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
                         <FlatList
-                            data={filterModalVisible ? [{ _id: null, name: 'All Projects' }, ...projects] : projects}
+                            data={filterModalVisible ? [{ _id: null, name: 'All Projects' }, ...(projects || [])] : (projects || [])}
                             keyExtractor={(item, index) => (item._id || item.id || index.toString())}
                             renderItem={({ item }) => (
                                 <TouchableOpacity 

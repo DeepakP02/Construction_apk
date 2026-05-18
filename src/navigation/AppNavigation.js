@@ -387,6 +387,12 @@ const ForemanDrawerContent = (props) => {
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
                     <DrawerItem
+                        label="Site Check-In (My Clock)"
+                        icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('TimeClock')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
                         label="Clock In Crew"
                         icon={({ color }) => <MaterialCommunityIcons name="account-group" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('CrewClock')}
@@ -815,6 +821,12 @@ const SubcontractorDrawerContent = (props) => {
 
                     <DrawerSection title="SITE" />
                     <DrawerItem
+                        label="Site Check-In (My Clock)"
+                        icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('TimeClock')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
                         label="Equipment"
                         icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Equipment')}
@@ -931,6 +943,7 @@ const SubcontractorDrawer = () => {
             }}
         >
             <Drawer.Screen name="MainTabs" component={SubcontractorTabs} />
+            <Drawer.Screen name="TimeClock" component={WorkerTimeClockScreen} />
             <Drawer.Screen name="Chatboard" component={WorkerChatboard} />
             <Drawer.Screen name="Equipment" component={EquipmentScreen} />
             <Drawer.Screen name="RFI" component={RFIScreen} />

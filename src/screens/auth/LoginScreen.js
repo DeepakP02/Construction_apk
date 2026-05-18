@@ -48,10 +48,26 @@ export default function LoginScreen({ navigation }) {
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+
     useEffect(() => {
         try { logout(); } catch (e) { }
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
         handleSelectRole(ROLES[0]);
+
+        const showSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => setKeyboardVisible(true)
+        );
+        const hideSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardVisible(false)
+        );
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
     }, []);
 
     const handleSelectRole = (role) => {
@@ -86,25 +102,54 @@ export default function LoginScreen({ navigation }) {
             <LinearGradient
                 colors={['#2E3647', '#1E293B']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={[s.top, { height: verticalScale(240) + insets.top, paddingTop: insets.top + verticalScale(20) }]}
+                style={[
+                    s.top, 
+                    { 
+                        height: keyboardVisible 
+                            ? verticalScale(60) + insets.top 
+                            : verticalScale(220) + insets.top, 
+                        paddingTop: insets.top + verticalScale(keyboardVisible ? 5 : 20) 
+                    }
+                ]}
             >
                 <View style={[s.bubble, { top: -scale(60), right: -scale(60), width: scale(220), height: scale(220), opacity: 0.1 }]} />
                 <View style={[s.bubble, { bottom: -scale(30), left: -scale(30), width: scale(140), height: scale(140), opacity: 0.08 }]} />
                 
-                <Animated.View style={[s.headerContent, { opacity: fadeAnim }]}>
-                    <Image 
-                        source={require('../../../assets/logo.webp')} 
-                        style={[s.loginLogo, { width: scale(80), height: scale(80) }]} 
-                        resizeMode="contain" 
-                    />
-                    <Text style={[s.brand, { fontSize: moderateScale(28) }]}>KAAL<Text style={{ color: '#93C5FD' }}> ERP</Text></Text>
-                    <Text style={[s.tagline, { fontSize: moderateScale(13) }]}>Build Smarter. Manage Better.</Text>
+                <Animated.View style={[
+                    s.headerContent, 
+                    { 
+                        opacity: fadeAnim, 
+                        flexDirection: keyboardVisible ? 'row' : 'column', 
+                        alignItems: 'center', 
+                        gap: scale(8) 
+                    }
+                ]}>
+                    {!keyboardVisible && (
+                        <Image 
+                            source={require('../../../assets/logo.webp')} 
+                            style={[s.loginLogo, { width: scale(80), height: scale(80) }]} 
+                            resizeMode="contain" 
+                        />
+                    )}
+                    {keyboardVisible && (
+                        <Image 
+                            source={require('../../../assets/logo.webp')} 
+                            style={{ width: scale(24), height: scale(24) }} 
+                            resizeMode="contain" 
+                        />
+                    )}
+                    <Text style={[s.brand, { fontSize: moderateScale(keyboardVisible ? 18 : 28), marginVertical: 0 }]}>
+                        KAAL<Text style={{ color: '#93C5FD' }}> ERP</Text>
+                    </Text>
+                    {!keyboardVisible && (
+                        <Text style={[s.tagline, { fontSize: moderateScale(13) }]}>Build Smarter. Manage Better.</Text>
+                    )}
                 </Animated.View>
                 <View style={s.curve} />
             </LinearGradient>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : null}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <ScrollView

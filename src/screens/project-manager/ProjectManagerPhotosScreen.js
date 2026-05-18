@@ -94,31 +94,30 @@ const ProjectManagerPhotosScreen = () => {
 
     const pickImage = async () => {
         try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Gallery permission is required!');
+                Alert.alert('Permission Denied', 'Please grant camera access to take a live photo.');
                 return;
             }
 
-            let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
+            let result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
                 quality: 0.8,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 setTempImage(result.assets[0].uri);
-                setExternalUrl(''); // reset external url if local file selected
+                setExternalUrl('');
             }
         } catch (error) {
-            console.error('Gallery error:', error);
-            Alert.alert('Error', 'There was an issue opening the gallery.');
+            console.error('Camera error:', error);
+            Alert.alert('Error', 'There was an issue opening the camera.');
         }
     };
 
     const uploadImage = async () => {
-        if (!tempImage && !externalUrl) {
-            Alert.alert('Required', 'Please select a file or provide an Image URL.');
+        if (!tempImage) {
+            Alert.alert('Required', 'Please capture a live photo first.');
             return;
         }
 
@@ -129,13 +128,14 @@ const ProjectManagerPhotosScreen = () => {
             
             const formData = new FormData();
             if (tempImage) {
-                formData.append('image', {
-                    uri: Platform.OS === 'android' ? tempImage : tempImage.replace('file://', ''),
-                    name: tempImage.split('/').pop() || 'photo.jpg',
-                    type: 'image/jpeg'
+                const filename = tempImage.split('/').pop() || 'photo.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+                formData.append('images', {
+                    uri: tempImage,
+                    name: filename,
+                    type: fileType
                 });
-            } else if (externalUrl) {
-                formData.append('imageUrl', externalUrl);
             }
 
             formData.append('description', note);
@@ -143,9 +143,14 @@ const ProjectManagerPhotosScreen = () => {
                 formData.append('projectId', idKey(uploadProjectId));
             }
 
-            const res = await api.post('/photos/upload', formData);
+            const res = await api.post('/photos/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
 
-            setPhotos((prev) => [enrichPhotoWithProject(res.data, projects), ...prev]);
+            const uploadedPhoto = Array.isArray(res.data) ? res.data[0] : res.data;
+            if (uploadedPhoto) {
+                setPhotos((prev) => [enrichPhotoWithProject(uploadedPhoto, projects), ...prev]);
+            }
             Alert.alert('Success', 'Photo uploaded successfully!');
             setUploadModal(false);
         } catch (error) {
@@ -325,7 +330,6 @@ const ProjectManagerPhotosScreen = () => {
                                 <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#64748B" />
                             </TouchableOpacity>
                         </View>
-
                         <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBodyScroll}>
                             <View style={[styles.modalBody, { paddingHorizontal: scale(24), paddingVertical: verticalScale(20) }]}>
                                 <TouchableOpacity style={[styles.dropZone, { height: verticalScale(250), borderRadius: moderateScale(20), marginBottom: verticalScale(20) }]} onPress={pickImage} disabled={uploading}>
@@ -333,23 +337,12 @@ const ProjectManagerPhotosScreen = () => {
                                         <Image source={{ uri: tempImage }} style={styles.previewImage} resizeMode="cover" />
                                     ) : (
                                         <View style={[styles.dropZoneContent, { padding: scale(20) }]}>
-                                            <MaterialCommunityIcons name="cloud-upload" size={moderateScale(40)} color="#94A3B8" />
-                                            <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(15), marginTop: verticalScale(12) }]}>No file chosen</Text>
-                                            <Text style={[styles.dropZoneSubtitle, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>Click to upload or drag and drop</Text>
-                                            <Text style={[styles.dropZoneMeta, { fontSize: moderateScale(11), marginTop: verticalScale(8) }]}>SVG, PNG, JPG or GIF (max. 5MB)</Text>
+                                            <MaterialCommunityIcons name="camera" size={moderateScale(40)} color="#94A3B8" />
+                                            <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(15), marginTop: verticalScale(12) }]}>Capture Live Photo</Text>
+                                            <Text style={[styles.dropZoneSubtitle, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>Click to snap progress photo</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
-
-                                <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Or Image URL (External)</Text>
-                                <TextInput
-                                    style={[styles.inputField, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(16), fontSize: moderateScale(14), marginBottom: verticalScale(20) }]}
-                                    placeholder="https://images.unsplash.com/..."
-                                    placeholderTextColor="#94A3B8"
-                                    value={externalUrl}
-                                    onChangeText={handleExternalUrlChange}
-                                    autoCapitalize="none"
-                                />
 
                                 <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Description</Text>
                                 <TextInput
