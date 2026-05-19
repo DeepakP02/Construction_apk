@@ -103,7 +103,7 @@ const PMCrewControlScreen = ({ navigation }) => {
         try {
             if (workers.length === 0) setLoading(true);
             const [usersRes, logsRes] = await Promise.all([
-                api.get('/auth/users', { params: { role: 'WORKER' } }),
+                api.get('/auth/users', { params: { role: 'WORKER,PM,COMPANY_OWNER,SUPER_ADMIN' } }),
                 api.get('/timelogs', { params: { clockOut: 'null' } }),
             ]);
             const workerList = usersRes.data || [];
@@ -308,7 +308,7 @@ const PMCrewControlScreen = ({ navigation }) => {
                     <View style={{ flex: 1 }}>
                         <Text style={[styles.workerName, { fontSize: moderateScale(15) }]} numberOfLines={1}>{item.fullName}</Text>
                         <View style={[styles.rolePill, { paddingHorizontal: scale(7), paddingVertical: verticalScale(2), borderRadius: moderateScale(5) }]}>
-                            <Text style={[styles.rolePillText, { fontSize: moderateScale(8) }]}>WORKER</Text>
+                            <Text style={[styles.rolePillText, { fontSize: moderateScale(8) }]}>{item.role || 'WORKER'}</Text>
                         </View>
                     </View>
                     <View style={[styles.statusBadge, item.isClockedIn ? styles.statusLive : styles.statusOff, { paddingHorizontal: scale(10), paddingVertical: verticalScale(5) }]}>

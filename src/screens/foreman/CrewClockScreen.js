@@ -42,7 +42,7 @@ const CrewClockScreen = ({ navigation }) => {
             if (workers.length === 0) setLoading(true);
             
             const [usersRes, logsRes] = await Promise.all([
-                api.get('/auth/users', { params: { role: 'WORKER' } }),
+                api.get('/auth/users', { params: { role: 'WORKER,PM,COMPANY_OWNER,SUPER_ADMIN' } }),
                 api.get('/timelogs', { params: { clockOut: 'null' } }),
             ]);
 
@@ -138,7 +138,7 @@ const CrewClockScreen = ({ navigation }) => {
                     </View>
                     <View style={styles.workerMeta}>
                         <Text style={styles.workerName}>{item.fullName}</Text>
-                        <Text style={styles.workerRole}>WORKER</Text>
+                        <Text style={styles.workerRole}>{item.role || 'WORKER'}</Text>
                     </View>
                 </View>
 

@@ -5,6 +5,7 @@ import { Platform, Alert, AppState } from 'react-native';
 import api, { setAuthToken } from '../utils/api';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { io } from 'socket.io-client';
+import { registerFcmToken, deactivateFcmToken } from '../utils/pushNotifications';
 import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ISSUES, MOCK_MESSAGES, MOCK_USER, MOCK_ACTIVITY } from '../mock/data';
 
 const AppContext = createContext();
@@ -177,6 +178,15 @@ export const AppProvider = ({ children }) => {
         });
         return () => sub?.remove?.();
     }, []);
+
+    // FCM token registration effect on login/session restore
+    useEffect(() => {
+        if (user && user._id) {
+            registerFcmToken(user._id).catch(err => {
+                console.log('[FCM AppContext Register Error]', err.message);
+            });
+        }
+    }, [user?._id]);
 
     const checkToken = async () => {
         try {
@@ -647,6 +657,11 @@ export const AppProvider = ({ children }) => {
 
     const logout = async () => {
         try {
+            // Deactivate token on backend prior to clearing session
+            await deactivateFcmToken().catch(fcmErr => {
+                console.log('[FCM Logout Error]', fcmErr.message);
+            });
+
             await AsyncStorage.multiRemove(['token', 'user']);
             setUser(null);
             setProjects([]);

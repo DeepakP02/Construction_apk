@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "923654871925",
+    "project_id": "construction-bard",
+    "storage_bucket": "construction-bard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:923654871925:android:4ca380b8edf80a8a19d13c",
+        "android_client_info": {
+          "package_name": "com.kaal.construction"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT0clBnM-1yqMuG8cZ3ZzECo5fc7I8PW8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -16,6 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kaal.construction",
       "buildNumber": "2",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,6 +28,7 @@
       },
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.kaal.construction",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -39,13 +41,22 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png"
+        }
+      ],
       "expo-font",
       [
         "expo-image-picker",
@@ -63,7 +74,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "fea0a64c-097b-4c37-b390-7d93dd8d02df"
+        "projectId": "421b103f-e4a2-45ad-a462-6a8c8980b2d6"
       }
     }
   }

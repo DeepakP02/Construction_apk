@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+
+export const navigationRef = React.createRef();
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
@@ -1064,6 +1066,18 @@ const MainTabs = () => {
 const AppNavigation = () => {
     const { user, loading, syncStatus, dismissSyncStatus } = useApp();
 
+    React.useEffect(() => {
+        if (user) {
+            try {
+                const { setupNotificationListeners } = require('../utils/pushNotifications');
+                const unsubscribe = setupNotificationListeners(navigationRef);
+                return () => unsubscribe();
+            } catch (err) {
+                console.log('[FCM setupNotificationListeners Error]', err.message);
+            }
+        }
+    }, [user]);
+
     if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: COLORS.primaryDark, justifyContent: 'center', alignItems: 'center' }}>
@@ -1086,7 +1100,7 @@ const AppNavigation = () => {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <View style={{ flex: 1 }}>
                 {user && syncStatus?.level === 'warn' ? (
                     <View style={styles.syncBanner}>

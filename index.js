@@ -1,4 +1,5 @@
 import { registerRootComponent } from 'expo';
+import './src/utils/pushNotifications';
 
 import App from './App';
 
