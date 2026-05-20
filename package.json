@@ -11,6 +11,7 @@
   "dependencies": {
     "@babel/core": "^7.20.0",
     "@expo/vector-icons": "^15.0.3",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",
     "@react-native-firebase/app": "^24.0.0",
@@ -25,6 +26,7 @@
     "expo": "~55.0.15",
     "expo-asset": "~55.0.15",
     "expo-audio": "~55.0.13",
+    "expo-build-properties": "~55.0.14",
     "expo-constants": "~55.0.14",
     "expo-dev-client": "~55.0.34",
     "expo-document-picker": "~55.0.13",
@@ -33,7 +35,6 @@
     "expo-linear-gradient": "~55.0.13",
     "expo-location": "~55.1.8",
     "expo-navigation-bar": "~55.0.12",
-    "expo-notifications": "~55.0.23",
     "expo-splash-screen": "~55.0.18",
     "expo-status-bar": "~55.0.5",
     "react": "19.2.0",

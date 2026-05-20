@@ -1,7 +1,21 @@
 import messaging from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
+
+// Ensure the high importance channel exists for Android Firebase background messages
+export async function createNotificationChannel() {
+    if (Platform.OS === 'android') {
+        await notifee.createChannel({
+            id: 'high_importance_channel',
+            name: 'Important Notifications',
+            importance: AndroidImportance.HIGH,
+            sound: 'default',
+        });
+    }
+}
+
 
 // Register background message handler outside of any React lifecycles
 messaging().setBackgroundMessageHandler(async remoteMessage => {
@@ -111,6 +125,9 @@ export async function deactivateFcmToken() {
  * Set up message listeners for foreground, background, and quit states
  */
 export function setupNotificationListeners(navigationRef) {
+    // Ensure the channel exists when listeners are set up
+    createNotificationChannel();
+
     // 1. FOREGROUND MESSAGES
     const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
         console.log('[PushNotifications] Foreground Notification received:', remoteMessage);
