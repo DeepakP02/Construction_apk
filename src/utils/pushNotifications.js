@@ -7,14 +7,22 @@ import api from './api';
 // Ensure the high importance channel exists for Android Firebase background messages
 export async function createNotificationChannel() {
     if (Platform.OS === 'android') {
-        await notifee.createChannel({
-            id: 'high_importance_channel',
-            name: 'Important Notifications',
-            importance: AndroidImportance.HIGH,
-            sound: 'default',
-        });
+        try {
+            await notifee.createChannel({
+                id: 'high_importance_channel',
+                name: 'Important Notifications',
+                importance: AndroidImportance.HIGH,
+                sound: 'default',
+            });
+            console.log('[PushNotifications] High importance channel ensured/created.');
+        } catch (err) {
+            console.error('[PushNotifications] Error creating channel:', err);
+        }
     }
 }
+
+// Execute immediately when bundle loads (critical for background/killed state channel existence)
+createNotificationChannel();
 
 
 // Register background message handler outside of any React lifecycles
@@ -27,6 +35,12 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
  */
 export async function requestUserPermission() {
     try {
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+            const { PermissionsAndroid } = require('react-native');
+            const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+            console.log('[PushNotifications] Android 13+ POST_NOTIFICATIONS Permission result:', granted);
+        }
+
         const authStatus = await messaging().requestPermission();
         const enabled =
             authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -57,6 +71,7 @@ export async function getFcmToken() {
                 await AsyncStorage.setItem('fcm_token', token);
             }
         }
+        console.log('[PushNotifications] Current Mobile FCM Token:', token);
         return token;
     } catch (error) {
         console.error('[PushNotifications] Error getting FCM Token:', error);
@@ -85,7 +100,7 @@ export async function registerFcmToken(userId) {
         });
 
         if (response.data?.success) {
-            console.log('[PushNotifications] FCM Token registered successfully on backend.');
+            console.log('[PushNotifications] FCM Token registered successfully on backend. API Response:', response.data);
             return true;
         }
         return false;
@@ -125,7 +140,7 @@ export async function deactivateFcmToken() {
  * Set up message listeners for foreground, background, and quit states
  */
 export function setupNotificationListeners(navigationRef) {
-    // Ensure the channel exists when listeners are set up
+    // Channel is already ensured at the module root, but we can call it again safely
     createNotificationChannel();
 
     // 1. FOREGROUND MESSAGES
