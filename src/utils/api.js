@@ -9,7 +9,7 @@ const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Prefer local backend endpoints during development/testing
     'http://10.0.2.2:8080',      // Android Emulator loopback
-    'http://192.168.1.14:8080',  // Physical phone local Wi-Fi IP
+    'http://192.168.1.24:8080',  // Physical phone local Wi-Fi IP
     'http://localhost:8080',     // iOS Simulator/Fallback
     'https://construction-production-b18f.up.railway.app',
 ].filter(Boolean);
@@ -88,9 +88,9 @@ api.interceptors.response.use(
             const nextAttempt = (error.config.__hostFailoverAttempt || 0) + 1;
             const failingUrl = error.config.baseURL;
             const nextUrl = getApiBaseUrl();
-            
+
             console.warn(`[api] FAILOVER: ${failingUrl} failed with 404/Network. Attempt ${nextAttempt} using ${nextUrl}`);
-            
+
             const retryConfig = {
                 ...error.config,
                 __hostFailoverAttempt: nextAttempt,

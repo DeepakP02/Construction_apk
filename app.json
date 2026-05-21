@@ -30,6 +30,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
+      "notification": {
+        "icon": "./assets/icon.png",
+        "color": "#3B82F6"
+      },
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.kaal.construction",
       "googleServicesFile": "./google-services.json",
