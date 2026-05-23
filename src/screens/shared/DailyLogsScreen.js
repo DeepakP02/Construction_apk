@@ -57,8 +57,8 @@ const DailyLogsScreen = ({ navigation }) => {
         return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     };
 
-    const canViewLogs = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
-    const canCreateLog = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role);
+    const canViewLogs = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR', 'WORKER'].includes(user?.role);
+    const canCreateLog = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
 
     // Form States
     const [modalVisible, setModalVisible] = useState(false);
@@ -230,7 +230,9 @@ const DailyLogsScreen = ({ navigation }) => {
         const logPid = log.projectId?._id || log.projectId;
         const selPid = selectedFilterProject?._id || selectedFilterProject?.id;
         const matchesProject = !selectedFilterProject || String(logPid) === String(selPid);
-        return matchesSearch && matchesProject;
+        const isWorker = user?.role === 'WORKER';
+        const matchesOwner = !isWorker || (log.reportedBy && String(log.reportedBy._id) === String(user._id));
+        return matchesSearch && matchesProject && matchesOwner;
     });
 
     const closeDetailLog = () => {

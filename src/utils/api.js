@@ -8,8 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Prefer local backend endpoints during development/testing
+    'http://192.168.1.23:8080',  // Physical phone local Wi-Fi IP
     'http://10.0.2.2:8080',      // Android Emulator loopback
-    'http://192.168.1.24:8080',  // Physical phone local Wi-Fi IP
     'http://localhost:8080',     // iOS Simulator/Fallback
     'https://construction-production-b18f.up.railway.app',
 ].filter(Boolean);

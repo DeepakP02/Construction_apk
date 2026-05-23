@@ -1,53 +1,54 @@
-import messaging from '@react-native-firebase/messaging';
-import notifee, { AndroidImportance } from '@notifee/react-native';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import api from './api';
+
+// Detect if we are running inside the Expo Go client
+const isExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
+
+let Notifications = null;
+if (!isExpoGo) {
+    try {
+        Notifications = require('expo-notifications');
+    } catch (e) {
+        console.warn('[PushNotifications] Failed to load expo-notifications module:', e);
+    }
+} else {
+    console.warn('[PushNotifications] Running in Expo Go. Push notifications are bypassed to prevent crashes.');
+}
 
 // Ensure the high importance channel exists for Android Firebase background messages
 export async function createNotificationChannel() {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && Notifications) {
         try {
-            await notifee.createChannel({
-                id: 'high_importance_channel',
+            await Notifications.setNotificationChannelAsync('high_importance_channel', {
                 name: 'Important Notifications',
-                importance: AndroidImportance.HIGH,
+                importance: Notifications.AndroidImportance.HIGH,
                 sound: 'default',
             });
-            console.log('[PushNotifications] High importance channel ensured/created.');
+            console.log('[PushNotifications] Android notification channel set.');
         } catch (err) {
-            console.error('[PushNotifications] Error creating channel:', err);
+            console.error('[PushNotifications] Error setting channel:', err);
         }
     }
 }
 
-// Execute immediately when bundle loads (critical for background/killed state channel existence)
+// Ensure channel exists on app start
 createNotificationChannel();
-
-
-// Register background message handler outside of any React lifecycles
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-    console.log('[PushNotifications] Background Message handled:', remoteMessage);
-});
 
 /**
  * Request notification permission from user
  */
 export async function requestUserPermission() {
+    if (!Notifications) {
+        console.warn('[PushNotifications] requestUserPermission bypassed (running in Expo Go).');
+        return false;
+    }
     try {
-        if (Platform.OS === 'android' && Platform.Version >= 33) {
-            const { PermissionsAndroid } = require('react-native');
-            const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-            console.log('[PushNotifications] Android 13+ POST_NOTIFICATIONS Permission result:', granted);
-        }
-
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
+        const { status } = await Notifications.requestPermissionsAsync();
+        const enabled = status === 'granted';
         if (enabled) {
-            console.log('[PushNotifications] Permission granted. Authorization status:', authStatus);
+            console.log('[PushNotifications] Permission granted.');
             return true;
         }
         console.log('[PushNotifications] Permission denied.');
@@ -62,19 +63,24 @@ export async function requestUserPermission() {
  * Get FCM Token
  */
 export async function getFcmToken() {
+    if (!Notifications) {
+        console.warn('[PushNotifications] getFcmToken bypassed (running in Expo Go).');
+        return null;
+    }
     try {
-        // First check stored token
-        let token = await AsyncStorage.getItem('fcm_token');
+        // First check stored Expo push token
+        let token = await AsyncStorage.getItem('expo_push_token');
         if (!token) {
-            token = await messaging().getToken();
+            const expoToken = await Notifications.getExpoPushTokenAsync();
+            token = expoToken.data;
             if (token) {
-                await AsyncStorage.setItem('fcm_token', token);
+                await AsyncStorage.setItem('expo_push_token', token);
             }
         }
-        console.log('[PushNotifications] Current Mobile FCM Token:', token);
+        console.log('[PushNotifications] Current Expo push token:', token);
         return token;
     } catch (error) {
-        console.error('[PushNotifications] Error getting FCM Token:', error);
+        console.error('[PushNotifications] Error getting Expo push token:', error);
         return null;
     }
 }
@@ -94,13 +100,12 @@ export async function registerFcmToken(userId) {
         }
 
         console.log('[PushNotifications] Registering FCM token with backend:', token);
-        const response = await api.post('/notifications/fcm-token', {
+        const response = await api.post('/notifications/expo-token', {
             token,
             platform: Platform.OS
         });
-
         if (response.data?.success) {
-            console.log('[PushNotifications] FCM Token registered successfully on backend. API Response:', response.data);
+            console.log('[PushNotifications] Expo push token registered successfully on backend.');
             return true;
         }
         return false;
@@ -115,24 +120,24 @@ export async function registerFcmToken(userId) {
  */
 export async function deactivateFcmToken() {
     try {
-        const token = await AsyncStorage.getItem('fcm_token');
+        const token = await AsyncStorage.getItem('expo_push_token');
         if (!token) {
             console.log('[PushNotifications] No token found in storage to deactivate.');
             return;
         }
 
-        console.log('[PushNotifications] Deactivating FCM token on backend:', token);
+        console.log('[PushNotifications] Deactivating Expo push token on backend:', token);
         try {
-            await api.post('/notifications/fcm-token/deactivate', { token });
+            await api.post('/notifications/expo-token/deactivate', { token });
         } catch (apiErr) {
-            console.log('[PushNotifications] Deactivate API call returned non-2xx status (already cleared on backend).');
+            console.log('[PushNotifications] Deactivate API call error (may already be cleared).');
         }
-        
+
         // Remove token locally so next login fetches a fresh one
-        await AsyncStorage.removeItem('fcm_token');
-        console.log('[PushNotifications] FCM Token deactivated and cleared from local storage.');
+        await AsyncStorage.removeItem('expo_push_token');
+        console.log('[PushNotifications] Expo push token cleared from local storage.');
     } catch (error) {
-        console.error('[PushNotifications] Error deactivating FCM Token:', error.message);
+        console.error('[PushNotifications] Error deactivating Expo token:', error.message);
     }
 }
 
@@ -140,53 +145,29 @@ export async function deactivateFcmToken() {
  * Set up message listeners for foreground, background, and quit states
  */
 export function setupNotificationListeners(navigationRef) {
-    // Channel is already ensured at the module root, but we can call it again safely
+    if (!Notifications) {
+        console.warn('[PushNotifications] setupNotificationListeners bypassed (running in Expo Go).');
+        return () => {};
+    }
+
+    // Ensure channel exists
     createNotificationChannel();
 
-    // 1. FOREGROUND MESSAGES
-    const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
-        console.log('[PushNotifications] Foreground Notification received:', remoteMessage);
-        // Socket.IO already manages real-time updates and sounds in the foreground,
-        // so we don't double-sound, but let's log the event.
+    // 1. FOREGROUND LISTENER
+    const subscription = Notifications.addNotificationReceivedListener(notification => {
+        console.log('[PushNotifications] Foreground notification received:', notification);
     });
 
-    // 2. NOTIFICATION CLICK - WHEN APP IS RUNNING IN BACKGROUND
-    const unsubscribeNotificationOpened = messaging().onNotificationOpenedApp(remoteMessage => {
-        console.log('[PushNotifications] Notification clicked when app was in background:', remoteMessage);
-        handleNotificationNavigation(remoteMessage, navigationRef);
-    });
-
-    // 3. NOTIFICATION CLICK - WHEN APP WAS CLOSED / QUIT STATE
-    messaging()
-        .getInitialNotification()
-        .then(remoteMessage => {
-            if (remoteMessage) {
-                console.log('[PushNotifications] Notification clicked from quit state:', remoteMessage);
-                // Delay navigation slightly to let App Navigation mount completely
-                setTimeout(() => {
-                    handleNotificationNavigation(remoteMessage, navigationRef);
-                }, 1500);
-            }
-        });
-
-    // 4. TOKEN REFRESH LISTENER
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async token => {
-        console.log('[PushNotifications] FCM Token refreshed:', token);
-        await AsyncStorage.setItem('fcm_token', token);
-        try {
-            await api.post('/notifications/fcm-token', {
-                token,
-                platform: Platform.OS
-            });
-        } catch (err) {
-            console.error('[PushNotifications] Error registering refreshed token:', err.message);
-        }
+    // 2. RESPONSE LISTENER (when user taps a notification)
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log('[PushNotifications] Notification response received:', response);
+        const remoteMessage = response.notification.request.content;
+        handleNotificationNavigation({ data: remoteMessage.data }, navigationRef);
     });
 
     return () => {
-        unsubscribeMessage();
-        unsubscribeNotificationOpened();
-        unsubscribeTokenRefresh();
+        subscription.remove();
+        responseSubscription.remove();
     };
 }
 

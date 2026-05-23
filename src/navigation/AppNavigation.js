@@ -270,6 +270,12 @@ const WorkerDrawerContent = (props) => {
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
                     <DrawerItem
+                        label="Daily Site Logs"
+                        icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
+                        onPress={() => props.navigation.navigate('DailyLogs')}
+                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                    />
+                    <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
@@ -316,6 +322,7 @@ const WorkerDrawer = () => {
         >
             <Drawer.Screen name="MainTabs" component={WorkerTabs} />
             <Drawer.Screen name="WorkerLogs" component={WorkerLogsScreen} options={{ title: 'Time & Attendance' }} />
+            <Drawer.Screen name="DailyLogs" component={DailyLogsScreen} />
             <Drawer.Screen name="RFI" component={RFIScreen} />
             <Drawer.Screen name="Profile" component={ProfileScreen} />
             <Drawer.Screen name="Settings" component={SettingsScreen} />
