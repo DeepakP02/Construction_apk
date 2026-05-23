@@ -7,11 +7,22 @@ import api from './api';
 const isExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
 
 let Notifications = null;
+let firebaseApp = null;
+let messaging = null;
+
 if (!isExpoGo) {
     try {
         Notifications = require('expo-notifications');
     } catch (e) {
         console.warn('[PushNotifications] Failed to load expo-notifications module:', e);
+    }
+
+    try {
+        firebaseApp = require('@react-native-firebase/app');
+        messaging = require('@react-native-firebase/messaging').default;
+        console.log('[PushNotifications] @react-native-firebase successfully loaded in native environment.');
+    } catch (e) {
+        console.warn('[PushNotifications] Bypassed @react-native-firebase loading (expected if not a native dev build):', e.message);
     }
 } else {
     console.warn('[PushNotifications] Running in Expo Go. Push notifications are bypassed to prevent crashes.');
@@ -33,8 +44,40 @@ export async function createNotificationChannel() {
     }
 }
 
-// Ensure channel exists on app start
+// Safely configure Firebase Messaging on startup
+export async function setupFirebaseMessaging() {
+    if (isExpoGo || !messaging) {
+        console.log('[PushNotifications] Firebase Messaging initialization bypassed (Expo Go or module unavailable).');
+        return;
+    }
+    try {
+        console.log('[PushNotifications] Starting Firebase Messaging initialization...');
+        
+        // Request permissions for iOS through Firebase Messaging
+        if (Platform.OS === 'ios') {
+            const authStatus = await messaging().requestPermission();
+            const enabled =
+                authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+                authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+            console.log('[PushNotifications] iOS Firebase permission status:', authStatus, 'enabled:', enabled);
+        }
+
+        // Set background message handler
+        messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+            console.log('[PushNotifications] Firebase background message handled:', remoteMessage);
+        });
+
+        console.log('[PushNotifications] Firebase Messaging successfully configured.');
+    } catch (err) {
+        console.error('[PushNotifications] Safe catch during Firebase Messaging init:', err.message);
+    }
+}
+
+// Ensure channel and Firebase Messaging config exist on app start
 createNotificationChannel();
+setupFirebaseMessaging().catch(err => {
+    console.error('[PushNotifications] Safe catch on setupFirebaseMessaging startup promise rejection:', err);
+});
 
 /**
  * Request notification permission from user
