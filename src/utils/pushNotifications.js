@@ -114,16 +114,27 @@ export async function getFcmToken() {
         // First check stored Expo push token
         let token = await AsyncStorage.getItem('expo_push_token');
         if (!token) {
-            const expoToken = await Notifications.getExpoPushTokenAsync();
-            token = expoToken.data;
+            if (messaging) {
+                try {
+                    token = await messaging().getToken();
+                    console.log('[PushNotifications] Obtained Native FCM token via @react-native-firebase/messaging:', token);
+                } catch (fcmErr) {
+                    console.warn('[PushNotifications] Failed to get native FCM token, trying fallback:', fcmErr.message);
+                }
+            }
+            if (!token) {
+                const deviceToken = await Notifications.getDevicePushTokenAsync();
+                token = deviceToken.data;
+                console.log('[PushNotifications] Obtained Device Push Token via expo-notifications:', token);
+            }
             if (token) {
                 await AsyncStorage.setItem('expo_push_token', token);
             }
         }
-        console.log('[PushNotifications] Current Expo push token:', token);
+        console.log('[PushNotifications] Current push token:', token);
         return token;
     } catch (error) {
-        console.error('[PushNotifications] Error getting Expo push token:', error);
+        console.error('[PushNotifications] Error getting Native FCM token:', error);
         return null;
     }
 }
@@ -143,12 +154,12 @@ export async function registerFcmToken(userId) {
         }
 
         console.log('[PushNotifications] Registering FCM token with backend:', token);
-        const response = await api.post('/notifications/expo-token', {
+        const response = await api.post('/notifications/fcm-token', {
             token,
             platform: Platform.OS
         });
         if (response.data?.success) {
-            console.log('[PushNotifications] Expo push token registered successfully on backend.');
+            console.log('[PushNotifications] Native FCM token registered successfully on backend.');
             return true;
         }
         return false;
@@ -169,18 +180,18 @@ export async function deactivateFcmToken() {
             return;
         }
 
-        console.log('[PushNotifications] Deactivating Expo push token on backend:', token);
+        console.log('[PushNotifications] Deactivating FCM token on backend:', token);
         try {
-            await api.post('/notifications/expo-token/deactivate', { token });
+            await api.post('/notifications/fcm-token/deactivate', { token });
         } catch (apiErr) {
             console.log('[PushNotifications] Deactivate API call error (may already be cleared).');
         }
 
         // Remove token locally so next login fetches a fresh one
         await AsyncStorage.removeItem('expo_push_token');
-        console.log('[PushNotifications] Expo push token cleared from local storage.');
+        console.log('[PushNotifications] Native FCM token cleared from local storage.');
     } catch (error) {
-        console.error('[PushNotifications] Error deactivating Expo token:', error.message);
+        console.error('[PushNotifications] Error deactivating FCM token:', error.message);
     }
 }
 
