@@ -14,17 +14,21 @@ const ChatScreen = ({ navigation }) => {
     const [search, setSearch] = useState('');
     const [roomList, setRoomList] = useState([]);
     const [chatUsers, setChatUsers] = useState([]);
+    const [activeTab, setActiveTab] = useState('INTERNAL'); // INTERNAL, CLIENT, SUB
 
     const loadCommunications = useCallback(async () => {
         try {
-            const [roomsRes, usersRes] = await Promise.all([
-                api.get('/chat/rooms'),
-                api.get('/chat/users')
-            ]);
+            const roomsRes = await api.get('/chat/rooms');
             setRoomList(Array.isArray(roomsRes.data) ? roomsRes.data : []);
+        } catch (e) {
+            console.warn('[ChatScreen] Error fetching rooms:', e.message);
+            setRoomList([]);
+        }
+        try {
+            const usersRes = await api.get('/chat/users');
             setChatUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
         } catch (e) {
-            setRoomList([]);
+            console.warn('[ChatScreen] Error fetching users:', e.message);
             setChatUsers([]);
         }
     }, []);
@@ -45,6 +49,37 @@ const ChatScreen = ({ navigation }) => {
         }, [user?._id, loadCommunications])
     );
 
+    const showTabs = ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
+    const tabs = [
+        { id: 'INTERNAL', label: 'Internal', icon: 'shield', color: '#2563EB' },
+        { id: 'CLIENT', label: 'Clients', icon: 'account-tie', color: '#10B981', adminOnly: true, pmAllowed: true },
+        { id: 'SUB', label: 'Subs', icon: 'hammer', color: '#8B5CF6', pmAllowed: true }
+    ].filter(tab => !tab.adminOnly || tab.pmAllowed || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role));
+
+    const getTabUnreadCount = (tabId) => {
+        const tabRooms = (roomList || []).filter((room) => {
+            if (tabId === 'INTERNAL') {
+                if (room.roomType === 'INTERNAL' || room.roomType === 'PROJECT_GROUP') return true;
+                if (room.roomType === 'DIRECT') {
+                    const internalRoles = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'];
+                    return internalRoles.includes(room.otherRole);
+                }
+            }
+            if (tabId === 'CLIENT') {
+                if (room.roomType === 'ADMIN_CLIENT' || room.roomType === 'SUB_CLIENT') return true;
+                if (room.roomType === 'DIRECT' && room.otherRole === 'CLIENT') return true;
+                if (room.roomType === 'PROJECT_GROUP' && room.hasClient) return true;
+            }
+            if (tabId === 'SUB') {
+                if (room.roomType === 'ADMIN_SUB') return true;
+                if (room.roomType === 'DIRECT' && room.otherRole === 'SUBCONTRACTOR') return true;
+                if (room.roomType === 'PROJECT_GROUP' && room.hasSub) return true;
+            }
+            return false;
+        });
+        return tabRooms.reduce((sum, r) => sum + (r.unreadCount || 0), 0);
+    };
+
     const listSections = useMemo(() => {
         const msgToTime = (raw) => {
             if (!raw) return 0;
@@ -52,7 +87,30 @@ const ChatScreen = ({ navigation }) => {
             return Number.isFinite(t) ? t : 0;
         };
 
-        const projectPool = (roomList || [])
+        // Filter room list based on tab (if tabs are shown)
+        const filteredRooms = (roomList || []).filter((room) => {
+            if (!showTabs) return true;
+            if (activeTab === 'INTERNAL') {
+                if (room.roomType === 'INTERNAL' || room.roomType === 'PROJECT_GROUP') return true;
+                if (room.roomType === 'DIRECT') {
+                    const internalRoles = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'];
+                    return internalRoles.includes(room.otherRole);
+                }
+            }
+            if (activeTab === 'CLIENT') {
+                if (room.roomType === 'ADMIN_CLIENT' || room.roomType === 'SUB_CLIENT') return true;
+                if (room.roomType === 'DIRECT' && room.otherRole === 'CLIENT') return true;
+                if (room.roomType === 'PROJECT_GROUP' && room.hasClient) return true;
+            }
+            if (activeTab === 'SUB') {
+                if (room.roomType === 'ADMIN_SUB') return true;
+                if (room.roomType === 'DIRECT' && room.otherRole === 'SUBCONTRACTOR') return true;
+                if (room.roomType === 'PROJECT_GROUP' && room.hasSub) return true;
+            }
+            return false;
+        });
+
+        const projectPool = filteredRooms
             .filter((room) => room.roomType === 'PROJECT_GROUP')
             .map((room) => ({
                 _id: room.projectId || room.id,
@@ -62,7 +120,7 @@ const ChatScreen = ({ navigation }) => {
             }))
             .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
 
-        const channelPool = (roomList || [])
+        const channelPool = filteredRooms
             .filter((room) => !['PROJECT_GROUP', 'DIRECT'].includes(room.roomType))
             .map((room) => ({
                 _id: room.id,
@@ -72,7 +130,7 @@ const ChatScreen = ({ navigation }) => {
             }))
             .sort((a, b) => b.__lastActivityAt - a.__lastActivityAt);
 
-        const directRooms = (roomList || []).filter((room) => room.roomType === 'DIRECT');
+        const directRooms = filteredRooms.filter((room) => room.roomType === 'DIRECT');
         const directByUser = new Map();
         directRooms.forEach((room) => {
             const uid = String(room.otherUserId || '');
@@ -83,7 +141,23 @@ const ChatScreen = ({ navigation }) => {
             if (!previous || currentTime > previousTime) directByUser.set(uid, room);
         });
 
-        const memberPool = (chatUsers || [])
+        // Filter direct message users based on active tab
+        const filteredUsers = (chatUsers || []).filter((u) => {
+            if (!showTabs) return true;
+            const role = u.role || '';
+            if (activeTab === 'INTERNAL') {
+                return ['COMPANY_OWNER', 'SUPER_ADMIN', 'ADMIN', 'PM', 'FOREMAN', 'WORKER'].includes(role);
+            }
+            if (activeTab === 'CLIENT') {
+                return role === 'CLIENT';
+            }
+            if (activeTab === 'SUB') {
+                return role === 'SUBCONTRACTOR';
+            }
+            return false;
+        });
+
+        const memberPool = filteredUsers
             .map((u) => {
                 const uid = String(u._id || u.id);
                 const room = directByUser.get(uid);
@@ -127,7 +201,7 @@ const ChatScreen = ({ navigation }) => {
         }
 
         return sections;
-    }, [user, roomList, chatUsers, search]);
+    }, [user, roomList, chatUsers, search, activeTab, showTabs]);
 
     const renderChatMember = ({ item }) => {
         const itemId = String(item._id || item.id || '');
@@ -220,6 +294,40 @@ const ChatScreen = ({ navigation }) => {
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Site Communications" hideSearch showBack={true} />
+            
+            {showTabs && (
+                <View style={styles.tabContainer}>
+                    {tabs.map((tab) => {
+                        const isSelected = activeTab === tab.id;
+                        const unread = getTabUnreadCount(tab.id);
+                        return (
+                            <TouchableOpacity
+                                key={tab.id}
+                                style={[styles.tabButton, isSelected && styles.tabButtonActive]}
+                                onPress={() => setActiveTab(tab.id)}
+                            >
+                                <View style={styles.tabContent}>
+                                    <MaterialCommunityIcons 
+                                        name={tab.icon} 
+                                        size={16} 
+                                        color={isSelected ? tab.color : '#64748B'} 
+                                        style={{ marginRight: 6 }}
+                                    />
+                                    <Text style={[styles.tabText, isSelected && { color: '#0F172A', fontWeight: '900' }]}>
+                                        {tab.label}
+                                    </Text>
+                                    {unread > 0 && (
+                                        <View style={styles.tabBadge}>
+                                            <Text style={styles.tabBadgeText}>{unread}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            )}
+
             <KeyboardAvoidingView
                 style={styles.keyboardWrap}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -265,6 +373,58 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
     keyboardWrap: { flex: 1 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 14,
+        padding: 4,
+        marginHorizontal: 20,
+        marginTop: 15,
+        marginBottom: 5,
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tabButtonActive: {
+        backgroundColor: '#FFFFFF',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    tabContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    tabText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    tabBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -14,
+        backgroundColor: '#EF4444',
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    tabBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 8,
+        fontWeight: '900',
+    },
 
     searchSection: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFFFFF' },
     searchBar: {

@@ -20,7 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 
@@ -148,17 +148,31 @@ const WorkerPhotosScreen = () => {
         try {
             setUploading(true);
             const formData = new FormData();
-            formData.append('image', {
-                uri: Platform.OS === 'android' ? tempImage : tempImage.replace('file://', ''),
+            const cleanUri = Platform.OS === 'android' ? tempImage : tempImage.replace('file://', '');
+            
+            // Pre-flight validation: Ensure local file exists and can be read
+            try {
+                const localFileCheck = await fetch(tempImage);
+                const blob = await localFileCheck.blob();
+                console.log(`[Validation] Local file verification success: size=${blob.size} bytes`);
+            } catch (fileErr) {
+                console.error('[Validation] Local file is inaccessible:', fileErr);
+                throw new Error('Local photo file cannot be read. Please retake the photo.');
+            }
+
+            formData.append('images', {
+                uri: cleanUri,
                 name: `site_photo_${Date.now()}.jpg`,
                 type: 'image/jpeg'
             });
             formData.append('description', description || 'Site Progress Photo');
             formData.append('projectId', idKey(targetProjectId));
 
-            const res = await api.post('/photos/upload', formData);
-
-            setPhotos(prev => [res.data, ...prev]);
+            const res = await uploadMultipart('/photos/upload', formData);
+            const uploadedPhoto = Array.isArray(res.data) ? res.data[0] : res.data;
+            if (uploadedPhoto) {
+                setPhotos(prev => [uploadedPhoto, ...prev]);
+            }
             setUploadModal(false);
             setTempImage(null);
             setDescription('');

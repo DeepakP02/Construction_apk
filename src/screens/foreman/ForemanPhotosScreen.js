@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Alert, Modal, TextInput, StatusBar, ScrollView, Platform, useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { enrichPhotoWithProject } from '../../utils/enrichPhotoWithProject';
 import { useApp } from '../../context/AppContext';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -81,7 +82,7 @@ const ForemanPhotosScreen = () => {
     const pickImage = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') { Alert.alert('Permission Denied', 'Please grant camera access to take a live photo.'); return; }
-        let result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8 });
+        let result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5 });
         if (!result.canceled && result.assets?.[0]) {
             setTempImage(result.assets[0].uri);
             setExternalUrl('');
@@ -97,11 +98,24 @@ const ForemanPhotosScreen = () => {
             setUploading(true);
             const formData = new FormData();
             if (tempImage) {
+                const cleanUri = Platform.OS === 'android' ? tempImage : tempImage.replace('file://', '');
+                
+                // Pre-flight validation: Ensure local file exists and can be read
+                try {
+                    const localFileCheck = await fetch(tempImage);
+                    const blob = await localFileCheck.blob();
+                    console.log(`[Validation] Local file verification success: size=${blob.size} bytes`);
+                } catch (fileErr) {
+                    console.error('[Validation] Local file is inaccessible:', fileErr);
+                    throw new Error('Local photo file cannot be read. Please retake the photo.');
+                }
+
                 const filename = tempImage.split('/').pop() || 'photo.jpg';
                 const match = /\.(\w+)$/.exec(filename);
                 const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+                console.warn('Uploading photo with:', JSON.stringify({ uri: cleanUri, name: filename, type: fileType }));
                 formData.append('images', {
-                    uri: tempImage,
+                    uri: cleanUri,
                     name: filename,
                     type: fileType
                 });
@@ -109,15 +123,30 @@ const ForemanPhotosScreen = () => {
             formData.append('description', description || 'Site Update');
             if (uploadProjectId !== 'none') formData.append('projectId', idKey(uploadProjectId));
 
-            const res = await api.post('/photos/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const res = await uploadMultipart('/photos/upload', formData);
             const uploadedPhoto = Array.isArray(res.data) ? res.data[0] : res.data;
             if (uploadedPhoto) {
                 setPhotos(prev => [enrichPhotoWithProject(uploadedPhoto, projects), ...prev]);
             }
             setUploadModal(false);
-        } catch (e) { Alert.alert('Error', 'Sync failed.'); } finally {
+        } catch (e) { 
+            console.warn('Upload failed details:', JSON.stringify({
+                message: e.message,
+                code: e.code,
+                config: e.config ? {
+                    url: e.config.url,
+                    method: e.config.method,
+                    baseURL: e.config.baseURL,
+                    headers: e.config.headers,
+                    timeout: e.config.timeout
+                } : null,
+                response: e.response ? {
+                    status: e.response.status,
+                    data: e.response.data
+                } : null
+            }));
+            Alert.alert('Error', e.response?.data?.message || e.message || 'Sync failed.'); 
+        } finally {
             setUploading(false);
             setTempImage(null);
             setExternalUrl('');

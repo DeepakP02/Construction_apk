@@ -16,6 +16,8 @@ const ProjectChatScreen = ({ route }) => {
     const flatListRef = useRef();
 
     const targetId = (project._id || project.id)?.toString();
+    const clientUserId = (project.clientId || project.client?.id || project.client?._id)?.toString();
+    const peerId = clientUserId || targetId;
     const isGeneral = targetId === 'GENERAL_COMPANY';
     const isPrivate = project.isPrivate || project.type === 'private';
     const myId = user?._id?.toString();
@@ -27,7 +29,7 @@ const ProjectChatScreen = ({ route }) => {
             try {
                 let fetchId = targetId;
                 if (isPrivate) {
-                    const rid = await ensureDirectChatRoom(targetId);
+                    const rid = await ensureDirectChatRoom(peerId);
                     if (!cancelled && rid) {
                         setDmRoomId(rid);
                         fetchId = rid;
@@ -74,11 +76,11 @@ const ProjectChatScreen = ({ route }) => {
         setSending(true);
         try {
             if (isPrivate && !dmRoomId) {
-                const rid = await ensureDirectChatRoom(targetId);
+                const rid = await ensureDirectChatRoom(peerId);
                 if (rid) setDmRoomId(rid);
             }
             const success = isPrivate
-                ? await sendMessage(text, null, targetId)
+                ? await sendMessage(text, null, peerId)
                 : await sendMessage(text, targetId);
 
             if (success) {
@@ -135,14 +137,14 @@ const ProjectChatScreen = ({ route }) => {
         setSending(true);
         try {
             if (isPrivate && !dmRoomId) {
-                const rid = await ensureDirectChatRoom(targetId);
+                const rid = await ensureDirectChatRoom(peerId);
                 if (rid) setDmRoomId(rid);
             }
             const fileName = uri.split('/').pop();
             const attachment = await uploadFile(uri, fileName, 'image/jpeg');
 
             await (isPrivate
-                ? sendMessage("[Photo Attachment]", null, targetId, targetId, [attachment])
+                ? sendMessage("[Photo Attachment]", null, peerId, peerId, [attachment])
                 : sendMessage("[Photo Attachment]", targetId, null, targetId, [attachment])
             );
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
@@ -183,10 +185,10 @@ const ProjectChatScreen = ({ route }) => {
     return (
         <View style={styles.container}>
             <AppHeader title={(project.fullName || project.name)} showBack showRight={false} showLogo={true} />
-            
-            <KeyboardAvoidingView 
+
+            <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 24}
             >
                 <FlatList
@@ -200,7 +202,7 @@ const ProjectChatScreen = ({ route }) => {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                 />
-                
+
                 <View style={styles.footerContainer}>
                     <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
                         <TextInput style={styles.mainInputField} placeholder="Message" placeholderTextColor="#5F6368" value={text} onChangeText={setText} multiline />
@@ -239,13 +241,13 @@ const styles = StyleSheet.create({
     theirTime: { color: '#94A3B8' },
     attachmentContainer: { marginBottom: 6, borderRadius: 12, overflow: 'hidden' },
     attachmentImage: { width: 220, height: 220, borderRadius: 12 },
-    footerContainer: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        paddingHorizontal: 16, 
-        paddingBottom: Platform.OS === 'ios' ? 30 : 10, 
-        paddingTop: 12, 
-        backgroundColor: '#F8FAFC' 
+    footerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+        paddingTop: 12,
+        backgroundColor: '#F8FAFC'
     },
     whatsAppInputLine: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 28, paddingHorizontal: 16, minHeight: 52, borderWidth: 1, borderColor: '#E2E8F0', marginRight: 10 },
     sideIconBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },

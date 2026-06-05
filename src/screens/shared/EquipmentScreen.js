@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -174,7 +174,7 @@ const EquipmentScreen = ({ navigation }) => {
                     name: `equipment_${Date.now()}.jpg`,
                     type: 'image/jpeg'
                 });
-                await api.post(`/equipment/${savedId}/upload-image`, fd);
+                await uploadMultipart(`/equipment/${savedId}/upload-image`, fd);
             }
             
             setModalVisible(false);

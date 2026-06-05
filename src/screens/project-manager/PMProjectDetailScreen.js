@@ -69,7 +69,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
 
     const filteredJobs = projectJobs.length > 0 ? projectJobs.filter(job => {
         const matchesSearch = (job.name || job.title || '').toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = activeFilter === 'All' || 
+        const matchesFilter = activeFilter === 'All' ||
             (activeFilter === 'Active' && job.status === 'in_progress') ||
             (activeFilter === 'Planning' && (job.status === 'planning' || job.status === 'on-hold')) ||
             (activeFilter === 'Completed' && job.status === 'completed');
@@ -203,7 +203,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
     };
 
     const renderHeader = () => (
-            <View style={[styles.header, { paddingHorizontal: isCompact ? 12 : 16 }]}>
+        <View style={[styles.header, { paddingHorizontal: isCompact ? 12 : 16 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                 <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
             </TouchableOpacity>
@@ -441,7 +441,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.jobActionsRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.assignBtn}
                     onPress={() => navigation.navigate('CrewClock')}
                 >
@@ -490,7 +490,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                 {renderQuickActions()}
                 {renderDatesAndStats()}
                 {renderJobsHeader()}
-                
+
                 {filteredJobs.length > 0 ? (
                     filteredJobs.map(renderJobCard)
                 ) : (
@@ -509,137 +509,137 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
                     >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Create Job</Text>
-                            <TouchableOpacity onPress={() => setIsCreateModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color="#0F172A" />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView
-                            style={styles.modalFormScroll}
-                            contentContainerStyle={styles.modalFormScrollContent}
-                            showsVerticalScrollIndicator={false}
-                            nestedScrollEnabled
-                            keyboardShouldPersistTaps="always"
-                            keyboardDismissMode="none"
-                        >
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Job Title</Text>
-                                <TextInput style={styles.modalInput} value={jobName} onChangeText={setJobName} placeholder="Job Title" />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Location / Address</Text>
-                                <TextInput style={styles.modalInput} value={jobLocation} onChangeText={setJobLocation} placeholder="Site block, level or full address" />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
-                                <TouchableOpacity
-                                    style={[styles.modalInput, styles.dropdownField]}
-                                    onPress={() => {
-                                        if (Platform.OS === 'android') openAndroidDatePicker('startDate');
-                                        else setDatePickerField('startDate');
-                                    }}
-                                >
-                                    <Text style={[styles.modalInputText, { color: jobStartDate ? '#1E293B' : '#94A3B8' }]}>
-                                        {jobStartDate || 'Select start date'}
-                                    </Text>
-                                    <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Create Job</Text>
+                                <TouchableOpacity onPress={() => setIsCreateModalVisible(false)}>
+                                    <MaterialCommunityIcons name="close" size={24} color="#0F172A" />
                                 </TouchableOpacity>
                             </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>End Date (YYYY-MM-DD)</Text>
-                                <TouchableOpacity
-                                    style={[styles.modalInput, styles.dropdownField]}
-                                    onPress={() => {
-                                        if (Platform.OS === 'android') openAndroidDatePicker('endDate');
-                                        else setDatePickerField('endDate');
-                                    }}
-                                >
-                                    <Text style={[styles.modalInputText, { color: jobEndDate ? '#1E293B' : '#94A3B8' }]}>
-                                        {jobEndDate || 'Select end date'}
-                                    </Text>
-                                    <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Budget ($)</Text>
-                                <TextInput style={styles.modalInput} value={jobBudget} onChangeText={setJobBudget} placeholder="Budget" keyboardType="numeric" />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Job Status</Text>
-                                <TouchableOpacity
-                                    style={[styles.modalInput, styles.dropdownField]}
-                                    onPress={() => setIsSelectingJobStatus(true)}
-                                >
-                                    <Text style={styles.modalInputText}>
-                                        {jobStatusOptions.find(s => s.value === jobStatus)?.label || 'Planning'}
-                                    </Text>
-                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Assign Role</Text>
-                                <TouchableOpacity
-                                    style={[styles.modalInput, styles.dropdownField]}
-                                    onPress={() => setIsSelectingRole(true)}
-                                >
-                                    <Text style={styles.modalInputText}>
-                                        {roleOptions.find(r => r.value === assignRole)?.label || 'All Roles'}
-                                    </Text>
-                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>{assignRole === 'ALL' ? 'Lead Worker' : 'Select Identity'}</Text>
-                                <TouchableOpacity 
-                                    style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
-                                    onPress={() => {
-                                        const staff = (teamMembers || []).filter(m => 
-                                            assignRole === 'ALL'
-                                                ? ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(m.role)
-                                                : m.role === assignRole
-                                        );
-                                        setFilteredStaff(staff);
-                                        setIsSelectingWorker(true);
-                                    }}
-                                >
-                                    <Text style={[styles.modalInputText, { color: leadWorker ? '#1E293B' : '#94A3B8' }]}>
-                                        {leadWorker || (assignRole === 'ALL' ? 'Select Lead Staff...' : 'Select User...')}
-                                    </Text>
-                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Description / Notes</Text>
-                                <TextInput
-                                    style={[styles.modalInput, styles.modalInputArea]}
-                                    value={jobDescription}
-                                    onChangeText={setJobDescription}
-                                    placeholder="Describe scope, notes, or instructions..."
-                                    multiline
-                                    textAlignVertical="top"
-                                />
-                            </View>
+                            <ScrollView
+                                style={styles.modalFormScroll}
+                                contentContainerStyle={styles.modalFormScrollContent}
+                                showsVerticalScrollIndicator={false}
+                                nestedScrollEnabled
+                                keyboardShouldPersistTaps="always"
+                                keyboardDismissMode="none"
+                            >
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Job Title</Text>
+                                    <TextInput style={styles.modalInput} value={jobName} onChangeText={setJobName} placeholder="Job Title" />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Location / Address</Text>
+                                    <TextInput style={styles.modalInput} value={jobLocation} onChangeText={setJobLocation} placeholder="Site block, level or full address" />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
+                                    <TouchableOpacity
+                                        style={[styles.modalInput, styles.dropdownField]}
+                                        onPress={() => {
+                                            if (Platform.OS === 'android') openAndroidDatePicker('startDate');
+                                            else setDatePickerField('startDate');
+                                        }}
+                                    >
+                                        <Text style={[styles.modalInputText, { color: jobStartDate ? '#1E293B' : '#94A3B8' }]}>
+                                            {jobStartDate || 'Select start date'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>End Date (YYYY-MM-DD)</Text>
+                                    <TouchableOpacity
+                                        style={[styles.modalInput, styles.dropdownField]}
+                                        onPress={() => {
+                                            if (Platform.OS === 'android') openAndroidDatePicker('endDate');
+                                            else setDatePickerField('endDate');
+                                        }}
+                                    >
+                                        <Text style={[styles.modalInputText, { color: jobEndDate ? '#1E293B' : '#94A3B8' }]}>
+                                            {jobEndDate || 'Select end date'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Budget ($)</Text>
+                                    <TextInput style={styles.modalInput} value={jobBudget} onChangeText={setJobBudget} placeholder="Budget" keyboardType="numeric" />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Job Status</Text>
+                                    <TouchableOpacity
+                                        style={[styles.modalInput, styles.dropdownField]}
+                                        onPress={() => setIsSelectingJobStatus(true)}
+                                    >
+                                        <Text style={styles.modalInputText}>
+                                            {jobStatusOptions.find(s => s.value === jobStatus)?.label || 'Planning'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Assign Role</Text>
+                                    <TouchableOpacity
+                                        style={[styles.modalInput, styles.dropdownField]}
+                                        onPress={() => setIsSelectingRole(true)}
+                                    >
+                                        <Text style={styles.modalInputText}>
+                                            {roleOptions.find(r => r.value === assignRole)?.label || 'All Roles'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>{assignRole === 'ALL' ? 'Lead Worker' : 'Select Identity'}</Text>
+                                    <TouchableOpacity
+                                        style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                                        onPress={() => {
+                                            const staff = (teamMembers || []).filter(m =>
+                                                assignRole === 'ALL'
+                                                    ? ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(m.role)
+                                                    : m.role === assignRole
+                                            );
+                                            setFilteredStaff(staff);
+                                            setIsSelectingWorker(true);
+                                        }}
+                                    >
+                                        <Text style={[styles.modalInputText, { color: leadWorker ? '#1E293B' : '#94A3B8' }]}>
+                                            {leadWorker || (assignRole === 'ALL' ? 'Select Lead Staff...' : 'Select User...')}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Description / Notes</Text>
+                                    <TextInput
+                                        style={[styles.modalInput, styles.modalInputArea]}
+                                        value={jobDescription}
+                                        onChangeText={setJobDescription}
+                                        placeholder="Describe scope, notes, or instructions..."
+                                        multiline
+                                        textAlignVertical="top"
+                                    />
+                                </View>
 
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity
-                                    style={styles.modalCancelBtn}
-                                    onPress={() => setIsCreateModalVisible(false)}
-                                    disabled={isCreatingJob}
-                                >
-                                    <Text style={styles.modalCancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.saveBtn, { backgroundColor: '#0F172A' }]} 
-                                    onPress={handleCreateJob}
-                                    disabled={isCreatingJob}
-                                >
-                                    {isCreatingJob ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Job</Text>}
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-                    </View>
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity
+                                        style={styles.modalCancelBtn}
+                                        onPress={() => setIsCreateModalVisible(false)}
+                                        disabled={isCreatingJob}
+                                    >
+                                        <Text style={styles.modalCancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.saveBtn, { backgroundColor: '#0F172A' }]}
+                                        onPress={handleCreateJob}
+                                        disabled={isCreatingJob}
+                                    >
+                                        {isCreatingJob ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Job</Text>}
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
+                        </View>
                     </KeyboardAvoidingView>
                 </View>
             </Modal>
@@ -651,9 +651,9 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.selTitle}>Select Lead Staff</Text>
                         <ScrollView style={{ maxHeight: 350 }}>
                             {filteredStaff.map((m, i) => (
-                                <TouchableOpacity 
-                                    key={i} 
-                                    style={styles.selItem} 
+                                <TouchableOpacity
+                                    key={i}
+                                    style={styles.selItem}
                                     onPress={() => {
                                         setLeadWorker(m.fullName || m.name);
                                         setLeadWorkerId(m._id || m.id);
@@ -791,12 +791,12 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        paddingHorizontal: 16, 
-        paddingTop: 30, 
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 30,
         paddingBottom: 15,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
@@ -913,15 +913,15 @@ const styles = StyleSheet.create({
     equipmentCount: { fontSize: 10, fontWeight: '900', color: '#475569' },
     noEquipment: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
 
-    bottomNav: { 
-        position: 'absolute', 
-        bottom: 0, 
-        left: 0, 
-        right: 0, 
-        height: 60, 
-        backgroundColor: '#FFFFFF', 
-        flexDirection: 'row', 
-        justifyContent: 'space-around', 
+    bottomNav: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 60,
+        backgroundColor: '#FFFFFF',
+        flexDirection: 'row',
+        justifyContent: 'space-around',
         alignItems: 'center',
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9'

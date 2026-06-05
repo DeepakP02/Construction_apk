@@ -8,7 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
-import api from '../../utils/api';
+import api, { uploadMultipart } from '../../utils/api';
 import { canCreateRFI, canManageRFI } from '../../utils/rfiPermissions';
 
 const RFIListScreen = ({ navigation }) => {
@@ -98,7 +98,7 @@ const RFIListScreen = ({ navigation }) => {
                     type: file.mimeType || 'application/octet-stream',
                 });
             });
-            const res = await api.post('/rfis', payload);
+            const res = await uploadMultipart('/rfis', payload);
             await refreshData?.();
             setShowCreateModal(false);
             setFormData({

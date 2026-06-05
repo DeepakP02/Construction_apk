@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Platform, Alert, AppState } from 'react-native';
-import api, { setAuthToken } from '../utils/api';
+import api, { setAuthToken, uploadMultipart } from '../utils/api';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { io } from 'socket.io-client';
 import { registerFcmToken, deactivateFcmToken } from '../utils/pushNotifications';
@@ -1464,7 +1464,7 @@ export const AppProvider = ({ children }) => {
             if (projectId) formData.append('projectId', projectId);
 
             console.log('--- UPLOADING FILE ---', { uri: fileUri, type: fileType, description, projectId });
-            const res = await api.post('/photos/upload', formData);
+            const res = await uploadMultipart('/photos/upload', formData);
 
             return {
                 url: res.data.imageUrl,

@@ -23,7 +23,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -193,16 +193,15 @@ const DailyLogsScreen = ({ navigation }) => {
                 const filename = uri.split('/').pop() || `photo_${idx}.jpg`;
                 const match = /\.(\w+)$/.exec(filename);
                 const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+                const cleanUri = Platform.OS === 'android' ? uri : uri.replace('file://', '');
                 formData.append('photos', {
-                    uri: uri,
+                    uri: cleanUri,
                     name: filename,
                     type: fileType,
                 });
             });
 
-            await api.post('/dailylogs', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await uploadMultipart('/dailylogs', formData);
             setModalVisible(false);
             resetForm();
             fetchLogs();

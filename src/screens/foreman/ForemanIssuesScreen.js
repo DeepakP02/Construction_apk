@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -115,14 +115,15 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
             formData.append('date', new Date().toISOString());
 
             (form.attachments || []).forEach((uri, idx) => {
+                const cleanUri = Platform.OS === 'android' ? uri : uri.replace('file://', '');
                 formData.append('images', {
-                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+                    uri: cleanUri,
                     name: `issue_photo_${idx}_${Date.now()}.jpg`,
                     type: 'image/jpeg'
                 });
             });
 
-            await api.post('/issues', formData);
+            await uploadMultipart('/issues', formData);
 
             setModalVisible(false);
             setForm({ title: '', description: '', priority: 'Medium', projectId: null, location: '', attachments: [] });

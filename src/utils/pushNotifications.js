@@ -156,7 +156,8 @@ export async function registerFcmToken(userId) {
         console.log('[PushNotifications] Registering FCM token with backend:', token);
         const response = await api.post('/notifications/fcm-token', {
             token,
-            platform: Platform.OS
+            platform: Platform.OS,
+            provider: messaging ? 'firebase' : 'expo'
         });
         if (response.data?.success) {
             console.log('[PushNotifications] Native FCM token registered successfully on backend.');

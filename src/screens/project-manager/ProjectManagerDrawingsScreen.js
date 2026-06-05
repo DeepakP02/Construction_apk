@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, 
 import * as DocumentPicker from 'expo-document-picker';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
-import api, { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -202,7 +202,7 @@ const ProjectManagerDrawingsScreen = () => {
             formData.append('category', uploadForm.category);
             formData.append('status', uploadForm.status);
 
-            await api.post('/drawings', formData);
+            await uploadMultipart('/drawings', formData);
 
             Alert.alert('Success', 'Drawing uploaded successfully!');
             setIsUploadVisible(false);

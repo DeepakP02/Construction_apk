@@ -6,7 +6,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { COLORS, SHADOWS } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
-import api from '../../utils/api';
+import api, { uploadMultipart } from '../../utils/api';
 import { canCreateRFI } from '../../utils/rfiPermissions';
 
 const RFI_CATEGORIES = ['design', 'structural', 'mechanical', 'electrical', 'civil', 'safety', 'material', 'other'];
@@ -197,7 +197,7 @@ const RFIScreen = ({ navigation }) => {
                     type: file.mimeType || 'application/octet-stream'
                 });
             });
-            const res = await api.post('/rfis', payload);
+            const res = await uploadMultipart('/rfis', payload);
             closeCreateModal();
             await Promise.all([fetchData(), refreshData?.()]);
             Alert.alert('Success', 'RFI submitted successfully');
