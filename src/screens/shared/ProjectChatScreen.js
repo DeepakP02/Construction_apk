@@ -158,25 +158,29 @@ const ProjectChatScreen = ({ route }) => {
     const renderMessage = ({ item }) => {
         const itemSenderId = (item.sender?._id || item.sender || item.senderId)?.toString();
         const isMe = itemSenderId === user?._id?.toString() || item.isMe;
-        const senderInitial = (item.sender?.fullName || (typeof item.sender === 'string' ? item.sender : '') || 'U').charAt(0).toUpperCase();
+        const senderName = item.sender?.fullName || (typeof item.sender === 'string' ? item.sender : '') || 'User';
+        const senderInitial = senderName.charAt(0).toUpperCase();
 
         return (
             <View style={[styles.messageWrapper, isMe ? styles.myMessage : styles.theirMessage]}>
                 {!isMe && <View style={styles.avatarMain}><Text style={styles.avatarText}>{senderInitial}</Text></View>}
-                <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
-                    {item.attachments && item.attachments.length > 0 && (
-                        <View style={styles.attachmentContainer}>
-                            {item.attachments.map((att, i) => (
-                                <Image key={i} source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
-                            ))}
-                        </View>
-                    )}
-                    {(item.message && item.message !== "[Photo Attachment]") ? (
-                        <Text style={[styles.messageText, isMe ? styles.myText : styles.theirText]}>{item.message}</Text>
-                    ) : null}
-                    <Text style={[styles.time, isMe ? styles.myTime : styles.theirTime]}>
-                        {item.time || new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+                <View style={{ flex: 1 }}>
+                    {!isMe && <Text style={styles.senderNameText}>{senderName}</Text>}
+                    <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
+                        {item.attachments && item.attachments.length > 0 && (
+                            <View style={styles.attachmentContainer}>
+                                {item.attachments.map((att, i) => (
+                                    <Image key={i} source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
+                                ))}
+                            </View>
+                        )}
+                        {(item.message && item.message !== "[Photo Attachment]") ? (
+                            <Text style={[styles.messageText, isMe ? styles.myText : styles.theirText]}>{item.message}</Text>
+                        ) : null}
+                        <Text style={[styles.time, isMe ? styles.myTime : styles.theirTime]}>
+                            {item.time || new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                    </View>
                 </View>
             </View>
         );
@@ -230,6 +234,7 @@ const styles = StyleSheet.create({
     theirMessage: { alignSelf: 'flex-start' },
     avatarMain: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', ...SHADOWS.small, borderWidth: 1, borderColor: '#E2E8F0' },
     avatarText: { fontSize: 13, fontWeight: '900', color: COLORS.primaryAccent },
+    senderNameText: { fontSize: 10, fontWeight: '900', color: COLORS.primaryAccent, marginBottom: 4, marginLeft: 4, textTransform: 'uppercase' },
     bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, ...SHADOWS.small },
     myBubble: { backgroundColor: '#E0F2FE', borderBottomRightRadius: 4 },
     theirBubble: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#E2E8F0' },
