@@ -8,11 +8,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Prefer local backend endpoints during development/testing
-    'http://192.168.1.45:5000',  // Current Physical phone local Wi-Fi IP
-    'http://192.168.1.23:5000',  // Previous Physical phone local Wi-Fi IP
-    'http://10.0.2.2:5000',      // Android Emulator loopback
-    'http://localhost:5000',     // iOS Simulator/Fallback
-    // 'https://construction-production-b18f.up.railway.app',
+    // 'http://192.168.1.45:5000',  // Current Physical phone local Wi-Fi IP
+    // 'http://192.168.1.23:5000',  // Previous Physical phone local Wi-Fi IP
+    // 'http://10.0.2.2:5000',      // Android Emulator loopback
+    // 'http://localhost:5000',     // iOS Simulator/Fallback
+    'https://construction-production-b18f.up.railway.app',
 ].filter(Boolean);
 
 let currentBaseIndex = 0;
@@ -167,10 +167,10 @@ export const uploadMultipart = async (endpoint, formData, options = {}) => {
     for (let i = currentBaseIndex; i < BASE_URL_CANDIDATES.length; i++) {
         const baseUrl = `${BASE_URL_CANDIDATES[i]}/api`;
         const url = `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
-        
+
         try {
             console.log(`[uploadMultipart] Attempting upload to: ${url}`);
             const response = await fetch(url, {
@@ -190,17 +190,17 @@ export const uploadMultipart = async (endpoint, formData, options = {}) => {
                 currentBaseIndex = i;
                 return { data, status: response.status };
             } else if (response.status === 404) {
-                 console.warn(`[uploadMultipart] 404 at ${url}, might retry...`);
+                console.warn(`[uploadMultipart] 404 at ${url}, might retry...`);
             } else {
-                 let errorData;
-                 try {
-                     errorData = await response.json();
-                 } catch {
-                     errorData = await response.text();
-                 }
-                 const errorObj = new Error(errorData.message || `Upload failed with status ${response.status}`);
-                 errorObj.response = { status: response.status, data: errorData };
-                 throw errorObj;
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch {
+                    errorData = await response.text();
+                }
+                const errorObj = new Error(errorData.message || `Upload failed with status ${response.status}`);
+                errorObj.response = { status: response.status, data: errorData };
+                throw errorObj;
             }
         } catch (error) {
             clearTimeout(timeoutId);
