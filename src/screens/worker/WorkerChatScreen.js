@@ -6,6 +6,7 @@ import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { getServerUrl } from '../../utils/api';
 
 const { width } = Dimensions.get('window');
 
@@ -95,10 +96,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
 
         if (room.type === 'private') {
             const resolved = dmRoomId?.toString();
-            if (resolved && mRoomId && mRoomId === resolved) return true;
-            // API stores messages on Chat.roomId; legacy filter missed own messages (no receiverId on Chat)
-            if (!mProjId && peerId && myId && (mSenderId === peerId || mSenderId === myId)) return true;
-            return false;
+            return resolved ? mRoomId === resolved : false;
         }
 
         if (mRoomId === key) return true;
@@ -156,9 +154,9 @@ const WorkerChatScreen = ({ navigation, route }) => {
             }
 
             let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'], // Fix for deprecation warning
+                mediaTypes: ['images'],
                 allowsEditing: true,
-                quality: 0.7,
+                quality: 0.4, // Lower quality for faster upload
             });
 
             if (!result.canceled) {
@@ -183,7 +181,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
 
             let result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
-                quality: 0.7,
+                quality: 0.4, // Lower quality for faster upload
             });
 
             if (!result.canceled) {
@@ -240,14 +238,28 @@ const WorkerChatScreen = ({ navigation, route }) => {
                     
                     {item.attachments && item.attachments.length > 0 && (
                         <View style={styles.attachmentContainer}>
-                            {item.attachments.map((att, i) => (
-                                <Image 
-                                    key={i} 
-                                    source={{ uri: att.url }} 
-                                    style={styles.attachmentImage} 
-                                    resizeMode="cover"
-                                />
-                            ))}
+                            {item.attachments.map((att, i) => {
+                                const rawUrl = typeof att === 'string' ? att : (att?.url || att?.imageUrl || att?.uri || '');
+                                console.log('--- RENDERING ATTACHMENT ---', att, '->', rawUrl);
+                                const resolvedUri = rawUrl ? getServerUrl(rawUrl) : '';
+                                if (!resolvedUri) {
+                                    // Upload pending or URL missing — show a placeholder
+                                    return (
+                                        <View key={i} style={[styles.attachmentImage, styles.attachmentPlaceholder]}>
+                                            <ActivityIndicator color="#90CAF9" size="small" />
+                                        </View>
+                                    );
+                                }
+                                return (
+                                    <Image
+                                        key={i}
+                                        source={{ uri: resolvedUri }}
+                                        style={styles.attachmentImage}
+                                        resizeMode="cover"
+                                        onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
+                                    />
+                                );
+                            })}
                         </View>
                     )}
 
@@ -356,6 +368,7 @@ const styles = StyleSheet.create({
 
     attachmentContainer: { marginBottom: 6, borderRadius: 8, overflow: 'hidden' },
     attachmentImage: { width: width * 0.6, height: width * 0.6, borderRadius: 8 },
+    attachmentPlaceholder: { backgroundColor: '#E8F4FD', justifyContent: 'center', alignItems: 'center' },
 
     footerContainer: {
         flexDirection: 'row',

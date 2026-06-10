@@ -2,7 +2,15 @@ import React, { createContext, useState, useContext, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Platform, Alert, AppState } from 'react-native';
-import api, { setAuthToken, uploadMultipart } from '../utils/api';
+import api, { setAuthToken, uploadMultipart, getServerUrl } from '../utils/api';
+
+// Helper to resolve possibly relative image URLs
+const resolveImageUrl = (url) => {
+    if (!url) return '';
+    // If already absolute (http/https), return as‑is; otherwise prepend base URL
+    return url.startsWith('http') ? url : getServerUrl(url);
+};
+
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { io } from 'socket.io-client';
 import { registerFcmToken, deactivateFcmToken } from '../utils/pushNotifications';
@@ -181,12 +189,13 @@ export const AppProvider = ({ children }) => {
 
     // FCM token registration effect on login/session restore
     useEffect(() => {
-        if (user && user._id) {
-            registerFcmToken(user._id).catch(err => {
+        const uId = user?._id || user?.id;
+        if (user && uId) {
+            registerFcmToken(uId, user.role).catch(err => {
                 console.log('[FCM AppContext Register Error]', err.message);
             });
         }
-    }, [user?._id]);
+    }, [user?._id, user?.id]);
 
     const checkToken = async () => {
         try {
@@ -747,37 +756,6 @@ export const AppProvider = ({ children }) => {
                 res = await api.post('/tasks', payload);
             }
 
-            const saved = res.data;
-            setTasks(prev => {
-                // Find project name for local display
-                const linkedJob = jobs.find(j => String(j._id || j.id) === String(newTask.jobId || saved.jobId || ''));
-                const derivedProjectId =
-                    newTask.projectId ||
-                    saved.projectId ||
-                    linkedJob?.projectId?._id ||
-                    linkedJob?.projectId;
-                const proj = projects.find(p => String(p._id || p.id) === String(derivedProjectId || ''));
-                
-                const normalized = {
-                    ...saved,
-                    _id: saved._id || saved.id,
-                    parentTaskId: saved.parentTaskId || newTask.parentTaskId || null,
-                    projectId: proj ? { _id: proj._id || proj.id, name: proj.name } : derivedProjectId,
-                    jobId: saved.jobId || newTask.jobId || null,
-                    isJobTask: !!(saved.jobId || newTask.jobId || saved.isJobTask),
-                    status: saved.status === 'pending' ? 'todo' : saved.status,
-                    assignedTo: saved.assignedTo
-                        ? (Array.isArray(saved.assignedTo) ? saved.assignedTo : [saved.assignedTo])
-                        : [],
-                    level: Number(saved.level || 0),
-                    path: saved.path || '',
-                    isOptimistic: true,
-                    createdAtTimestamp: Date.now(),
-                };
-                console.log('--- [AppContext] OPTIMISTIC ADD ---', normalized.title);
-                return [normalized, ...(prev || [])];
-            });
-            // Pull fresh server truth so app + web remain in sync.
             await fetchInitialData();
             return true;
         } catch (e) {
@@ -954,7 +932,9 @@ export const AppProvider = ({ children }) => {
                 }));
             }
 
-            // Refresh from server after patch for canonical parity with web.
+            const saved = res.data;
+            // Optimistic add removed to prevent duplicate tasks.
+            // Directly fetch fresh data from server.
             await fetchInitialData();
             return true;
         } catch (e) {
@@ -1455,8 +1435,8 @@ export const AppProvider = ({ children }) => {
     const uploadFile = async (fileUri, fileName, fileType = 'image/jpeg', description = '', projectId = '') => {
         try {
             const formData = new FormData();
-            formData.append('image', {
-                uri: Platform.OS === 'android' ? fileUri : fileUri.replace('file://', ''),
+            formData.append('images', {
+                uri: fileUri,
                 name: fileName || 'upload.jpg',
                 type: fileType
             });
@@ -1466,17 +1446,27 @@ export const AppProvider = ({ children }) => {
             console.log('--- UPLOADING FILE ---', { uri: fileUri, type: fileType, description, projectId });
             const res = await uploadMultipart('/photos/upload', formData);
 
+            // Log the full backend response so we can see exactly what fields are returned
+            console.log('--- UPLOAD RESPONSE (full) ---', JSON.stringify(res.data));
+
+            // The backend may return either `url` or `imageUrl`. Use whichever is present.
+            const rawData = Array.isArray(res.data) ? res.data[0] : res.data;
+            const imageUrl = rawData?.url || rawData?.imageUrl || rawData?.image || rawData?.filePath || rawData?.path;
+            console.log('--- Resolved imageUrl ---', imageUrl);
+
             return {
-                url: res.data.imageUrl,
+                url: imageUrl,
+                imageUrl: imageUrl,
                 name: fileName || 'attachment',
                 fileType: fileType,
-                description: res.data.description || description
+                description: rawData?.description || description
             };
         } catch (error) {
             console.error('File upload error:', error.response?.data || error.message);
             throw error;
         }
     };
+
 
     const updatePassword = async (passwordData) => {
         try {

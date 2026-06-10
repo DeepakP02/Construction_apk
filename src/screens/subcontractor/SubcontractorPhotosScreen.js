@@ -33,8 +33,8 @@ function projectIdFromDoc(p) {
     return idKey(p._id ?? p.id);
 }
 
-const WorkerPhotosScreen = () => {
-    const { projects, selectedProject: globalSelectedProject } = useApp();
+const SubcontractorPhotosScreen = () => {
+    const { projects, selectedProject: globalSelectedProject, user } = useApp();
     const { width } = useWindowDimensions();
     const [photos, setPhotos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -67,9 +67,16 @@ const WorkerPhotosScreen = () => {
         projects.find((p) => projectIdFromDoc(p) === idKey(targetProjectId))?.name || 'Select Project';
 
     const filteredPhotos = useMemo(() => {
-        if (galleryProjectId === 'all') return photos;
-        return photos.filter((p) => idKey(p.projectId?._id || p.projectId) === galleryProjectId);
-    }, [galleryProjectId, photos]);
+        const assignedProjectIds = projects.map(p => idKey(p._id || p.id));
+        let basePhotos = photos.filter(p => {
+            const isUploader = String(p.uploadedBy?._id || p.uploadedBy || p.userId) === String(user?._id);
+            const inProject = assignedProjectIds.includes(idKey(p.projectId?._id || p.projectId));
+            return isUploader || inProject;
+        });
+
+        if (galleryProjectId === 'all') return basePhotos;
+        return basePhotos.filter((p) => idKey(p.projectId?._id || p.projectId) === galleryProjectId);
+    }, [galleryProjectId, photos, projects, user]);
 
     const openDropdown = (title, options, onSelect) => {
         setSelTitle(title);
@@ -457,4 +464,4 @@ const styles = StyleSheet.create({
     fullMeta: { fontWeight: '700', color: '#94A3B8' }
 });
 
-export default WorkerPhotosScreen;
+export default SubcontractorPhotosScreen;

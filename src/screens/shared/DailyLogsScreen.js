@@ -193,7 +193,7 @@ const DailyLogsScreen = ({ navigation }) => {
                 const filename = uri.split('/').pop() || `photo_${idx}.jpg`;
                 const match = /\.(\w+)$/.exec(filename);
                 const fileType = match ? `image/${match[1]}` : `image/jpeg`;
-                const cleanUri = Platform.OS === 'android' ? uri : uri.replace('file://', '');
+                const cleanUri = uri;
                 formData.append('photos', {
                     uri: cleanUri,
                     name: filename,

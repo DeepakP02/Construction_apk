@@ -116,6 +116,7 @@ import ClientProjectsScreen from '../screens/client/ClientProjectsScreen';
 
 // Subcontractor Specific Screens
 import SubcontractorDashboardScreen from '../screens/subcontractor/SubcontractorDashboardScreen';
+import SubcontractorPhotosScreen from '../screens/subcontractor/SubcontractorPhotosScreen';
 import SubcontractorProjectsScreen from '../screens/subcontractor/SubcontractorProjectsScreen';
 import SubcontractorJobDetailsScreen from '../screens/subcontractor/SubcontractorJobDetailsScreen';
 
@@ -850,12 +851,6 @@ const SubcontractorDrawerContent = (props) => {
                         labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
                     />
                     <DrawerItem
-                        label="Report Logs"
-                        icon={({ color }) => <MaterialCommunityIcons name="chart-box" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Reports')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
-                    />
-                    <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
@@ -919,7 +914,7 @@ const SubcontractorTabs = () => {
             />
             <Tab.Screen
                 name="Photos"
-                component={ForemanPhotosScreen}
+                component={SubcontractorPhotosScreen}
                 options={{
                     tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? "camera" : "camera-outline"} color={color} size={24} />
                 }}
@@ -956,7 +951,6 @@ const SubcontractorDrawer = () => {
             <Drawer.Screen name="Chatboard" component={WorkerChatboard} />
             <Drawer.Screen name="Equipment" component={EquipmentScreen} />
             <Drawer.Screen name="RFI" component={RFIScreen} />
-            <Drawer.Screen name="Reports" component={ReportsScreen} />
         </Drawer.Navigator>
     );
 };
@@ -1156,6 +1150,7 @@ const AppNavigation = () => {
                             <Stack.Screen name="Photos" component={ForemanPhotosScreen} />
                             <Stack.Screen name="DailyLogs" component={DailyLogsScreen} />
                             <Stack.Screen name="WorkerLogs" component={WorkerLogsScreen} />
+                            <Stack.Screen name="SubcontractorPhotos" component={SubcontractorPhotosScreen} />
                         </>
                     )}
                 </Stack.Navigator>

@@ -142,7 +142,7 @@ export async function getFcmToken() {
 /**
  * Upload/Register FCM token to the backend
  */
-export async function registerFcmToken(userId) {
+export async function registerFcmToken(userId, role = null) {
     try {
         const hasPermission = await requestUserPermission();
         if (!hasPermission) return false;
@@ -157,7 +157,8 @@ export async function registerFcmToken(userId) {
         const response = await api.post('/notifications/fcm-token', {
             token,
             platform: Platform.OS,
-            provider: messaging ? 'firebase' : 'expo'
+            provider: messaging ? 'firebase' : 'expo',
+            ...(role ? { role } : {}),
         });
         if (response.data?.success) {
             console.log('[PushNotifications] Native FCM token registered successfully on backend.');

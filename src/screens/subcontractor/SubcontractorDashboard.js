@@ -179,7 +179,7 @@ const SubcontractorDashboard = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.actionSecondary, SHADOWS.small]}
-                    onPress={() => navigation.navigate('Photos')}
+                    onPress={() => navigation.navigate('SubcontractorPhotos')}
                 >
                     <MaterialCommunityIcons name="camera-plus" size={18} color="#0F172A" />
                     <Text style={styles.actionSecondaryTxt}>Upload Photo</Text>

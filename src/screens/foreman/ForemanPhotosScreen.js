@@ -98,7 +98,7 @@ const ForemanPhotosScreen = () => {
             setUploading(true);
             const formData = new FormData();
             if (tempImage) {
-                const cleanUri = Platform.OS === 'android' ? tempImage : tempImage.replace('file://', '');
+                const cleanUri = tempImage;
                 
                 // Pre-flight validation: Ensure local file exists and can be read
                 try {

@@ -115,7 +115,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
             formData.append('date', new Date().toISOString());
 
             (form.attachments || []).forEach((uri, idx) => {
-                const cleanUri = Platform.OS === 'android' ? uri : uri.replace('file://', '');
+                const cleanUri = uri;
                 formData.append('images', {
                     uri: cleanUri,
                     name: `issue_photo_${idx}_${Date.now()}.jpg`,

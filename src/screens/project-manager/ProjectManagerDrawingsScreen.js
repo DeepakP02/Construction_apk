@@ -192,7 +192,7 @@ const ProjectManagerDrawingsScreen = () => {
             setUploading(true);
             const formData = new FormData();
             formData.append('file', {
-                uri: Platform.OS === 'android' ? uploadForm.file.uri : uploadForm.file.uri.replace('file://', ''),
+                uri: uploadForm.file.uri,
                 name: uploadForm.file.name,
                 type: uploadForm.file.mimeType || 'application/pdf'
             });

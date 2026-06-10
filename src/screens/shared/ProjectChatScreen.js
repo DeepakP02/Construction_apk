@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import AppHeader from '../../components/AppHeader';
+import { getServerUrl } from '../../utils/api';
 
 const ProjectChatScreen = ({ route }) => {
     const { project } = route.params;
@@ -64,9 +65,7 @@ const ProjectChatScreen = ({ route }) => {
         if (isGeneral) return !mProjId && !m.receiverId;
         if (isPrivate) {
             const resolved = dmRoomId?.toString();
-            if (resolved && mRoomId === resolved) return true;
-            if (!mProjId && targetId && myId && (mSenderId === targetId || mSenderId === myId)) return true;
-            return false;
+            return resolved ? mRoomId === resolved : false;
         }
         return mProjId === targetId;
     }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -75,12 +74,16 @@ const ProjectChatScreen = ({ route }) => {
         if (!text.trim()) return;
         setSending(true);
         try {
+            let resolvedDmRoomId = dmRoomId;
             if (isPrivate && !dmRoomId) {
                 const rid = await ensureDirectChatRoom(peerId);
-                if (rid) setDmRoomId(rid);
+                if (rid) {
+                    resolvedDmRoomId = rid;
+                    setDmRoomId(rid);
+                }
             }
             const success = isPrivate
-                ? await sendMessage(text, null, peerId)
+                ? await sendMessage(text, null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId)
                 : await sendMessage(text, targetId);
 
             if (success) {
@@ -136,15 +139,19 @@ const ProjectChatScreen = ({ route }) => {
     const sendImageMessage = async (uri) => {
         setSending(true);
         try {
+            let resolvedDmRoomId = dmRoomId;
             if (isPrivate && !dmRoomId) {
                 const rid = await ensureDirectChatRoom(peerId);
-                if (rid) setDmRoomId(rid);
+                if (rid) {
+                    resolvedDmRoomId = rid;
+                    setDmRoomId(rid);
+                }
             }
             const fileName = uri.split('/').pop();
             const attachment = await uploadFile(uri, fileName, 'image/jpeg');
 
             await (isPrivate
-                ? sendMessage("[Photo Attachment]", null, peerId, peerId, [attachment])
+                ? sendMessage("[Photo Attachment]", null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId, [attachment])
                 : sendMessage("[Photo Attachment]", targetId, null, targetId, [attachment])
             );
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
@@ -169,9 +176,27 @@ const ProjectChatScreen = ({ route }) => {
                     <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
                         {item.attachments && item.attachments.length > 0 && (
                             <View style={styles.attachmentContainer}>
-                                {item.attachments.map((att, i) => (
-                                    <Image key={i} source={{ uri: att.url }} style={styles.attachmentImage} resizeMode="cover" />
-                                ))}
+                                {item.attachments.map((att, i) => {
+                                    const rawUrl = typeof att === 'string' ? att : (att?.url || att?.imageUrl || att?.uri || '');
+                                    console.log('--- RENDERING ATTACHMENT ---', att, '->', rawUrl);
+                                    const resolvedUri = rawUrl ? getServerUrl(rawUrl) : '';
+                                    if (!resolvedUri) {
+                                        return (
+                                            <View key={i} style={[styles.attachmentImage, { backgroundColor: '#E8F4FD', justifyContent: 'center', alignItems: 'center' }]}>
+                                                <ActivityIndicator color="#90CAF9" size="small" />
+                                            </View>
+                                        );
+                                    }
+                                    return (
+                                        <Image
+                                            key={i}
+                                            source={{ uri: resolvedUri }}
+                                            style={styles.attachmentImage}
+                                            resizeMode="cover"
+                                            onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
+                                        />
+                                    );
+                                })}
                             </View>
                         )}
                         {(item.message && item.message !== "[Photo Attachment]") ? (

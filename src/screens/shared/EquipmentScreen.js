@@ -170,7 +170,7 @@ const EquipmentScreen = ({ navigation }) => {
                 setIsUploadingImage(true);
                 const fd = new FormData();
                 fd.append('image', {
-                    uri: Platform.OS === 'android' ? imageUri : imageUri.replace('file://', ''),
+                    uri: imageUri,
                     name: `equipment_${Date.now()}.jpg`,
                     type: 'image/jpeg'
                 });

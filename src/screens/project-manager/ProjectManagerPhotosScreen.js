@@ -128,7 +128,7 @@ const ProjectManagerPhotosScreen = () => {
             
             const formData = new FormData();
             if (tempImage) {
-                const cleanUri = Platform.OS === 'android' ? tempImage : tempImage.replace('file://', '');
+                const cleanUri = tempImage;
                 
                 // Pre-flight validation: Ensure local file exists and can be read
                 try {
@@ -229,7 +229,7 @@ const ProjectManagerPhotosScreen = () => {
         setSelVisible(true);
     };
 
-    const numColumns = isTablet ? 3 : (width < 380 ? 1 : 2);
+    const numColumns = isTablet ? 3 : 2;
 
     return (
         <View style={styles.container}>
