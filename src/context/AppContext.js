@@ -205,26 +205,67 @@ export const AppProvider = ({ children }) => {
             if (token && savedUser) {
                 const parsedUser = JSON.parse(savedUser);
                 setAuthToken(token);
-                setUser(parsedUser);
-                
-                // RESTORE CLOCK STATE: Instantly resume session from local storage
-                const savedClock = await AsyncStorage.getItem('localClockIn');
-                if (savedClock) {
-                    const parsed = JSON.parse(savedClock);
-                    setIsClockedIn(true);
-                    setClockInTime(new Date(parsed.time));
-                }
 
-                console.log('--- SESSION RESTORED ---', { role: parsedUser.role });
-                if (parsedUser?.role) {
-                    const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(parsedUser.role)
-                        ? 'Full org visibility'
-                        : `Role-scoped visibility (${parsedUser.role})`;
-                    setSyncStatus((prev) => ({ ...prev, roleScope }));
+                // Validate token against the live backend before restoring session.
+                // This handles DB migrations where the stored user no longer exists.
+                try {
+                    const validateRes = await api.get('/auth/me');
+                    const liveUser = validateRes?.data;
+                    // If backend returns a valid user, use fresh data from server
+                    const resolvedUser = (liveUser && liveUser._id) ? liveUser : parsedUser;
+
+                    setUser(resolvedUser);
+                    // Update stored user with fresh data from server
+                    if (liveUser && liveUser._id) {
+                        await AsyncStorage.setItem('user', JSON.stringify(liveUser));
+                    }
+
+                    // RESTORE CLOCK STATE: Instantly resume session from local storage
+                    const savedClock = await AsyncStorage.getItem('localClockIn');
+                    if (savedClock) {
+                        const parsed = JSON.parse(savedClock);
+                        setIsClockedIn(true);
+                        setClockInTime(new Date(parsed.time));
+                    }
+
+                    console.log('--- SESSION RESTORED ---', { role: resolvedUser.role });
+                    if (resolvedUser?.role) {
+                        const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(resolvedUser.role)
+                            ? 'Full org visibility'
+                            : `Role-scoped visibility (${resolvedUser.role})`;
+                        setSyncStatus((prev) => ({ ...prev, roleScope }));
+                    }
+                    fetchInitialData(resolvedUser);
+                } catch (validateErr) {
+                    const status = validateErr?.response?.status;
+                    if (status === 401 || status === 403 || status === 404) {
+                        // Stale token — user no longer exists in DB (e.g. after DB migration)
+                        console.warn('--- SESSION INVALID: Token rejected by server, clearing session ---', { status });
+                        await AsyncStorage.multiRemove(['token', 'user', 'localClockIn']);
+                        setAuthToken(null);
+                        setUser(null);
+                    } else {
+                        // Network error or 5xx — keep cached session, proceed offline-style
+                        console.warn('--- SESSION VALIDATION FAILED (network issue), using cached session ---', validateErr.message);
+                        setUser(parsedUser);
+                        const savedClock = await AsyncStorage.getItem('localClockIn');
+                        if (savedClock) {
+                            const parsed = JSON.parse(savedClock);
+                            setIsClockedIn(true);
+                            setClockInTime(new Date(parsed.time));
+                        }
+                        console.log('--- SESSION RESTORED (offline) ---', { role: parsedUser.role });
+                        if (parsedUser?.role) {
+                            const roleScope = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(parsedUser.role)
+                                ? 'Full org visibility'
+                                : `Role-scoped visibility (${parsedUser.role})`;
+                            setSyncStatus((prev) => ({ ...prev, roleScope }));
+                        }
+                        fetchInitialData(parsedUser);
+                    }
                 }
-                fetchInitialData(parsedUser);
             } else {
-                // No artificial delay needed
+                // No token stored — show login screen
             }
         } catch (e) {
             console.error('Auth check error', e);
@@ -1659,6 +1700,7 @@ export const AppProvider = ({ children }) => {
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
             messages, setMessages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile,
+            socketRef,
             rfis, rfiStats, addRFI,
             isClockedIn, isClocking, toggleClock,
             clockInTime, clockOutTime, getWorkDuration,

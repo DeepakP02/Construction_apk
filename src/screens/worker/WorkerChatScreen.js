@@ -7,19 +7,23 @@ import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { getServerUrl } from '../../utils/api';
+import api from '../../utils/api';
 
 const { width } = Dimensions.get('window');
 
 const WorkerChatScreen = ({ navigation, route }) => {
     const { room } = route.params || {};
-    const { user, messages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile } = useApp();
+    const { user, messages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile, socketRef } = useApp();
     const [msgText, setMsgText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     /** Real ChatRoom id for DMs (route only has peer user id). */
     const [dmRoomId, setDmRoomId] = useState(null);
     const flatListRef = useRef();
+    // Track the resolved room id for socket subscriptions
+    const resolvedRoomIdRef = useRef(null);
 
+    // Resolve the actual ChatRoom id and load initial messages
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
@@ -39,8 +43,16 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 } else {
                     setDmRoomId(null);
                 }
+                resolvedRoomIdRef.current = fetchId;
                 if (!cancelled) {
                     await fetchMessages(fetchId);
+                    // Join socket room immediately
+                    const socket = socketRef?.current;
+                    if (socket?.connected && fetchId) {
+                        socket.emit('join_room', String(fetchId));
+                    }
+                    // Mark as read
+                    api.put(`/chat/mark-read/${fetchId}`).catch(() => {});
                 }
             } finally {
                 if (!cancelled) {
@@ -49,32 +61,62 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 }
             }
         };
-        const cleanupPromise = load();
-        return () => { 
-            cancelled = true; 
-            cleanupPromise.then(cleanupFn => {
-                if (typeof cleanupFn === 'function') cleanupFn();
-            });
-        };
+        load();
+        return () => { cancelled = true; };
     }, [room?.id, room?.type, user?._id]);
 
+    // ── REAL-TIME: Subscribe to socket new_message events directly ──────────────
+    useEffect(() => {
+        const socket = socketRef?.current;
+        if (!socket) return;
+
+        const handleNewMessage = (incoming) => {
+            if (!incoming) return;
+            const incomingRoomId = String(incoming.roomId?._id || incoming.roomId || '');
+            const resolved = resolvedRoomIdRef.current;
+            // Only handle messages for the room we're currently in
+            if (!resolved || incomingRoomId !== String(resolved)) return;
+
+            // The context already deduplicates and adds to messages[], 
+            // so we just need to scroll to bottom and mark as read
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+            api.put(`/chat/mark-read/${resolved}`).catch(() => {});
+        };
+
+        socket.on('new_message', handleNewMessage);
+
+        // Re-join room on socket reconnect
+        const handleReconnect = () => {
+            const rid = resolvedRoomIdRef.current;
+            if (rid && socket.connected) {
+                socket.emit('join_room', String(rid));
+            }
+        };
+        socket.on('connect', handleReconnect);
+
+        return () => {
+            socket.off('new_message', handleNewMessage);
+            socket.off('connect', handleReconnect);
+        };
+    }, [socketRef?.current]);
+
+    // ── FALLBACK: 3-second polling while screen is focused ─────────────────────
     useFocusEffect(
         useCallback(() => {
             let timer = null;
             const refreshActiveRoom = async () => {
-                if (!room?.id) return;
-                const fetchId = room.type === 'private' ? (dmRoomId || null) : room.id;
+                const fetchId = resolvedRoomIdRef.current;
                 if (!fetchId) return;
                 await fetchMessages(fetchId);
             };
 
             refreshActiveRoom();
-            timer = setInterval(refreshActiveRoom, 5000);
+            timer = setInterval(refreshActiveRoom, 3000);
 
             return () => {
                 if (timer) clearInterval(timer);
             };
-        }, [room?.id, room?.type, dmRoomId, fetchMessages])
+        }, [fetchMessages])
     );
 
     const peerId = room?.id?.toString();

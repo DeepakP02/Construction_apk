@@ -7,12 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 2) Known production host candidates (auto-failover)
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
-    // Prefer local backend endpoints during development/testing
-    // 'http://192.168.1.40:5000',  // Current Physical phone local Wi-Fi IP
-    // 'http://192.168.1.45:5000',  // Previous Physical phone local Wi-Fi IP
-    // 'http://192.168.1.23:5000',  // Older Physical phone local Wi-Fi IP
-    // 'http://10.0.2.2:5000',      // Android Emulator loopback
-    // 'http://localhost:5000',     // iOS Simulator/Fallback
+    // Local backend - your Mac's LAN IP, backend runs on port 8080
+    'http://192.168.1.46:8080',  // ✅ This Mac (LAN IP) - primary local backend
+    'http://10.0.2.2:8080',      // Android Emulator loopback to host
+    // Production fallback (Railway) - used if local is unreachable
     'https://construction-production-b18f.up.railway.app',
 ].filter(Boolean);
 
