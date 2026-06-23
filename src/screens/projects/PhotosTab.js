@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Dimensions, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Dimensions, Modal, TextInput, Alert, ScrollView, Platform, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants/theme';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +17,7 @@ export const PhotosTab = ({ project }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
     const [photoLabel, setPhotoLabel] = useState('');
+    const [viewerUri, setViewerUri] = useState(null);
 
     const handleCamera = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -138,6 +139,7 @@ export const PhotosTab = ({ project }) => {
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         style={styles.photoCard}
+                        onPress={() => setViewerUri(item.url)}
                         onLongPress={() => handleDeletePhoto(item.id, item.label)}
                         activeOpacity={0.8}
                     >
@@ -192,11 +194,37 @@ export const PhotosTab = ({ project }) => {
                     </View>
                 </View>
             </Modal>
+
+            <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
+                <View style={styles.viewerBackdrop}>
+                    <StatusBar barStyle="light-content" backgroundColor="#000" />
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.viewerScroll}
+                        maximumZoomScale={4}
+                        minimumZoomScale={1}
+                        centerContent
+                        showsVerticalScrollIndicator={false}
+                        showsHorizontalScrollIndicator={false}
+                    >
+                        <TouchableOpacity activeOpacity={1} onPress={() => setViewerUri(null)}>
+                            <Image source={{ uri: viewerUri }} style={styles.viewerImage} resizeMode="contain" />
+                        </TouchableOpacity>
+                    </ScrollView>
+                    <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerUri(null)} activeOpacity={0.8}>
+                        <MaterialCommunityIcons name="close" size={26} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
+    viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)' },
+    viewerScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+    viewerImage: { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 },
+    viewerClose: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

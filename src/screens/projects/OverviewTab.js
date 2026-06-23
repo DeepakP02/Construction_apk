@@ -72,7 +72,7 @@ export const OverviewTab = ({ project }) => {
             {/* 📊 KPI GRID */}
             <View style={styles.kpiGrid}>
                 <ProjectStat icon="clipboard-list-outline" label="TOTAL JOBS" val={projectWorkCount} color="#6366F1" />
-                <ProjectStat icon="alert-octagon-outline" label="ISSUES" val={project.stats?.issues || 0} color="#EF4444" />
+                <ProjectStat icon="alert-octagon-outline" label="DEFICIENCIES" val={project.stats?.issues || 0} color="#EF4444" />
                 <ProjectStat icon="currency-usd" label="BUDGET SPENT" val={project.budget ? `$${(project.budget / 1000).toFixed(0)}K` : 'TBD'} color="#059669" />
             </View>
 

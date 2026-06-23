@@ -29,10 +29,10 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const STATUS_FILTERS = [
         { label: 'All', value: 'All' },
-        { label: 'Open', value: 'open' },
-        { label: 'In Review', value: 'in_review' },
-        { label: 'Resolved', value: 'resolved' },
-        { label: 'Closed', value: 'closed' }
+        { label: 'Active Snags', value: 'open' },
+        { label: 'In Correction', value: 'in_review' },
+        { label: 'Verified Fixed', value: 'resolved' },
+        { label: 'Archived', value: 'closed' }
     ];
     
     // Create Issue State
@@ -47,27 +47,42 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
         attachments: []
     });
 
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const appendPhoto = (uri) => {
+        if (!uri) return;
+        setForm(prev => ({
+            ...prev,
+            attachments: [...prev.attachments, uri]
+        }));
+    };
+
+    // Live camera capture — opens the device camera to capture site evidence.
+    const capturePhoto = async () => {
+        const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'We need access to your photos to attach them.');
+            Alert.alert(
+                'Camera Access Needed',
+                canAskAgain
+                    ? 'Please allow camera access to capture site photos.'
+                    : 'Camera access is disabled. Enable it in Settings to capture site photos.'
+            );
             return;
         }
 
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.4,
-            base64: false
-        });
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.4,
+                base64: false,
+                cameraType: ImagePicker.CameraType?.back
+            });
 
-        if (!result.canceled) {
-            const newPhoto = result.assets[0].uri;
-            setForm(prev => ({
-                ...prev,
-                attachments: [...prev.attachments, newPhoto]
-            }));
+            if (!result.canceled && result.assets?.length) {
+                appendPhoto(result.assets[0].uri);
+            }
+        } catch (e) {
+            Alert.alert('Camera Error', 'Unable to open the camera. Please try again.');
         }
     };
 
@@ -128,7 +143,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
             setModalVisible(false);
             setForm({ title: '', description: '', priority: 'Medium', projectId: null, location: '', attachments: [] });
             await refreshData();
-            Alert.alert('Success', 'Issue reported successfully');
+            Alert.alert('Success', 'Snag logged successfully');
         } catch (e) {
             console.error('Issue Submit Error:', e.response?.data || e.message);
             Alert.alert('Error', 'Failed to submit issue report');
@@ -137,6 +152,15 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
         }
     };
 
+    const getStatusLabel = (s) => {
+        switch ((s || 'open').toLowerCase()) {
+            case 'open': return 'Active Snag';
+            case 'in_review': return 'In Correction';
+            case 'resolved': return 'Verified Fixed';
+            case 'closed': return 'Archived';
+            default: return (s || 'open').toUpperCase();
+        }
+    };
     const getPriorityColor = (p) => {
         switch (p?.toLowerCase()) {
             case 'high': return '#EF4444';
@@ -178,9 +202,9 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                         <View style={{ flex: 1 }}>
                             <View style={[styles.cardHeader, { marginBottom: verticalScale(10) }]}>
                                 <Text style={[styles.issueTitle, { fontSize: moderateScale(16) }]}>{item.title}</Text>
-                                <View style={[styles.statusBadge, { backgroundColor: item.status === 'Resolved' ? '#F0FDF4' : '#FFF7ED', paddingHorizontal: scale(8), paddingVertical: verticalScale(4), borderRadius: moderateScale(8) }]}>
-                                    <Text style={[styles.statusText, { color: item.status === 'Resolved' ? '#10B981' : '#EA580C', fontSize: moderateScale(9) }]}>
-                                        {(item.status || 'OPEN').toUpperCase()}
+                                <View style={[styles.statusBadge, { backgroundColor: item.status === 'resolved' ? '#F0FDF4' : '#FFF7ED', paddingHorizontal: scale(8), paddingVertical: verticalScale(4), borderRadius: moderateScale(8) }]}>
+                                    <Text style={[styles.statusText, { color: item.status === 'resolved' ? '#10B981' : '#EA580C', fontSize: moderateScale(9) }]}>
+                                        {getStatusLabel(item.status).toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
@@ -207,17 +231,17 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
-            <WorkerHeader title="Issue List" />
+            <WorkerHeader title="Site Issues & Snags" />
 
             <View style={[styles.content, { paddingHorizontal: isTablet ? '10%' : (isCompact ? 14 : scale(20)), maxWidth: width >= 900 ? 980 : undefined, alignSelf: 'center', width: '100%' }]}>
-                <View style={[styles.pageHeader, { marginTop: verticalScale(20), marginBottom: verticalScale(20) }]}>
-                    <View>
-                        <Text style={[styles.mainTitle, { fontSize: moderateScale(isCompact ? 22 : 26) }]}>Field Issues</Text>
-                        <Text style={[styles.mainSubtitle, { fontSize: moderateScale(isCompact ? 12 : 13), marginTop: verticalScale(4) }]}>Report & track site issues</Text>
+                <View style={[styles.pageHeader, { marginTop: verticalScale(20), marginBottom: verticalScale(20), gap: scale(12) }]}>
+                    <View style={styles.pageHeaderText}>
+                        <Text style={[styles.mainTitle, { fontSize: moderateScale(isCompact ? 20 : 26) }]} numberOfLines={2}>Site Issues & Snags</Text>
+                        <Text style={[styles.mainSubtitle, { fontSize: moderateScale(isCompact ? 12 : 13), marginTop: verticalScale(4) }]} numberOfLines={2}>Defect management and safety oversight</Text>
                     </View>
-                    <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: scale(isCompact ? 10 : 14), paddingVertical: verticalScale(isCompact ? 8 : 10), borderRadius: moderateScale(12), gap: scale(6) }]} onPress={() => setModalVisible(true)}>
+                    <TouchableOpacity style={[styles.addBtn, { paddingHorizontal: scale(isCompact ? 12 : 16), paddingVertical: verticalScale(isCompact ? 10 : 12), borderRadius: moderateScale(12), gap: scale(6) }]} onPress={() => setModalVisible(true)}>
                         <MaterialCommunityIcons name="alert-plus" size={moderateScale(18)} color="#fff" />
-                        <Text style={[styles.addBtnText, { fontSize: moderateScale(12) }]}>Log Issue</Text>
+                        <Text style={[styles.addBtnText, { fontSize: moderateScale(12) }]} numberOfLines={1}>{isCompact ? 'Log Snag' : 'Log Critical Snag'}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -225,7 +249,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                     <View style={[styles.searchBox, { height: verticalScale(50), borderRadius: moderateScale(16), paddingHorizontal: scale(16), gap: scale(12) }]}>
                         <MaterialCommunityIcons name="magnify" size={moderateScale(20)} color="#94A3B8" />
                         <TextInput 
-                            placeholder="Search issues..."
+                            placeholder="Search snags, sites..."
                             placeholderTextColor="#94A3B8"
                             style={[styles.searchInput, { fontSize: moderateScale(14) }]}
                             value={searchQuery}
@@ -266,7 +290,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                     ListEmptyComponent={
                         <View style={[styles.empty, { padding: scale(60) }]}>
                             <MaterialCommunityIcons name="check-decagram-outline" size={moderateScale(64)} color="#E2E8F0" />
-                            <Text style={[styles.emptyTxt, { fontSize: moderateScale(14), marginTop: verticalScale(15) }]}>No active issues found.</Text>
+                            <Text style={[styles.emptyTxt, { fontSize: moderateScale(14), marginTop: verticalScale(15) }]}>Zero active snags recorded</Text>
                         </View>
                     }
                 />
@@ -283,7 +307,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                     <View style={[styles.modalSheet, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), height: '85%', paddingBottom: insets.bottom + 20 }]}>
                         <View style={styles.modalHandle} />
                         <View style={[styles.modalHeader, { paddingHorizontal: scale(20) }]}>
-                            <Text style={[styles.modalTitle, { fontSize: moderateScale(22) }]}>Report Site Issue</Text>
+                            <Text style={[styles.modalTitle, { fontSize: moderateScale(22) }]}>Report Site Defect</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#0F172A" />
                             </TouchableOpacity>
@@ -294,7 +318,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                             keyboardShouldPersistTaps="handled"
                             contentContainerStyle={{ paddingHorizontal: scale(20), paddingBottom: 30 }}
                         >
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8), marginTop: verticalScale(16) }]}>ISSUE TITLE</Text>
+                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8), marginTop: verticalScale(16) }]}>ISSUE / SNAG TITLE</Text>
                             <TextInput 
                                 style={[styles.input, { height: verticalScale(50), borderRadius: moderateScale(14), paddingHorizontal: scale(16), fontSize: moderateScale(15) }]}
                                 placeholder="e.g. Broken pipe in lobby"
@@ -340,11 +364,11 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
 
                             <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(20) }]}>ATTACH PHOTOS</Text>
                             <View style={[styles.photoSection, { marginTop: verticalScale(8) }]}>
-                                <TouchableOpacity style={[styles.addPhotoBtn, SHADOWS.small]} onPress={pickImage}>
-                                    <MaterialCommunityIcons name="camera-plus" size={32} color="#2563EB" />
-                                    <Text style={[styles.addPhotoText, { color: '#2563EB' }]}>Add Photo</Text>
+                                <TouchableOpacity style={[styles.addPhotoBtn, SHADOWS.small]} onPress={capturePhoto} activeOpacity={0.85}>
+                                    <MaterialCommunityIcons name="camera" size={moderateScale(30)} color="#2563EB" />
+                                    <Text style={[styles.addPhotoText, { color: '#2563EB' }]}>Take Photo</Text>
                                 </TouchableOpacity>
-                                
+
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
                                     {form.attachments.map((img, idx) => (
                                         <View key={idx} style={styles.photoWrapper}>
@@ -371,7 +395,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                                     disabled={submitting}
                                 >
                                     {submitting ? <ActivityIndicator color="#fff" /> : (
-                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]}>Submit Issue</Text>
+                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]} numberOfLines={1}>Commit to Log</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -388,7 +412,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                         <View style={styles.modalHandle} />
                         <View style={[styles.modalHeader, { paddingHorizontal: scale(20), paddingBottom: verticalScale(15) }]}>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.modalTitle, { fontSize: moderateScale(22), color: '#0F172A' }]}>Issue Details</Text>
+                                <Text style={[styles.modalTitle, { fontSize: moderateScale(22), color: '#0F172A' }]}>Incident Snapshot</Text>
                                 <Text style={[styles.modalSubtitle, { fontSize: moderateScale(12), color: '#64748B' }]}>Reference #{String(selectedIssue?._id || '').slice(-6).toUpperCase()}</Text>
                             </View>
                             <TouchableOpacity 
@@ -406,7 +430,7 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                             <View style={[styles.detailStatusRow, { marginBottom: verticalScale(20), marginTop: verticalScale(10) }]}>
                                 <View style={[styles.statusBadge, { backgroundColor: (selectedIssue?.status || 'open') === 'resolved' ? '#F0FDF4' : '#FFF7ED', paddingHorizontal: scale(12), paddingVertical: verticalScale(6), borderRadius: 8 }]}>
                                     <Text style={[styles.statusText, { color: (selectedIssue?.status || 'open') === 'resolved' ? '#10B981' : '#EA580C', fontSize: moderateScale(11), fontWeight: '800' }]}>
-                                        {(selectedIssue?.status || 'open').toUpperCase()}
+                                        {getStatusLabel(selectedIssue?.status).toUpperCase()}
                                     </Text>
                                 </View>
                                 <View style={[styles.detailPriority, { backgroundColor: getPriorityColor(selectedIssue?.priority) + '15', borderColor: getPriorityColor(selectedIssue?.priority), borderRadius: 8 }]}>
@@ -493,9 +517,10 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
     content: { flex: 1 },
     pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    pageHeaderText: { flex: 1, minWidth: 0 },
     mainTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
     mainSubtitle: { color: '#64748B', fontWeight: '800' },
-    addBtn: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center' },
+    addBtn: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     addBtnText: { color: '#fff', fontWeight: '900' },
     filterBar: { },
     statusFilterRow: { paddingRight: scale(10) },
@@ -544,16 +569,16 @@ const styles = StyleSheet.create({
     priorityRow: { flexDirection: 'row' },
     prioBtn: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
     prioBtnText: { fontWeight: '900', color: '#64748B' },
-    submitBtn: { backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' },
+    submitBtn: { flex: 1.3, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(8) },
     submitBtnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
     createIssueActions: { flexDirection: 'row', gap: scale(10), alignItems: 'center' },
     createIssueCancelBtn: { flex: 1, height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
     createIssueCancelText: { color: '#475569', fontWeight: '900', textTransform: 'uppercase', fontSize: moderateScale(12) },
 
     // Photo Section Styles
-    photoSection: { flexDirection: 'row', marginTop: 10, gap: 12, alignItems: 'center' },
-    addPhotoBtn: { width: 100, height: 100, borderRadius: 16, backgroundColor: '#F8FAFC', borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
-    addPhotoText: { fontSize: 10, fontWeight: '800', color: '#94A3B8', marginTop: 4 },
+    photoSection: { flexDirection: 'row', marginTop: 10, gap: scale(10), alignItems: 'center' },
+    addPhotoBtn: { width: scale(100), height: scale(100), borderRadius: moderateScale(16), backgroundColor: '#EFF6FF', borderStyle: 'dashed', borderWidth: 2, borderColor: '#BFDBFE', justifyContent: 'center', alignItems: 'center' },
+    addPhotoText: { fontSize: moderateScale(10), fontWeight: '800', color: '#94A3B8', marginTop: 4 },
     photoList: { flex: 1 },
     photoWrapper: { position: 'relative', marginRight: 12 },
     photoPreview: { width: 100, height: 100, borderRadius: 16 },

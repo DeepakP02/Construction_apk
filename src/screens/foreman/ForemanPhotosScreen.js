@@ -28,6 +28,7 @@ const ForemanPhotosScreen = () => {
     const [selectedProjectId, setSelectedProjectId] = useState('all');
 
     const [uploadModal, setUploadModal] = useState(false);
+    const [viewerUri, setViewerUri] = useState(null);
     const [tempImage, setTempImage] = useState(null);
     const [externalUrl, setExternalUrl] = useState('');
     const [description, setDescription] = useState('');
@@ -230,7 +231,9 @@ const ForemanPhotosScreen = () => {
                         <View style={[styles.photoCardWrapper, { width: isTablet ? '33.3%' : '50%', padding: scale(8) }]}>
                             <View style={[styles.photoCard, SHADOWS.small, { borderRadius: moderateScale(20) }]}>
                                 <View style={[styles.imageContainer, { height: verticalScale(160) }]}>
-                                    <Image source={{ uri: getServerUrl(item.imageUrl) || item.imageUrl }} style={styles.photoImg} resizeMode="cover" />
+                                    <TouchableOpacity activeOpacity={0.85} style={{ width: '100%', height: '100%' }} onPress={() => setViewerUri(getServerUrl(item.imageUrl) || item.imageUrl)}>
+                                        <Image source={{ uri: getServerUrl(item.imageUrl) || item.imageUrl }} style={styles.photoImg} resizeMode="cover" />
+                                    </TouchableOpacity>
                                     <View style={[styles.photoBadge, { top: scale(10), left: scale(10), paddingHorizontal: scale(10), paddingVertical: verticalScale(5), borderRadius: moderateScale(8) }]}>
                                         <Text style={[styles.photoBadgeText, { fontSize: moderateScale(9) }]} numberOfLines={1}>{item.projectId?.name || 'General'}</Text>
                                     </View>
@@ -319,12 +322,38 @@ const ForemanPhotosScreen = () => {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
+                <View style={styles.viewerBackdrop}>
+                    <StatusBar barStyle="light-content" backgroundColor="#000" />
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.viewerScroll}
+                        maximumZoomScale={4}
+                        minimumZoomScale={1}
+                        centerContent
+                        showsVerticalScrollIndicator={false}
+                        showsHorizontalScrollIndicator={false}
+                    >
+                        <TouchableOpacity activeOpacity={1} onPress={() => setViewerUri(null)}>
+                            <Image source={{ uri: viewerUri }} style={styles.viewerImage} resizeMode="contain" />
+                        </TouchableOpacity>
+                    </ScrollView>
+                    <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerUri(null)} activeOpacity={0.8}>
+                        <MaterialCommunityIcons name="close" size={moderateScale(26)} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
+    viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)' },
+    viewerScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+    viewerImage: { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 },
+    viewerClose: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
     pageHeader: { },
     pageTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
     pageSubtitle: { fontWeight: '600', color: '#64748B' },

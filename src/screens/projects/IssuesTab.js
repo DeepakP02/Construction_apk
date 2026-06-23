@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, SIZES } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
@@ -24,18 +24,40 @@ export const IssuesTab = ({ project }) => {
         return pId === project.id;
     });
 
-    const pickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.4,
-        });
-        if (!result.canceled) {
-            setNewIssue(prev => ({
-                ...prev,
-                attachments: [...prev.attachments, result.assets[0].uri]
-            }));
+    const appendPhoto = (uri) => {
+        if (!uri) return;
+        setNewIssue(prev => ({
+            ...prev,
+            attachments: [...prev.attachments, uri]
+        }));
+    };
+
+    // Live camera capture — opens the device camera to capture site evidence.
+    const capturePhoto = async () => {
+        const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert(
+                'Camera Access Needed',
+                canAskAgain
+                    ? 'Please allow camera access to capture site photos.'
+                    : 'Camera access is disabled. Enable it in Settings to capture site photos.'
+            );
+            return;
+        }
+
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.4,
+                cameraType: ImagePicker.CameraType?.back
+            });
+            if (!result.canceled && result.assets?.length) {
+                appendPhoto(result.assets[0].uri);
+            }
+        } catch (e) {
+            Alert.alert('Camera Error', 'Unable to open the camera. Please try again.');
         }
     };
 
@@ -88,11 +110,11 @@ export const IssuesTab = ({ project }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.count}>{projectIssues.length} Active Issues</Text>
-                {user?.role !== 'Worker' && (
+                <Text style={styles.count}>{projectIssues.length} Open Deficiencies</Text>
+                {user?.role !== 'WORKER' && (
                     <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
                         <MaterialCommunityIcons name="alert-plus" size={20} color={COLORS.black} />
-                        <Text style={styles.addButtonText}>Report Issue</Text>
+                        <Text style={styles.addButtonText}>Add Deficiency</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -105,7 +127,7 @@ export const IssuesTab = ({ project }) => {
                 ListEmptyComponent={
                     <View style={styles.empty}>
                         <MaterialCommunityIcons name="check-decagram" size={60} color={COLORS.success} />
-                        <Text style={styles.emptyText}>Zero critical issues found.</Text>
+                        <Text style={styles.emptyText}>Zero active snags recorded</Text>
                     </View>
                 }
             />
@@ -128,10 +150,10 @@ export const IssuesTab = ({ project }) => {
                             keyboardShouldPersistTaps="always"
                             keyboardDismissMode="none"
                         >
-                        <Text style={styles.modalTitle}>Report Site Issue</Text>
+                        <Text style={styles.modalTitle}>Report Site Defect</Text>
 
                         <CustomInput
-                            label="Issue Title"
+                            label="Issue / Snag Title"
                             placeholder="e.g. Material shortage in Block 4"
                             value={newIssue.title}
                             onChangeText={(text) => setNewIssue({ ...newIssue, title: text })}
@@ -165,8 +187,9 @@ export const IssuesTab = ({ project }) => {
 
                         <Text style={styles.label}>Attachments</Text>
                         <View style={styles.attachmentContainer}>
-                            <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage}>
-                                <MaterialCommunityIcons name="camera-plus" size={24} color={COLORS.primary} />
+                            <TouchableOpacity style={styles.capturePhotoBtn} onPress={capturePhoto} activeOpacity={0.85}>
+                                <MaterialCommunityIcons name="camera" size={22} color={COLORS.primary} />
+                                <Text style={styles.capturePhotoText}>Camera</Text>
                             </TouchableOpacity>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
                                 {newIssue.attachments.map((uri, idx) => (
@@ -186,7 +209,7 @@ export const IssuesTab = ({ project }) => {
                             </View>
                             <View style={[styles.modalBtnCol, styles.modalBtnColPrimary]}>
                                 <CustomButton 
-                                    title={submitting ? "Uploading..." : "Flag Issue"} 
+                                    title={submitting ? "Uploading..." : "Commit to Log"}
                                     onPress={handleAddIssue} 
                                     disabled={submitting} 
                                 />
@@ -211,8 +234,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: SPACING.m,
+        gap: 12,
     },
     count: {
+        flex: 1,
+        minWidth: 0,
         fontSize: 14,
         color: COLORS.textSecondary,
         fontWeight: '700',
@@ -224,6 +250,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 8,
+        flexShrink: 0,
     },
     addButtonText: {
         color: COLORS.black,
@@ -308,8 +335,9 @@ const styles = StyleSheet.create({
     },
     modalBtnCol: { flex: 1, minWidth: 0, justifyContent: 'center' },
     modalBtnColPrimary: { flex: 1.4 },
-    attachmentContainer: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: SPACING.xl },
-    addPhotoBtn: { width: 50, height: 50, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+    attachmentContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.xl },
+    capturePhotoBtn: { width: 64, height: 64, borderRadius: 12, backgroundColor: COLORS.primary + '12', borderStyle: 'dashed', borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', gap: 2 },
+    capturePhotoText: { fontSize: 9, fontWeight: '800', color: COLORS.primary },
     previewWrapper: { marginRight: 10, position: 'relative' },
     preview: { width: 50, height: 50, borderRadius: 12 },
     removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10 }

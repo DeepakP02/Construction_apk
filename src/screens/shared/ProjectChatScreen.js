@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
@@ -14,6 +14,7 @@ const ProjectChatScreen = ({ route }) => {
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [dmRoomId, setDmRoomId] = useState(null);
+    const [viewerUri, setViewerUri] = useState(null);
     const flatListRef = useRef();
 
     const targetId = (project._id || project.id)?.toString();
@@ -188,13 +189,14 @@ const ProjectChatScreen = ({ route }) => {
                                         );
                                     }
                                     return (
-                                        <Image
-                                            key={i}
-                                            source={{ uri: resolvedUri }}
-                                            style={styles.attachmentImage}
-                                            resizeMode="cover"
-                                            onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
-                                        />
+                                        <TouchableOpacity key={i} activeOpacity={0.85} onPress={() => setViewerUri(resolvedUri)}>
+                                            <Image
+                                                source={{ uri: resolvedUri }}
+                                                style={styles.attachmentImage}
+                                                resizeMode="cover"
+                                                onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
+                                            />
+                                        </TouchableOpacity>
                                     );
                                 })}
                             </View>
@@ -247,6 +249,28 @@ const ProjectChatScreen = ({ route }) => {
                     )}
                 </View>
             </KeyboardAvoidingView>
+
+            <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
+                <View style={styles.viewerBackdrop}>
+                    <StatusBar barStyle="light-content" backgroundColor="#000" />
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.viewerScroll}
+                        maximumZoomScale={4}
+                        minimumZoomScale={1}
+                        centerContent
+                        showsVerticalScrollIndicator={false}
+                        showsHorizontalScrollIndicator={false}
+                    >
+                        <Pressable onPress={() => setViewerUri(null)}>
+                            <Image source={{ uri: viewerUri }} style={styles.viewerImage} resizeMode="contain" />
+                        </Pressable>
+                    </ScrollView>
+                    <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerUri(null)} activeOpacity={0.8}>
+                        <MaterialCommunityIcons name="close" size={28} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -271,6 +295,10 @@ const styles = StyleSheet.create({
     theirTime: { color: '#94A3B8' },
     attachmentContainer: { marginBottom: 6, borderRadius: 12, overflow: 'hidden' },
     attachmentImage: { width: 220, height: 220, borderRadius: 12 },
+    viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)' },
+    viewerScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+    viewerImage: { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 },
+    viewerClose: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
     footerContainer: {
         flexDirection: 'row',
         alignItems: 'center',

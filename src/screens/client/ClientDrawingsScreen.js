@@ -179,7 +179,7 @@ const ClientDrawingsScreen = () => {
                     <View style={styles.projectRow}>
                         <MaterialCommunityIcons name="office-building" size={12} color="#94A3B8" />
                         <Text style={styles.projectName}>{item.projectId?.name || 'Unassigned'}</Text>
-                        <Text style={styles.dateText}>{new Date(item.updatedAt).toLocaleDateString()}</Text>
+                        <Text style={styles.dateText}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '--'}</Text>
                     </View>
                 </View>
 

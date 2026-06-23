@@ -62,7 +62,7 @@ const ProjectDetailsScreen = ({ route, navigation }) => {
                 <Tab.Screen name="Photos">
                     {() => <PhotosTab project={project} />}
                 </Tab.Screen>
-                <Tab.Screen name="Issues">
+                <Tab.Screen name="Issues" options={{ tabBarLabel: 'Deficiencies' }}>
                     {() => <IssuesTab project={project} />}
                 </Tab.Screen>
                 <Tab.Screen name="Chat">

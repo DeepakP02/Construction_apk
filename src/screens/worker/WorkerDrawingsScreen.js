@@ -173,7 +173,7 @@ const WorkerDrawingsScreen = () => {
                 </View>
             </View>
             <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <Text style={[styles.rowDate, { fontSize: moderateScale(11) }]}>{new Date(item.updatedAt).toLocaleDateString([], { month: 'short', day: '2-digit' })}</Text>
+                <Text style={[styles.rowDate, { fontSize: moderateScale(11) }]}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit' }) : '--'}</Text>
             </View>
         </TouchableOpacity>
     );
@@ -276,7 +276,7 @@ const WorkerDrawingsScreen = () => {
                                     </View>
                                     <View style={styles.gridItem}>
                                         <Text style={[styles.gridLabel, { fontSize: moderateScale(9) }]}>RELEASE DATE</Text>
-                                        <Text style={[styles.gridValue, { fontSize: moderateScale(14) }]}>{new Date(selectedDrawing.updatedAt).toLocaleDateString()}</Text>
+                                        <Text style={[styles.gridValue, { fontSize: moderateScale(14) }]}>{selectedDrawing.createdAt ? new Date(selectedDrawing.createdAt).toLocaleDateString() : '--'}</Text>
                                     </View>
                                     <View style={styles.gridItem}>
                                         <Text style={[styles.gridLabel, { fontSize: moderateScale(9) }]}>STATUS</Text>

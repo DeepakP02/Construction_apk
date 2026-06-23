@@ -349,7 +349,7 @@ const ProjectManagerDrawingsScreen = () => {
                             </View>
                             <View style={styles.detailItem}>
                                 <Text style={[styles.detailLabel, { fontSize: moderateScale(9) }]}>LAST REVISION</Text>
-                                <Text style={[styles.detailValue, { fontSize: moderateScale(14) }]}>{selectedDrawing ? new Date(selectedDrawing.updatedAt).toLocaleDateString() : '---'}</Text>
+                                <Text style={[styles.detailValue, { fontSize: moderateScale(14) }]}>{selectedDrawing?.createdAt ? new Date(selectedDrawing.createdAt).toLocaleDateString() : '---'}</Text>
                             </View>
                         </View>
 

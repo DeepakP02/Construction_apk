@@ -782,7 +782,7 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
                     onPress={() => navigation.navigate('ForemanIssues', { projectId, projectName: project?.name })}
                 >
                     <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#64748B" />
-                    <Text style={[styles.navText, { fontSize: isCompact ? 9 : 10 }]}>Punch List</Text>
+                    <Text style={[styles.navText, { fontSize: isCompact ? 9 : 10 }]}>Deficiencies</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
