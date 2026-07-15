@@ -5,7 +5,7 @@ import {
     Alert, Platform, Image, KeyboardAvoidingView, Linking, useWindowDimensions, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
@@ -94,7 +94,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             case 'in_review': return { bg: '#FFFBEB', color: '#F59E0B', label: 'In Review' };
             case 'answered': return { bg: '#F0F9FF', color: '#0EA5E9', label: 'Answered' };
             case 'closed': return { bg: '#ECFDF5', color: '#10B981', label: 'Closed' };
-            default: return { bg: '#F8FAFC', color: '#64748B', label: status };
+            default: return { bg: '#F8FAFC', color: COLORS.textSecondary, label: status };
         }
     };
 
@@ -103,7 +103,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             case 'high': return { bg: '#FEF2F2', color: '#EF4444', label: 'High Priority' };
             case 'medium': return { bg: '#FFFBEB', color: '#F59E0B', label: 'Medium Priority' };
             case 'low': return { bg: '#ECFDF5', color: '#10B981', label: 'Low Priority' };
-            default: return { bg: '#F1F5F9', color: '#64748B', label: p };
+            default: return { bg: '#F1F5F9', color: COLORS.textSecondary, label: p };
         }
     };
 
@@ -213,7 +213,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
             <WorkerHeader title="RFI Details" showBack={true} showBranding={true} />
             <KeyboardAvoidingView
                 style={styles.keyboardWrap}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 24}
             >
             <ScrollView
@@ -280,7 +280,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Official Response</Text>
                         {showResponseBox ? (
-                            <View style={[styles.contentCard, { backgroundColor: '#F8FAFC' }]}>
+                            <View style={[styles.contentCard, { backgroundColor: COLORS.background }]}>
                                 <TextInput
                                     style={[styles.commentInput, { minHeight: 90, maxHeight: 180 }]}
                                     value={officialResponse}
@@ -323,7 +323,7 @@ const RFIDetailScreen = ({ route, navigation }) => {
                     <View style={styles.assignmentCard}>
                         <Text style={styles.infoLabel}>ASSIGNED TO</Text>
                         <Text style={styles.assignmentName}>{assignedDisplayName}</Text>
-                        <Text style={[styles.assignmentRole, assignedDisplayName === 'Unassigned' && { color: '#94A3B8' }]}>
+                        <Text style={[styles.assignmentRole, assignedDisplayName === 'Unassigned' && { color: COLORS.textMuted }]}>
                             {assignedDisplayRole}
                         </Text>
                     </View>
@@ -483,76 +483,76 @@ const RFIDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     keyboardWrap: { flex: 1 },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.card },
     scrollContent: { paddingBottom: 60 },
 
-    mainCard: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9' },
+    mainCard: { backgroundColor: COLORS.card, margin: 20, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
     topMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     rfiNumber: { fontSize: 13, fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
     statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
     statusText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
-    subject: { fontSize: 22, fontWeight: '900', color: '#0F172A', lineHeight: 28, marginBottom: 10 },
+    subject: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, lineHeight: 28, marginBottom: 10 },
     priorityBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, gap: 5 },
     priorityText: { fontSize: 11, fontWeight: '800' },
-    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+    divider: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginVertical: 16 },
     projectInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-    infoLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 2 },
-    infoValue: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+    infoLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 2 },
+    infoValue: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
 
-    section: { paddingHorizontal: 20, marginBottom: 24 },
-    sectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
+    section: { paddingHorizontal: SPACING.m, marginBottom: 24 },
+    sectionTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 12 },
     sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-    contentCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#F1F5F9' },
+    contentCard: { backgroundColor: COLORS.background, padding: SPACING.m, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
     descriptionText: { fontSize: 15, color: '#445469', lineHeight: 24, fontWeight: '500' },
 
-    assignmentGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 24 },
-    assignmentCard: { flex: 1, backgroundColor: '#fff', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-    assignmentName: { fontSize: 14, fontWeight: '900', color: '#1E293B', marginTop: 4 },
+    assignmentGrid: { flexDirection: 'row', paddingHorizontal: SPACING.m, gap: SPACING.sm, marginBottom: 24 },
+    assignmentCard: { flex: 1, backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
+    assignmentName: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, marginTop: 4 },
     assignmentRole: { fontSize: 11, color: '#2563EB', fontWeight: '800', marginTop: 2 },
 
-    datesRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 16, marginBottom: 32 },
+    datesRow: { flexDirection: 'row', paddingHorizontal: SPACING.m, gap: 16, marginBottom: 32 },
     dateItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-    dateLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8' },
-    dateValue: { fontSize: 11, fontWeight: '800', color: '#475569' },
+    dateLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted },
+    dateValue: { fontSize: 11, fontWeight: '800', color: COLORS.textSecondary },
 
-    attachmentList: { paddingRight: 20, gap: 12 },
-    attachmentCardSmall: { width: 120, backgroundColor: '#fff', padding: 12, borderRadius: 18, borderWidth: 1, borderColor: '#F1F5F9', alignItems: 'center' },
-    attachmentIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-    attachmentName: { fontSize: 11, fontWeight: '700', color: '#1E293B', textAlign: 'center' },
+    attachmentList: { paddingRight: 20, gap: SPACING.sm },
+    attachmentCardSmall: { width: 120, backgroundColor: COLORS.card, padding: 12, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
+    attachmentIcon: { width: 44, height: 44, borderRadius: SIZES.radiusBtn, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    attachmentName: { fontSize: 11, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
 
-    commentCount: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-    commentCountTxt: { fontSize: 11, fontWeight: '900', color: '#64748B' },
-    commentInputWrap: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    commentInput: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, fontWeight: '600', color: '#1E293B', maxHeight: 100 },
-    sendBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-end' },
+    commentCount: { backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+    commentCountTxt: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary },
+    commentInputWrap: { flexDirection: 'row', gap: 10, marginBottom: SPACING.m },
+    commentInput: { flex: 1, backgroundColor: COLORS.background, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, paddingVertical: 12, fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, maxHeight: 100 },
+    sendBtn: { width: 48, height: 48, borderRadius: SIZES.radiusCard, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-end' },
 
-    commentsList: { gap: 12 },
-    commentItem: { backgroundColor: '#fff', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+    commentsList: { gap: SPACING.sm },
+    commentItem: { backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
     commentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     authorAvatar: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' },
-    avatarTxt: { color: '#fff', fontSize: 12, fontWeight: '900' },
-    commentAuthor: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
-    commentDate: { fontSize: 10, color: '#94A3B8', fontWeight: '700' },
+    avatarTxt: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
+    commentAuthor: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary },
+    commentDate: { fontSize: 10, color: COLORS.textMuted, fontWeight: '700' },
     roleBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     roleBadgeTxt: { fontSize: 9, fontWeight: '900', color: '#2563EB' },
-    commentText: { fontSize: 14, color: '#475569', lineHeight: 20, fontWeight: '500' },
+    commentText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20, fontWeight: '500' },
     actionsInline: { flexDirection: 'row', gap: 10, marginTop: 10 },
-    ghostActionBtn: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-    ghostActionText: { color: '#475569', fontWeight: '800', fontSize: 12 },
+    ghostActionBtn: { backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+    ghostActionText: { color: COLORS.textSecondary, fontWeight: '800', fontSize: 12 },
     primaryActionBtn: { backgroundColor: '#2563EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-    primaryActionText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+    primaryActionText: { color: COLORS.white, fontWeight: '800', fontSize: 12 },
     secondaryActionBtn: { backgroundColor: '#EFF6FF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
     secondaryActionText: { color: '#2563EB', fontWeight: '800', fontSize: 12 },
     dangerActionBtn: { backgroundColor: '#FEF2F2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' },
     dangerActionText: { color: '#DC2626', fontWeight: '800', fontSize: 12 },
-    statusActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    statusActionBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+    statusActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.s },
+    statusActionBtn: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
     statusActionBtnActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    statusActionText: { color: '#64748B', fontSize: 11, fontWeight: '800' },
-    statusActionTextActive: { color: '#fff' },
-    reassignBox: { gap: 8 }
+    statusActionText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '800' },
+    statusActionTextActive: { color: COLORS.white },
+    reassignBox: { gap: SPACING.s }
 });
 
 export default RFIDetailScreen;

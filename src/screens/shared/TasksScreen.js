@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Modal, ScrollView, Alert, Animated, TextInput, Platform, useWindowDimensions, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import CustomInput from '../../components/CustomInput';
@@ -596,7 +596,7 @@ const TasksScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                     const statusColors = {
-                        todo: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
+                        todo: { color: COLORS.textSecondary, bg: '#F1F5F9', label: 'TODO' },
                         in_progress: { color: '#3B82F6', bg: '#EFF6FF', label: 'LIVE' },
                         review: { color: '#F59E0B', bg: '#FFFBEB', label: 'REVIEW' },
                         completed: { color: '#10B981', bg: '#ECFDF5', label: 'DONE' }
@@ -719,7 +719,7 @@ const TasksScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                     <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
@@ -933,54 +933,54 @@ const TasksScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    stickyHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', zIndex: 10 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    stickyHeader: { paddingHorizontal: SPACING.m, paddingTop: 12, paddingBottom: 10, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border, zIndex: 10 },
     headerTopRowCompact: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     titleSection: { flex: 1 },
-    mainTitleCompact: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    mainSubtitleCompact: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+    mainTitleCompact: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    mainSubtitleCompact: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary },
     
-    createTaskBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 44, borderRadius: 12, gap: 6, marginLeft: 10 },
-    createTaskBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+    createTaskBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.m, height: 44, borderRadius: SIZES.radiusBtn, gap: 6, marginLeft: 10 },
+    createTaskBtnText: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
 
     toolbarCompact: { flexDirection: 'row', alignItems: 'center' },
     searchBoxCompact: { 
         flex: 1,
         flexDirection: 'row', 
         alignItems: 'center', 
-        backgroundColor: '#F8FAFC', 
-        borderRadius: 12, 
+        backgroundColor: COLORS.background, 
+        borderRadius: SIZES.radiusBtn, 
         height: 44, 
         paddingHorizontal: 12, 
         borderWidth: 1, 
-        borderColor: '#E2E8F0' 
+        borderColor: COLORS.border 
     },
-    tinySearchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontWeight: '600', color: '#1E293B' },
+    tinySearchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontWeight: '600', color: COLORS.textPrimary },
 
-    tabBarCompact: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 3, height: 34 },
+    tabBarCompact: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 3, height: 34 },
     smallTab: { flex: 1, height: '100%', justifyContent: 'center', alignItems: 'center', borderRadius: 6 },
-    smallTabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
-    smallTabText: { fontSize: 8, fontWeight: '900', color: '#64748B' },
-    smallTabTextActive: { color: '#0F172A' },
+    smallTabActive: { backgroundColor: COLORS.card, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
+    smallTabText: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary },
+    smallTabTextActive: { color: COLORS.textPrimary },
 
-    scrollContent: { padding: 16, paddingTop: 12, paddingBottom: 100 },
+    scrollContent: { padding: SPACING.m, paddingTop: 12, paddingBottom: 100 },
 
     taskTableRow: { 
-        backgroundColor: '#fff', 
-        borderRadius: 16, 
+        backgroundColor: COLORS.card, 
+        borderRadius: SIZES.radiusCard, 
         padding: 12, 
         marginBottom: 10, 
         borderWidth: 1, 
-        borderColor: '#F1F5F9' 
+        borderColor: COLORS.border 
     },
     tableTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    tableNameCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    tableNameCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
     indicatorLine: { width: 3, height: 22, borderRadius: 2 },
-    taskTitleText: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
-    projectContextText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+    taskTitleText: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary },
+    projectContextText: { fontSize: 10, fontWeight: '700', color: COLORS.textSecondary },
 
     tableMetricCol: { alignItems: 'flex-end', gap: 4 },
-    priorityText: { fontSize: 8, fontWeight: '900', color: '#94A3B8' },
+    priorityText: { fontSize: 8, fontWeight: '900', color: COLORS.textMuted },
     miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
     miniStatusText: { fontSize: 8, fontWeight: '900' },
 
@@ -993,10 +993,10 @@ const styles = StyleSheet.create({
         paddingTop: 8 
     },
     assigneeCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-    assigneeText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+    assigneeText: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
     dateCol: { flex: 0.8, flexDirection: 'row', alignItems: 'center', gap: 4 },
-    tableDateText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
-    actionsCol: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+    tableDateText: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
+    actionsCol: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'center' },
     taskItemWrapper: { position: 'relative' },
     treeConnector: {
         position: 'absolute',
@@ -1023,13 +1023,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#CBD5E1',
     },
     subtaskCard: {
-        backgroundColor: '#F8FAFC',
-        borderColor: '#E2E8F0',
+        backgroundColor: COLORS.background,
+        borderColor: COLORS.border,
         elevation: 1,
         shadowOpacity: 0.05
     },
     deepSubtaskCard: {
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         borderColor: '#CBD5E1',
     },
     badgeRow: {
@@ -1048,31 +1048,31 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     parentTag: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         maxWidth: 120
     },
     parentTagText: {
         fontSize: 7,
         fontWeight: '900',
-        color: '#64748B'
+        color: COLORS.textSecondary
     },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, alignSelf: 'center' },
-    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, alignSelf: 'center' },
+    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: SPACING.m },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary },
 
-    label: { fontSize: 9, fontWeight: '900', color: '#64748B', textTransform: 'uppercase', marginBottom: 6, marginTop: 10, letterSpacing: 1 },
+    label: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase', marginBottom: 6, marginTop: 10, letterSpacing: 1 },
     compactDropdown: { 
         height: 42, 
-        backgroundColor: '#fff', 
+        backgroundColor: COLORS.card, 
         borderRadius: 10, 
         borderWidth: 1.5, 
         borderColor: '#3B82F633', 
@@ -1082,27 +1082,27 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         marginBottom: 8
     },
-    dropdownValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+    dropdownValue: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
 
-    formGrid: { flexDirection: 'row', gap: 12 },
-    formGridStacked: { flexDirection: 'column', gap: 8 },
+    formGrid: { flexDirection: 'row', gap: SPACING.sm },
+    formGridStacked: { flexDirection: 'column', gap: SPACING.s },
     descriptionInput: { 
-        backgroundColor: '#F8FAFC', 
-        borderRadius: 12, 
+        backgroundColor: COLORS.background, 
+        borderRadius: SIZES.radiusBtn, 
         padding: 12, 
         borderWidth: 1, 
-        borderColor: '#E2E8F0', 
+        borderColor: COLORS.border, 
         fontSize: 14, 
         fontWeight: '600', 
-        color: '#1E293B', 
+        color: COLORS.textPrimary, 
         textAlignVertical: 'top',
         minHeight: 60,
-        marginBottom: 16
+        marginBottom: SPACING.m
     },
     modalButtons: {
         flexDirection: 'row',
         alignItems: 'stretch',
-        gap: 12,
+        gap: SPACING.sm,
         marginTop: 8,
         width: '100%'
     },
@@ -1119,12 +1119,12 @@ const styles = StyleSheet.create({
     },
 
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: '82%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 24, padding: 20, elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
-    selTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 16, textAlign: 'center', textTransform: 'uppercase' },
-    selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selLabel: { fontSize: 14, fontWeight: '700', color: '#334155' },
-    selClose: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
-    selCloseText: { fontSize: 13, fontWeight: '900', color: '#64748B', textTransform: 'uppercase' }
+    selBox: { width: '82%', maxWidth: 420, backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
+    selTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m, textAlign: 'center', textTransform: 'uppercase' },
+    selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selLabel: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary },
+    selClose: { marginTop: SPACING.m, paddingVertical: 12, alignItems: 'center' },
+    selCloseText: { fontSize: 13, fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase' }
 });
 
 export default TasksScreen;

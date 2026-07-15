@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, StatusBar, ActivityIndicator, useWindowDimensions, KeyboardAvoidingView, Platform } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -313,7 +313,7 @@ const ChatScreen = ({ navigation }) => {
                                         color={isSelected ? tab.color : '#64748B'} 
                                         style={{ marginRight: 6 }}
                                     />
-                                    <Text style={[styles.tabText, isSelected && { color: '#0F172A', fontWeight: '900' }]}>
+                                    <Text style={[styles.tabText, isSelected && { color: COLORS.textPrimary, fontWeight: '900' }]}>
                                         {tab.label}
                                     </Text>
                                     {unread > 0 && (
@@ -330,7 +330,7 @@ const ChatScreen = ({ navigation }) => {
 
             <KeyboardAvoidingView
                 style={styles.keyboardWrap}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
             >
                 <View style={[styles.searchSection, { paddingHorizontal: isCompact ? 14 : 20, paddingVertical: isCompact ? 10 : 15 }]}>
@@ -370,14 +370,14 @@ const ChatScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     keyboardWrap: { flex: 1 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     tabContainer: {
         flexDirection: 'row',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 14,
+        backgroundColor: COLORS.surfaceSecondary,
+        borderRadius: SIZES.radiusBtn,
         padding: 4,
         marginHorizontal: 20,
         marginTop: 15,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     tabButtonActive: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#64748B',
+        color: COLORS.textSecondary,
     },
     tabBadge: {
         position: 'absolute',
@@ -421,49 +421,49 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     tabBadgeText: {
-        color: '#FFFFFF',
+        color: COLORS.white,
         fontSize: 8,
         fontWeight: '900',
     },
 
-    searchSection: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFFFFF' },
+    searchSection: { paddingHorizontal: SPACING.m, paddingVertical: 15, backgroundColor: COLORS.surface },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         height: 54,
         borderRadius: 18,
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
     },
-    searchInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#1E293B' },
+    searchInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
 
     list: { paddingBottom: 100 },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.m,
         marginTop: 25,
         marginBottom: 15,
-        gap: 12,
+        gap: SPACING.sm,
     },
-    sectionTitle: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5 },
-    sectionLine: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
+    sectionTitle: { fontSize: 11, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5 },
+    sectionLine: { flex: 1, height: 1, backgroundColor: COLORS.surfaceSecondary },
 
     chatCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: '#FFFFFF',
+        paddingHorizontal: SPACING.m,
+        paddingVertical: SPACING.m,
+        backgroundColor: COLORS.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: COLORS.surfaceSecondary,
     },
     avatarBox: {
         width: 56,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
         right: -8,
         minWidth: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         backgroundColor: '#EF4444',
         borderWidth: 2,
         borderColor: '#FFFFFF',
@@ -505,15 +505,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
     },
     unreadBadgeText: {
-        color: '#FFFFFF',
+        color: COLORS.white,
         fontSize: 11,
         fontWeight: '900',
     },
 
     chatInfo: { flex: 1, marginLeft: 18 },
     nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    chatName: { fontSize: 17, fontWeight: '800', color: '#0F172A', maxWidth: '75%' },
-    chatTime: { fontSize: 11, color: '#94A3B8', fontWeight: '800' },
+    chatName: { fontSize: 17, fontWeight: '800', color: COLORS.textPrimary, maxWidth: '75%' },
+    chatTime: { fontSize: 11, color: COLORS.textMuted, fontWeight: '800' },
 
     msgRow: { flexDirection: 'row', alignItems: 'center' },
     senderChip: {
@@ -528,8 +528,8 @@ const styles = StyleSheet.create({
         maxWidth: 90,
         overflow: 'hidden',
     },
-    lastMsg: { fontSize: 13, color: '#64748B', fontWeight: '600', flex: 1 },
-    lastMsgUnread: { color: '#334155', fontWeight: '800' },
+    lastMsg: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '600', flex: 1 },
+    lastMsgUnread: { color: COLORS.textSecondary, fontWeight: '800' },
 });
 
 export default ChatScreen;

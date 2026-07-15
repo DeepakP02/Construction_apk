@@ -3,11 +3,11 @@ import {
     View, Text, StyleSheet, FlatList, ActivityIndicator,
     TouchableOpacity, Modal, TextInput, Alert, ScrollView,
     Dimensions, StatusBar, SafeAreaView, RefreshControl, useWindowDimensions,
-    Image, Platform, KeyboardAvoidingView
+    Image, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
@@ -298,111 +298,117 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
 
             {/* CREATE ISSUE MODAL */}
             <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-                <View style={styles.modalOverlay}>
-                    <KeyboardAvoidingView
-                        style={{ width: '100%' }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    <TouchableOpacity 
+                        style={styles.modalOverlay} 
+                        activeOpacity={1} 
+                        onPress={() => !submitting && setModalVisible(false)}
                     >
-                    <View style={[styles.modalSheet, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), height: '85%', paddingBottom: insets.bottom + 20 }]}>
-                        <View style={styles.modalHandle} />
-                        <View style={[styles.modalHeader, { paddingHorizontal: scale(20) }]}>
-                            <Text style={[styles.modalTitle, { fontSize: moderateScale(22) }]}>Report Site Defect</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#0F172A" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            contentContainerStyle={{ paddingHorizontal: scale(20), paddingBottom: 30 }}
-                        >
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8), marginTop: verticalScale(16) }]}>ISSUE / SNAG TITLE</Text>
-                            <TextInput 
-                                style={[styles.input, { height: verticalScale(50), borderRadius: moderateScale(14), paddingHorizontal: scale(16), fontSize: moderateScale(15) }]}
-                                placeholder="e.g. Broken pipe in lobby"
-                                value={form.title}
-                                onChangeText={t => setForm({...form, title: t})}
-                            />
-
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(16) }]}>SELECT PROJECT</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.projectRow, { marginTop: verticalScale(4) }]}>
-                                {projects.map(p => (
-                                    <TouchableOpacity 
-                                        key={p._id} 
-                                        style={[styles.projChip, form.projectId === p._id && styles.projChipActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), marginRight: scale(10) }]}
-                                        onPress={() => setForm({...form, projectId: p._id})}
-                                    >
-                                        <Text style={[styles.projChipText, { fontSize: moderateScale(12) }, form.projectId === p._id && { color: '#fff' }]}>{p.name}</Text>
+                        <TouchableWithoutFeedback>
+                            <View style={[styles.modalSheet, { borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), flex: 1, maxHeight: '85%', paddingBottom: insets.bottom + 20 }]}>
+                                <View style={styles.modalHandle} />
+                                <View style={[styles.modalHeader, { paddingHorizontal: scale(20) }]}>
+                                    <Text style={[styles.modalTitle, { fontSize: moderateScale(22) }]}>Report Site Defect</Text>
+                                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                        <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#0F172A" />
                                     </TouchableOpacity>
-                                ))}
-                            </ScrollView>
+                                </View>
 
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(16) }]}>SEVERITY LEVEL</Text>
-                            <View style={[styles.priorityRow, { gap: scale(10), marginTop: verticalScale(4) }]}>
-                                {['Low', 'Medium', 'High'].map(p => (
-                                    <TouchableOpacity 
-                                        key={p} 
-                                        style={[styles.prioBtn, { height: verticalScale(44), borderRadius: moderateScale(12) }, form.priority === p && { backgroundColor: getPriorityColor(p), borderColor: getPriorityColor(p) }]}
-                                        onPress={() => setForm({...form, priority: p})}
-                                    >
-                                        <Text style={[styles.prioBtnText, { fontSize: moderateScale(12) }, form.priority === p && { color: '#fff' }]}>{p}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                                <ScrollView
+                                    showsVerticalScrollIndicator={false}
+                                    keyboardShouldPersistTaps="handled"
+                                    contentContainerStyle={{ paddingHorizontal: scale(20), paddingBottom: 30 }}
+                                >
+                                    <Text style={[styles.label, { fontSize: moderateScale(10), marginBottom: verticalScale(8), marginTop: verticalScale(16) }]}>ISSUE / SNAG TITLE</Text>
+                                    <TextInput 
+                                        style={[styles.input, { height: verticalScale(50), borderRadius: moderateScale(14), paddingHorizontal: scale(16), fontSize: moderateScale(15) }]}
+                                        placeholder="e.g. Broken pipe in lobby"
+                                        value={form.title}
+                                        onChangeText={(t) => setForm({...form, title: t})}
+                                        placeholderTextColor="#94A3B8"
+                                    />
 
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(20) }]}>DETAILED DESCRIPTION</Text>
-                            <TextInput 
-                                style={[styles.input, { height: verticalScale(100), textAlignVertical: 'top', paddingTop: verticalScale(12), borderRadius: moderateScale(14), paddingHorizontal: scale(16), marginTop: verticalScale(4) }]}
-                                placeholder="Describe the issue in detail..."
-                                placeholderTextColor="#94A3B8"
-                                multiline
-                                value={form.description}
-                                onChangeText={t => setForm({...form, description: t})}
-                            />
-
-                            <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(20) }]}>ATTACH PHOTOS</Text>
-                            <View style={[styles.photoSection, { marginTop: verticalScale(8) }]}>
-                                <TouchableOpacity style={[styles.addPhotoBtn, SHADOWS.small]} onPress={capturePhoto} activeOpacity={0.85}>
-                                    <MaterialCommunityIcons name="camera" size={moderateScale(30)} color="#2563EB" />
-                                    <Text style={[styles.addPhotoText, { color: '#2563EB' }]}>Take Photo</Text>
-                                </TouchableOpacity>
-
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
-                                    {form.attachments.map((img, idx) => (
-                                        <View key={idx} style={styles.photoWrapper}>
-                                            <Image source={{ uri: img }} style={styles.photoPreview} />
-                                            <TouchableOpacity style={styles.removePhoto} onPress={() => removeImage(idx)}>
-                                                <MaterialCommunityIcons name="close-circle" size={20} color="#EF4444" />
+                                    <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(16) }]}>SELECT PROJECT</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.projectRow, { marginTop: verticalScale(4) }]}>
+                                        {projects.map(p => (
+                                            <TouchableOpacity 
+                                                key={p._id} 
+                                                style={[styles.projChip, form.projectId === p._id && styles.projChipActive, { paddingHorizontal: scale(16), paddingVertical: verticalScale(10), borderRadius: moderateScale(12), marginRight: scale(10) }]}
+                                                onPress={() => setForm({...form, projectId: p._id})}
+                                            >
+                                                <Text style={[styles.projChipText, { fontSize: moderateScale(12) }, form.projectId === p._id && { color: COLORS.white }]}>{p.name}</Text>
                                             </TouchableOpacity>
-                                        </View>
-                                    ))}
+                                        ))}
+                                    </ScrollView>
+
+                                    <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(16) }]}>SEVERITY LEVEL</Text>
+                                    <View style={[styles.priorityRow, { gap: scale(10), marginTop: verticalScale(4) }]}>
+                                        {['Low', 'Medium', 'High'].map(p => (
+                                            <TouchableOpacity 
+                                                key={p} 
+                                                style={[styles.prioBtn, { height: verticalScale(44), borderRadius: moderateScale(12) }, form.priority === p && { backgroundColor: getPriorityColor(p), borderColor: getPriorityColor(p) }]}
+                                                onPress={() => setForm({...form, priority: p})}
+                                            >
+                                                <Text style={[styles.prioBtnText, { fontSize: moderateScale(12) }, form.priority === p && { color: COLORS.white }]}>{p}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+
+                                    <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(20) }]}>DETAILED DESCRIPTION</Text>
+                                    <TextInput 
+                                        style={[styles.input, { height: verticalScale(100), textAlignVertical: 'top', paddingTop: verticalScale(12), borderRadius: moderateScale(14), paddingHorizontal: scale(16), marginTop: verticalScale(4) }]}
+                                        placeholder="Describe the issue in detail..."
+                                        placeholderTextColor="#94A3B8"
+                                        multiline
+                                        value={form.description}
+                                        onChangeText={t => setForm({...form, description: t})}
+                                    />
+
+                                    <Text style={[styles.label, { fontSize: moderateScale(10), marginTop: verticalScale(20) }]}>ATTACH PHOTOS</Text>
+                                    <View style={[styles.photoSection, { marginTop: verticalScale(8) }]}>
+                                        <TouchableOpacity style={[styles.addPhotoBtn, SHADOWS.small]} onPress={capturePhoto} activeOpacity={0.85}>
+                                            <MaterialCommunityIcons name="camera" size={moderateScale(30)} color="#2563EB" />
+                                            <Text style={[styles.addPhotoText, { color: '#2563EB' }]}>Take Photo</Text>
+                                        </TouchableOpacity>
+
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
+                                            {form.attachments.map((img, idx) => (
+                                                <View key={idx} style={styles.photoWrapper}>
+                                                    <Image source={{ uri: img }} style={styles.photoPreview} />
+                                                    <TouchableOpacity style={styles.removePhoto} onPress={() => removeImage(idx)}>
+                                                        <MaterialCommunityIcons name="close-circle" size={20} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+
+                                    <View style={[styles.createIssueActions, { marginTop: verticalScale(28), marginBottom: verticalScale(16) }]}>
+                                        <TouchableOpacity
+                                            style={styles.createIssueCancelBtn}
+                                            onPress={() => setModalVisible(false)}
+                                            disabled={submitting}
+                                        >
+                                            <Text style={styles.createIssueCancelText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={[styles.submitBtn, SHADOWS.medium, { height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#2563EB' }, submitting && { opacity: 0.7 }]}
+                                            onPress={handleCreateIssue}
+                                            disabled={submitting}
+                                        >
+                                            {submitting ? <ActivityIndicator color="#fff" /> : (
+                                                <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]} numberOfLines={1}>Commit to Log</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
                                 </ScrollView>
                             </View>
-
-                            <View style={[styles.createIssueActions, { marginTop: verticalScale(28), marginBottom: verticalScale(16) }]}>
-                                <TouchableOpacity
-                                    style={styles.createIssueCancelBtn}
-                                    onPress={() => setModalVisible(false)}
-                                    disabled={submitting}
-                                >
-                                    <Text style={styles.createIssueCancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.submitBtn, SHADOWS.medium, { height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#2563EB' }, submitting && { opacity: 0.7 }]}
-                                    onPress={handleCreateIssue}
-                                    disabled={submitting}
-                                >
-                                    {submitting ? <ActivityIndicator color="#fff" /> : (
-                                        <Text style={[styles.submitBtnText, { fontSize: moderateScale(14), fontWeight: '900' }]} numberOfLines={1}>Commit to Log</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-                    </View>
-                    </KeyboardAvoidingView>
-                </View>
+                        </TouchableWithoutFeedback>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* ISSUE DETAIL MODAL */}
@@ -412,8 +418,8 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
                         <View style={styles.modalHandle} />
                         <View style={[styles.modalHeader, { paddingHorizontal: scale(20), paddingBottom: verticalScale(15) }]}>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.modalTitle, { fontSize: moderateScale(22), color: '#0F172A' }]}>Incident Snapshot</Text>
-                                <Text style={[styles.modalSubtitle, { fontSize: moderateScale(12), color: '#64748B' }]}>Reference #{String(selectedIssue?._id || '').slice(-6).toUpperCase()}</Text>
+                                <Text style={[styles.modalTitle, { fontSize: moderateScale(22), color: COLORS.textPrimary }]}>Incident Snapshot</Text>
+                                <Text style={[styles.modalSubtitle, { fontSize: moderateScale(12), color: COLORS.textSecondary }]}>Reference #{String(selectedIssue?._id || '').slice(-6).toUpperCase()}</Text>
                             </View>
                             <TouchableOpacity 
                                 style={[styles.closeModalBtn, { width: scale(36), height: scale(36), borderRadius: 18 }]} 
@@ -514,14 +520,14 @@ const ForemanIssuesScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     content: { flex: 1 },
     pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     pageHeaderText: { flex: 1, minWidth: 0 },
-    mainTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    mainSubtitle: { color: '#64748B', fontWeight: '800' },
+    mainTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    mainSubtitle: { color: COLORS.textSecondary, fontWeight: '800' },
     addBtn: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    addBtnText: { color: '#fff', fontWeight: '900' },
+    addBtnText: { color: COLORS.white, fontWeight: '900' },
     filterBar: { },
     statusFilterRow: { paddingRight: scale(10) },
     statusFilterChip: {
@@ -529,67 +535,67 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(12),
         paddingHorizontal: scale(14),
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        backgroundColor: '#F8FAFC',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.background,
         justifyContent: 'center',
         alignItems: 'center'
     },
     statusFilterChipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    statusFilterChipText: { fontSize: moderateScale(12), fontWeight: '800', color: '#64748B' },
-    statusFilterChipTextActive: { color: '#fff' },
-    searchBox: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center' },
-    searchInput: { flex: 1, fontWeight: '700', color: '#1E293B' },
+    statusFilterChipText: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.textSecondary },
+    statusFilterChipTextActive: { color: COLORS.white },
+    searchBox: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center' },
+    searchInput: { flex: 1, fontWeight: '700', color: COLORS.textPrimary },
     list: { },
-    issueCard: { backgroundColor: '#fff', flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+    issueCard: { backgroundColor: COLORS.card, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
     priorityTab: { },
     cardInfo: { flex: 1 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    issueTitle: { fontWeight: '900', color: '#0F172A', flex: 1, marginRight: 10 },
+    issueTitle: { fontWeight: '900', color: COLORS.textPrimary, flex: 1, marginRight: 10 },
     statusBadge: { },
     statusText: { fontWeight: '900' },
-    issueDesc: { color: '#64748B', fontWeight: '500' },
+    issueDesc: { color: COLORS.textSecondary, fontWeight: '500' },
     cardFooter: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F8FAFC' },
     footerItem: { flexDirection: 'row', alignItems: 'center' },
-    footerText: { fontWeight: '800', color: '#94A3B8' },
+    footerText: { fontWeight: '800', color: COLORS.textMuted },
     empty: { alignItems: 'center' },
     emptyTxt: { fontWeight: '700', color: '#CBD5E1' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
-    modalSheet: { backgroundColor: '#fff', width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20 },
+    modalSheet: { backgroundColor: COLORS.card, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20 },
     modalHandle: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginVertical: 12 },
-    modalContent: { backgroundColor: '#fff', paddingHorizontal: 20, paddingBottom: 20 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    modalSubtitle: { color: '#64748B', fontWeight: '700', marginTop: 2 },
-    label: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
-    input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', fontWeight: '700', color: '#1E293B' },
+    modalContent: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.m, paddingBottom: 20 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    modalSubtitle: { color: COLORS.textSecondary, fontWeight: '700', marginTop: 2 },
+    label: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1 },
+    input: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, fontWeight: '700', color: COLORS.textPrimary },
     projectRow: { flexDirection: 'row' },
-    projChip: { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    projChip: { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border },
     projChipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    projChipText: { fontWeight: '800', color: '#64748B' },
+    projChipText: { fontWeight: '800', color: COLORS.textSecondary },
     priorityRow: { flexDirection: 'row' },
-    prioBtn: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    prioBtnText: { fontWeight: '900', color: '#64748B' },
+    prioBtn: { flex: 1, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    prioBtnText: { fontWeight: '900', color: COLORS.textSecondary },
     submitBtn: { flex: 1.3, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(8) },
-    submitBtnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
+    submitBtnText: { color: COLORS.white, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
     createIssueActions: { flexDirection: 'row', gap: scale(10), alignItems: 'center' },
-    createIssueCancelBtn: { flex: 1, height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    createIssueCancelText: { color: '#475569', fontWeight: '900', textTransform: 'uppercase', fontSize: moderateScale(12) },
+    createIssueCancelBtn: { flex: 1, height: verticalScale(56), borderRadius: moderateScale(16), backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    createIssueCancelText: { color: COLORS.textSecondary, fontWeight: '900', textTransform: 'uppercase', fontSize: moderateScale(12) },
 
     // Photo Section Styles
     photoSection: { flexDirection: 'row', marginTop: 10, gap: scale(10), alignItems: 'center' },
     addPhotoBtn: { width: scale(100), height: scale(100), borderRadius: moderateScale(16), backgroundColor: '#EFF6FF', borderStyle: 'dashed', borderWidth: 2, borderColor: '#BFDBFE', justifyContent: 'center', alignItems: 'center' },
-    addPhotoText: { fontSize: moderateScale(10), fontWeight: '800', color: '#94A3B8', marginTop: 4 },
+    addPhotoText: { fontSize: moderateScale(10), fontWeight: '800', color: COLORS.textMuted, marginTop: 4 },
     photoList: { flex: 1 },
     photoWrapper: { position: 'relative', marginRight: 12 },
-    photoPreview: { width: 100, height: 100, borderRadius: 16 },
-    removePhoto: { position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10 },
+    photoPreview: { width: 100, height: 100, borderRadius: SIZES.radiusCard },
+    removePhoto: { position: 'absolute', top: -5, right: -5, backgroundColor: COLORS.card, borderRadius: 10 },
 
     // Issue Card Image Styles
-    cardMainRow: { flexDirection: 'row', gap: 12 },
-    thumbnailWrapper: { width: 80, height: 80, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F1F5F9' },
+    cardMainRow: { flexDirection: 'row', gap: SPACING.sm },
+    thumbnailWrapper: { width: 80, height: 80, borderRadius: SIZES.radiusCard, overflow: 'hidden', backgroundColor: COLORS.surfaceSecondary },
     thumbnail: { width: '100%', height: '100%' },
     photoCountBadge: { position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    photoCountText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+    photoCountText: { color: COLORS.white, fontSize: 10, fontWeight: '900' },
 
     // Preview Styles
     previewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
@@ -597,23 +603,23 @@ const styles = StyleSheet.create({
     closePreview: { position: 'absolute', top: 50, right: 20, zIndex: 100 },
 
     // Detail Modal Styles
-    closeModalBtn: { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    detailStatusRow: { flexDirection: 'row', gap: 12 },
+    closeModalBtn: { backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    detailStatusRow: { flexDirection: 'row', gap: SPACING.sm },
     detailPriority: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
     detailPriorityText: { fontSize: 10, fontWeight: '900' },
-    detailTitle: { fontWeight: '900', color: '#0F172A', marginBottom: 12 },
+    detailTitle: { fontWeight: '900', color: COLORS.textPrimary, marginBottom: 12 },
     detailMetaRow: { flexDirection: 'row', gap: 20 },
-    detailMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    detailMetaItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
     metaIconBg: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    detailMetaText: { color: '#475569', fontWeight: '700', fontSize: 13 },
+    detailMetaText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 13 },
     detailSection: { marginBottom: 28 },
-    detailSectionLabel: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 12 },
-    descriptionCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-    detailDescription: { fontSize: 15, color: '#334155', lineHeight: 24, fontWeight: '500' },
-    detailPhotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    detailPhotoWrapper: { width: '47%', aspectRatio: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: '#F1F5F9' },
+    detailSectionLabel: { fontSize: 11, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5, marginBottom: 12 },
+    descriptionCard: { backgroundColor: COLORS.background, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
+    detailDescription: { fontSize: 15, color: COLORS.textSecondary, lineHeight: 24, fontWeight: '500' },
+    detailPhotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+    detailPhotoWrapper: { width: '47%', aspectRatio: 1, borderRadius: SIZES.radiusCard, overflow: 'hidden', backgroundColor: COLORS.surfaceSecondary },
     detailPhoto: { width: '100%', height: '100%' },
-    zoomOverlay: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.3)', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }
+    zoomOverlay: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.3)', width: 32, height: 32, borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center' }
 });
 
 export default ForemanIssuesScreen;

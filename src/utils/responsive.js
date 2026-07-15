@@ -38,3 +38,18 @@ export const isIOS = Platform.OS === 'ios';
 
 export const screenWidth = SCREEN_WIDTH;
 export const screenHeight = SCREEN_HEIGHT;
+
+/**
+ * Scales font size moderately and clamps to 85–115% of base.
+ * Prevents illegibly small text on SE or oversized text on Max devices.
+ */
+export const fontScale = (size) => {
+    const scaled = moderateScale(size, 0.4);
+    const min = size * 0.85;
+    const max = size * 1.15;
+    return Math.round(Math.min(Math.max(scaled, min), max) * 10) / 10;
+};
+
+/** True for phones with width < 380pt (iPhone SE, older 4.7" devices) */
+export const isCompactDevice = SCREEN_WIDTH < 380;
+

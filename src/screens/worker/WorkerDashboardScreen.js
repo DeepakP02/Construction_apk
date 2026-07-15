@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, TextInput,
-    Dimensions, Modal, ScrollView, Alert, StatusBar, Platform, FlatList, useWindowDimensions
+    Dimensions, Modal, ScrollView, Alert, StatusBar, Platform, FlatList, useWindowDimensions, KeyboardAvoidingView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
+
 import api from '../../utils/api';
-import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
+import { scale, verticalScale, moderateScale, isTablet, fontScale } from '../../utils/responsive';
 import { isTodoVisibleToUser } from '../../utils/todoVisibility';
+
 
 const WorkerDashboardScreen = ({ navigation }) => {
     const {
@@ -152,12 +154,17 @@ const WorkerDashboardScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <WorkerHeader showBranding={true} />
 
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : moderateScale(14) }]}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : moderateScale(14), paddingBottom: verticalScale(100) }]}
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                >
                 {/* ═══ DASHBOARD TITLE ═══ */}
                 <View style={styles.dashboardHeader}>
                     <View style={styles.dashTitleRow}>
@@ -422,6 +429,7 @@ const WorkerDashboardScreen = ({ navigation }) => {
 
                 <View style={{ height: verticalScale(100) }} />
             </ScrollView>
+            </KeyboardAvoidingView>
 
             {/* ═══ CLOCK-IN SELECTOR MODAL ═══ */}
             <Modal visible={clockModal} animationType="slide" transparent>
@@ -511,97 +519,98 @@ const WorkerDashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     scrollView: { flex: 1 },
-    scrollContent: { paddingTop: 4 },
-    dashboardHeader: { marginBottom: 12 },
+    scrollContent: { paddingTop: SPACING.s, paddingBottom: 100 },
+    dashboardHeader: { marginBottom: SPACING.m, paddingHorizontal: SPACING.m },
     dashTitleRow: { flexDirection: 'row', alignItems: 'center' },
-    dashTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    dashSubtitle: { fontWeight: '700', color: '#64748B', letterSpacing: 0.8, marginTop: 2 },
-    clockCard: { backgroundColor: '#FFFFFF', marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
-    clockStatusRow: { alignItems: 'flex-start', marginBottom: 4 },
-    clockStatusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, gap: 5 },
+    dashTitle: { ...TYPOGRAPHY.screenTitle, color: COLORS.textPrimary },
+    dashSubtitle: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, letterSpacing: 0.8, marginTop: 2 },
+    clockCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, marginBottom: SPACING.m, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.card },
+    clockStatusRow: { alignItems: 'flex-start', marginBottom: SPACING.xs },
+    clockStatusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: SIZES.radiusBtn, gap: 5 },
     clockStatusDot: { borderRadius: 3 },
-    clockStatusText: { fontWeight: '900', letterSpacing: 0.8 },
-    timerSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-    timerText: { fontWeight: '900', color: '#0F172A', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+    clockStatusText: { ...TYPOGRAPHY.badge },
+    timerSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.s },
+    timerText: { fontSize: fontScale(36), fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1, fontVariant: ['tabular-nums'] },
     clockIconFloat: { opacity: 0.4 },
-    siteLabel: { fontWeight: '800', color: '#94A3B8', letterSpacing: 1, marginBottom: 4 },
-    siteSelector: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    siteSelectorText: { fontWeight: '700', color: '#475569', flex: 1 },
-    notActiveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+    siteLabel: { ...TYPOGRAPHY.label, color: COLORS.textMuted, marginBottom: SPACING.xs },
+    siteSelector: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusInput, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.sm, marginBottom: SPACING.s },
+    siteSelectorText: { ...TYPOGRAPHY.body, fontWeight: '700', color: COLORS.textSecondary, flex: 1 },
+    notActiveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: SPACING.sm },
     notActiveDot: { borderRadius: 4 },
-    notActiveText: { fontWeight: '700', color: '#94A3B8' },
-    clockBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    clockBtnText: { color: '#FFFFFF', fontWeight: '900', letterSpacing: 0.5 },
-    todoSection: { marginBottom: 14, overflow: 'hidden' },
+    notActiveText: { ...TYPOGRAPHY.caption, color: COLORS.textMuted },
+    clockBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: Math.max(verticalScale(52), 48), borderRadius: SIZES.radiusBtn },
+    clockBtnText: { color: COLORS.white, fontWeight: '900', letterSpacing: 0.5, ...TYPOGRAPHY.body },
+    todoSection: { marginBottom: SPACING.m, borderRadius: SIZES.radiusCard, overflow: 'hidden', padding: SPACING.m, ...SHADOWS.card },
     todoGradient: { },
-    todoTitle: { fontWeight: '900', color: '#FFFFFF', marginBottom: 8 },
-    todoSubLabel: { fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, marginBottom: 6 },
-    todoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    todoInput: { flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 12, color: '#FFFFFF', fontWeight: '600', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-    todoAddBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center' },
-    todoAddBtnText: { fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 },
-    sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    todoTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.white, marginBottom: SPACING.s },
+    todoSubLabel: { ...TYPOGRAPHY.label, color: 'rgba(255,255,255,0.6)', marginBottom: SPACING.xs },
+    todoInputRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
+    todoInput: { flex: 1, height: 48, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: SIZES.radiusInput, paddingHorizontal: SPACING.m, color: COLORS.white, fontWeight: '600', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+    todoAddBtn: { height: 48, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: SPACING.m, justifyContent: 'center' },
+    todoAddBtnText: { fontWeight: '900', color: COLORS.white, letterSpacing: 0.5, ...TYPOGRAPHY.badge },
+    sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.s, paddingHorizontal: SPACING.m },
     sectionTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    sectionTitle: { fontWeight: '900', color: '#475569', letterSpacing: 1, textTransform: 'uppercase' },
-    todoBadge: { backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' },
-    todoBadgeText: { fontWeight: '900', color: '#FFFFFF' },
-    pendingCountText: { fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 8, marginTop: -4 },
-    viewJobsLink: { fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
-    viewHistoryLink: { fontWeight: '900', color: '#2563EB', letterSpacing: 0.3 },
-    filterRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-    filterChip: { borderRadius: 20, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    sectionTitle: { ...TYPOGRAPHY.label, color: COLORS.textSecondary },
+    todoBadge: { backgroundColor: '#2563EB', minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginLeft: 6 },
+    todoBadgeText: { ...TYPOGRAPHY.badge, color: COLORS.white },
+    pendingCountText: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginBottom: SPACING.s, marginTop: -4, paddingHorizontal: SPACING.m },
+    viewJobsLink: { ...TYPOGRAPHY.caption, color: '#2563EB', fontWeight: '900' },
+    viewHistoryLink: { ...TYPOGRAPHY.caption, color: '#2563EB', fontWeight: '900' },
+    filterRow: { flexDirection: 'row', gap: SPACING.s, marginBottom: SPACING.s, paddingHorizontal: SPACING.m },
+    filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border },
     filterChipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    filterChipText: { fontWeight: '800', color: '#64748B' },
-    filterChipTextActive: { color: '#FFFFFF' },
+    filterChipText: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary },
+    filterChipTextActive: { color: COLORS.white },
     viewMoreTodosRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 4,
         marginTop: 4,
-        marginBottom: 16,
+        marginBottom: SPACING.m,
         paddingVertical: 8,
     },
-    viewMoreTodosText: { fontWeight: '800', color: '#2563EB', letterSpacing: 0.3 },
-    todosContainer: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F1F5F9' },
-    todoRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    todoCheckbox: { borderRadius: 4, borderWidth: 2, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
+    viewMoreTodosText: { ...TYPOGRAPHY.caption, color: '#2563EB', fontWeight: '900' },
+    todosContainer: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, marginHorizontal: SPACING.m, marginBottom: SPACING.m, ...SHADOWS.card },
+    todoRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    todoCheckbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
     todoChecked: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    todoItemText: { fontWeight: '700', color: '#1E293B' },
-    todoItemDone: { textDecorationLine: 'line-through', color: '#94A3B8' },
-    todoAssignedBy: { fontWeight: '800', color: '#2563EB', marginTop: 2, letterSpacing: 0.3 },
-    tasksContainer: { backgroundColor: '#FFFFFF', padding: 4, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-    taskRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    todoItemText: { ...TYPOGRAPHY.body, color: COLORS.textPrimary },
+    todoItemDone: { textDecorationLine: 'line-through', color: COLORS.textMuted },
+    todoAssignedBy: { ...TYPOGRAPHY.badge, color: '#2563EB', marginTop: 2 },
+    tasksContainer: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.s, marginHorizontal: SPACING.m, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.card },
+    taskRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-    taskTitle: { fontWeight: '800', color: '#1E293B', flexShrink: 1 },
-    globalBadge: { backgroundColor: '#DBEAFE' },
-    globalBadgeText: { fontWeight: '900', color: '#2563EB' },
-    taskSubInfo: { fontWeight: '600', color: '#94A3B8', marginTop: 2 },
+    taskTitle: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '700', flexShrink: 1 },
+    globalBadge: { backgroundColor: '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    globalBadgeText: { ...TYPOGRAPHY.badge, color: '#2563EB' },
+    taskSubInfo: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: 2 },
     taskActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 },
-    taskPriorityPill: { borderWidth: 1 },
-    taskPriorityText: { fontWeight: '900', letterSpacing: 0.8 },
-    activityContainer: { backgroundColor: '#FFFFFF', padding: 4, borderWidth: 1, borderColor: '#F1F5F9' },
-    activityRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    activityIconWrap: { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    activityTitle: { fontWeight: '800', color: '#1E293B' },
-    activityJob: { fontWeight: '600', color: '#94A3B8', marginTop: 1 },
-    activityTimeWrap: { alignItems: 'flex-end' },
-    activityTime: { fontWeight: '800', color: '#0F172A' },
-    activityDate: { fontWeight: '700', color: '#2563EB', marginTop: 1 },
-    emptyText: { textAlign: 'center', color: '#94A3B8', fontWeight: '600', paddingVertical: 20 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#FFFFFF', padding: 20, maxHeight: '70%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    projectItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    projectItemSelected: { backgroundColor: '#EFF6FF', borderRadius: 10 },
+    taskPriorityPill: { borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    taskPriorityText: { ...TYPOGRAPHY.badge },
+    activityContainer: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.s, marginHorizontal: SPACING.m, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.card },
+    activityRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    activityIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
+    activityTitle: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '700' },
+    activityJob: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: 1 },
+    activityTimeWrap: { alignItems: 'flex-end', flex: 1 },
+    activityTime: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '800' },
+    activityDate: { ...TYPOGRAPHY.badge, color: '#2563EB', marginTop: 1 },
+    emptyText: { textAlign: 'center', color: COLORS.textMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.xl },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.m },
+    modalContent: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: SPACING.m, maxHeight: '70%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    modalTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.textPrimary },
+    projectItem: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    projectItemSelected: { backgroundColor: '#EFF6FF', borderRadius: SIZES.radiusCard },
     projectDot: { },
-    projectName: { fontWeight: '800', color: '#1E293B' },
-    projectLocation: { fontWeight: '600', color: '#94A3B8', marginTop: 2 },
-    modalSectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', marginTop: 8 },
-    modalSectionText: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.2, textTransform: 'uppercase' },
+    projectName: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '700' },
+    projectLocation: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: 2 },
+    modalSectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: COLORS.border, marginTop: SPACING.sm },
+    modalSectionText: { ...TYPOGRAPHY.label, color: COLORS.textMuted },
 });
 
 export default WorkerDashboardScreen;
+

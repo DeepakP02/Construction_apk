@@ -1,24 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Image,
-    ActivityIndicator,
-    Alert,
-    Modal,
-    TextInput,
-    Platform,
-    ScrollView,
-    Animated,
-    SafeAreaView,
-    useWindowDimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, TextInput, Platform, ScrollView, Animated, useWindowDimensions, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
@@ -55,6 +39,7 @@ const WorkerPhotosScreen = () => {
     const [selTitle, setSelTitle] = useState('');
     const [selOptions, setSelOptions] = useState([]);
     const [selOnSelect, setSelOnSelect] = useState(() => () => {});
+    const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -255,7 +240,7 @@ const WorkerPhotosScreen = () => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <WorkerHeader 
                 hideSearch={true} 
                 title="Site Photos" 
@@ -288,7 +273,9 @@ const WorkerPhotosScreen = () => {
 
             {/* UPLOAD MODAL */}
             <Modal visible={uploadModal} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => Keyboard.dismiss()}>
+                    <TouchableWithoutFeedback>
                     <View style={[styles.modalContent, { borderTopLeftRadius: moderateScale(35), borderTopRightRadius: moderateScale(35), padding: scale(25), maxWidth: 600, alignSelf: 'center', width: '100%' }]}>
                         <View style={[styles.modalHeader, { marginBottom: verticalScale(20) }]}>
                             <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>Upload to Site</Text>
@@ -302,17 +289,7 @@ const WorkerPhotosScreen = () => {
                         <Text style={[styles.inputLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>SELECT PROJECT</Text>
                         <TouchableOpacity
                             style={[styles.projectDropdown, { borderRadius: moderateScale(12), paddingHorizontal: scale(14), height: verticalScale(50), marginBottom: verticalScale(20) }]}
-                            onPress={() =>
-                                openDropdown(
-                                    'SELECT PROJECT',
-                                    projects.map((p) => ({
-                                        label: p.name,
-                                        value: projectIdFromDoc(p),
-                                        icon: 'office-building',
-                                    })),
-                                    (opt) => setTargetProjectId(idKey(opt.value))
-                                )
-                            }
+                            onPress={() => setProjectPickerOpen(true)}
                         >
                             <View style={styles.projectDropdownLeft}>
                                 <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
@@ -340,7 +317,40 @@ const WorkerPhotosScreen = () => {
                             {uploading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.mainUploadBtnText, { fontSize: moderateScale(16) }]}>CONFIRM UPLOAD</Text>}
                         </TouchableOpacity>
                     </View>
-                </View>
+                    </TouchableWithoutFeedback>
+                </TouchableOpacity>
+                {projectPickerOpen && (
+                    <TouchableOpacity 
+                        style={[StyleSheet.absoluteFill, styles.selOverlayModal, { justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}
+                        activeOpacity={1}
+                        onPress={() => setProjectPickerOpen(false)}
+                    >
+                        <View style={[styles.selBox, { width: isTablet ? 420 : '86%', borderRadius: moderateScale(24), padding: scale(20) }]}>
+                            <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>SELECT PROJECT</Text>
+                            <ScrollView style={{ maxHeight: verticalScale(300) }} keyboardShouldPersistTaps="handled">
+                                {projects.map((p, i) => (
+                                    <TouchableOpacity
+                                        key={`upload-proj-${i}`}
+                                        style={[styles.selItem, { paddingVertical: verticalScale(12) }]}
+                                        onPress={() => {
+                                            setTargetProjectId(projectIdFromDoc(p));
+                                            setProjectPickerOpen(false);
+                                        }}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name="office-building"
+                                            size={moderateScale(17)}
+                                            color="#2563EB"
+                                            style={{ marginRight: scale(12) }}
+                                        />
+                                        <Text style={[styles.selLabelText, { fontSize: moderateScale(13) }]}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </TouchableOpacity>
+                )}
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* Filter / upload project picker (same UX as Foreman Site Photos dropdown list) */}
@@ -387,66 +397,69 @@ const WorkerPhotosScreen = () => {
                     )}
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    listContainer: { },
-    headerTop: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    headerLabel: { fontWeight: '900', color: '#2563EB', letterSpacing: 1.5 },
+    listContainer: { paddingBottom: 100 },
+    headerTop: { backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    headerTitle: { ...TYPOGRAPHY.screenTitle, color: COLORS.textPrimary },
+    headerLabel: { ...TYPOGRAPHY.badge, color: '#2563EB' },
     customDropdownBtn: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.surfaceSecondary,
+        borderRadius: SIZES.radiusInput,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: SPACING.m,
+        height: 48,
     },
     dropdownLeft: { flexDirection: 'row', alignItems: 'center' },
-    dropdownValueText: { fontWeight: '800', color: '#1E293B' },
-    row: { justifyContent: 'space-between', paddingHorizontal: 16 },
-    subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    dropdownValueText: { ...TYPOGRAPHY.caption, color: COLORS.textPrimary },
+    row: { justifyContent: 'space-between', paddingHorizontal: SPACING.m },
+    subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: SPACING.sm, paddingHorizontal: SPACING.m },
     titleSection: { flex: 1 },
-    pageUploadBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', ...SHADOWS.small },
-    pageUploadBtnText: { color: '#fff', fontWeight: '900' },
-    photoCard: { backgroundColor: '#fff', overflow: 'hidden', ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
-    photoImg: { width: '100%', backgroundColor: '#F1F5F9' },
+    pageUploadBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: SPACING.m, borderRadius: SIZES.radiusBtn, ...SHADOWS.small },
+    pageUploadBtnText: { color: COLORS.white, ...TYPOGRAPHY.badge },
+    photoCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, overflow: 'hidden', ...SHADOWS.card, borderWidth: 1, borderColor: COLORS.border },
+    photoImg: { width: '100%', backgroundColor: COLORS.surfaceSecondary },
     photoOverlay: { position: 'absolute' },
-    projectTag: { backgroundColor: 'rgba(15, 23, 42, 0.7)' },
-    projectTagText: { color: '#fff', fontWeight: '800' },
-    photoInfo: { },
-    photoDesc: { fontWeight: '800', color: '#1E293B' },
-    photoDate: { fontWeight: '700', color: '#94A3B8' },
-    loadingText: { fontWeight: '700', color: '#64748B' },
+    projectTag: { backgroundColor: 'rgba(15, 23, 42, 0.7)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+    projectTagText: { color: COLORS.white, ...TYPOGRAPHY.badge },
+    photoInfo: { padding: SPACING.sm },
+    photoDesc: { ...TYPOGRAPHY.caption, color: COLORS.textPrimary },
+    photoDate: { ...TYPOGRAPHY.badge, color: COLORS.textMuted },
+    loadingText: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary },
     emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
-    emptyText: { fontWeight: '700', color: '#94A3B8', textAlign: 'center' },
+    emptyText: { ...TYPOGRAPHY.body, color: COLORS.textMuted, textAlign: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', minHeight: '60%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    previewThumb: { width: '100%' },
-    inputLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
-    projectDropdown: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    modalContent: { backgroundColor: COLORS.surface, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: SPACING.md, minHeight: '60%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    modalTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.textPrimary },
+    previewThumb: { width: '100%', borderRadius: SIZES.radiusImage },
+    inputLabel: { ...TYPOGRAPHY.label, color: COLORS.textMuted },
+    projectDropdown: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusInput, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.sm },
     projectDropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
-    projectDropdownText: { fontWeight: '800', color: '#1E293B', flex: 1 },
-    projChip: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    projectDropdownText: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, flex: 1 },
+    projChip: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusCard, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: COLORS.border },
     projChipActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
-    projChipText: { fontWeight: '700', color: '#64748B' },
+    projChipText: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary },
     projChipActiveText: { color: '#2563EB' },
     selOverlayModal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { backgroundColor: '#fff' },
-    selTitle: { fontWeight: '900', color: '#0F172A', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1.2 },
-    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    selItemActive: { backgroundColor: '#EFF6FF' },
-    selLabelText: { fontWeight: '700', color: '#334155' },
+    selBox: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: SPACING.md, width: '90%', maxHeight: '75%' },
+    selTitle: { ...TYPOGRAPHY.label, color: COLORS.textPrimary, textAlign: 'center', marginBottom: SPACING.sm },
+    selItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    selItemActive: { backgroundColor: '#EFF6FF', borderRadius: SIZES.radiusCard },
+    selLabelText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
     selLabelTextActive: { color: '#2563EB' },
-    input: { backgroundColor: '#F8FAFC', color: '#0F172A', textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 5 },
-    mainUploadBtn: { backgroundColor: '#2563EB', alignItems: 'center', ...SHADOWS.small },
-    mainUploadBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
+    input: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusInput, padding: SPACING.sm, color: COLORS.textPrimary, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.border, marginTop: 5 },
+    mainUploadBtn: { backgroundColor: '#2563EB', height: 52, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+    mainUploadBtnText: { color: COLORS.white, ...TYPOGRAPHY.body, fontWeight: '900' },
     fullPreviewOverlay: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
     closeFull: { position: 'absolute', zIndex: 100 },
     fullContent: { flex: 1, justifyContent: 'center' },

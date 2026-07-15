@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet, Platform, Dimensions } from 'react-native';
-import { COLORS, SIZES, SPACING } from '../constants/theme';
+import { View, TextInput, Text, StyleSheet, Platform } from 'react-native';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { verticalScale, moderateScale } from '../utils/responsive';
 
 const CustomInput = ({ label, placeholder, value, onChangeText, secureTextEntry, error, icon, keyboardType, autoCapitalize, ...props }) => {
     const [isFocused, setIsFocused] = React.useState(false);
@@ -17,14 +18,14 @@ const CustomInput = ({ label, placeholder, value, onChangeText, secureTextEntry,
                 {icon && (
                     <MaterialCommunityIcons
                         name={icon}
-                        size={20}
-                        color={isFocused ? COLORS.primary : COLORS.textSecondary}
+                        size={moderateScale(20)}
+                        color={isFocused ? COLORS.focusBorder : COLORS.textSecondary}
                         style={styles.icon}
                     />
                 )}
                 <TextInput
                     placeholder={placeholder}
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={COLORS.textMuted}
                     value={value}
                     onChangeText={onChangeText}
                     secureTextEntry={secureTextEntry}
@@ -48,33 +49,31 @@ const styles = StyleSheet.create({
     },
     label: {
         color: COLORS.textSecondary,
-        fontSize: 11,
-        fontWeight: '800',
-        marginBottom: 8,
+        ...TYPOGRAPHY.label,
+        marginBottom: SPACING.s,
         marginLeft: 4,
-        letterSpacing: 1,
     },
     inputContainer: {
-        height: 52,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
+        height: Math.max(verticalScale(52), 48),
+        backgroundColor: COLORS.inputBg,
+        borderRadius: SIZES.radiusInput,
         borderWidth: 1.5,
-        borderColor: '#E5E7EB',
-        paddingHorizontal: 14,
+        borderColor: COLORS.inputBorder,
+        paddingHorizontal: SPACING.m,
         flexDirection: 'row',
         alignItems: 'center',
     },
     focusedInput: {
-        borderColor: COLORS.primary,
+        borderColor: COLORS.focusBorder,
         backgroundColor: '#EFF6FF',
     },
     icon: {
-        marginRight: 10,
+        marginRight: SPACING.sm,
     },
     input: {
         flex: 1,
         color: COLORS.textPrimary,
-        fontSize: Dimensions.get('window').width < 380 ? 13 : 15,
+        fontSize: moderateScale(15),
         fontWeight: '500',
     },
     errorInput: {
@@ -82,11 +81,12 @@ const styles = StyleSheet.create({
     },
     errorText: {
         color: COLORS.danger,
-        fontSize: 12,
-        marginTop: 4,
+        fontSize: moderateScale(12),
+        marginTop: SPACING.xs,
         marginLeft: 4,
         fontWeight: '600',
     },
 });
 
 export default CustomInput;
+

@@ -12,7 +12,7 @@ import {
     RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
@@ -429,19 +429,19 @@ const ReportsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
-    loadingText: { color: '#64748B', fontWeight: '700', fontSize: 13 },
-    scrollContent: { paddingBottom: 40 },
+    loadingText: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 13 },
+    scrollContent: { paddingBottom: 100 },
 
-    header: { padding: 20, paddingBottom: 12 },
+    header: { padding: SPACING.m, paddingBottom: 12 },
     headerTextContainer: { flex: 1 },
-    dashboardTitle: { fontSize: 21, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
+    dashboardTitle: { fontSize: 21, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.4 },
     dashboardTitleCompact: { fontSize: 19 },
-    dashboardSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '700', marginTop: 4 },
+    dashboardSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '700', marginTop: 4 },
 
-    topControls: { paddingHorizontal: 20, gap: 10, marginBottom: 12 },
-    modeTabs: { flexDirection: 'row', gap: 8 },
+    topControls: { paddingHorizontal: SPACING.m, gap: 10, marginBottom: 12 },
+    modeTabs: { flexDirection: 'row', gap: SPACING.s },
     modeBtn: {
         flex: 1,
         borderWidth: 1,
@@ -452,16 +452,16 @@ const styles = StyleSheet.create({
         minHeight: 44
     },
     modeBtnActive: { backgroundColor: '#E0EAFF', borderColor: '#2563EB' },
-    modeText: { fontSize: 11, color: '#334155', fontWeight: '900', letterSpacing: 0.4 },
+    modeText: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '900', letterSpacing: 0.4 },
     modeTextActive: { color: '#1D4ED8' },
 
     sectionCard: {
         marginHorizontal: 20,
         marginBottom: 14,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 16,
-        backgroundColor: '#FFFFFF',
+        borderColor: COLORS.border,
+        borderRadius: SIZES.radiusCard,
+        backgroundColor: COLORS.surface,
         padding: 12
     },
     sectionHeaderTap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -475,11 +475,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center'
     },
-    sectionTitle: { fontSize: 13, fontWeight: '900', color: '#0F172A' },
-    sectionSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 1 },
+    sectionTitle: { fontSize: 13, fontWeight: '900', color: COLORS.textPrimary },
+    sectionSubtitle: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '600', marginTop: 1 },
 
     opsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-    opsTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', letterSpacing: 0.3 },
+    opsTitle: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: 0.3 },
     opsBadge: {
         fontSize: 10,
         color: '#2563EB',
@@ -489,75 +489,75 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4
     },
-    opsSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 10 },
+    opsSubtitle: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 10 },
     opsRow: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         borderRadius: 10,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         padding: 10,
         marginBottom: 8
     },
     opsRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    opsJobName: { flex: 1, fontSize: 13, color: '#0F172A', fontWeight: '900', paddingRight: 6 },
-    opsMetrics: { marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    opsMetricText: { fontSize: 11, color: '#475569', fontWeight: '700' },
+    opsJobName: { flex: 1, fontSize: 13, color: COLORS.textPrimary, fontWeight: '900', paddingRight: 6 },
+    opsMetrics: { marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.s },
+    opsMetricText: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '700' },
     opsMetricTotal: { color: '#1D4ED8', fontWeight: '900' },
 
-    opsDetailTop: { gap: 8 },
+    opsDetailTop: { gap: SPACING.s },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
     backBtnText: { fontSize: 11, color: '#1D4ED8', fontWeight: '800' },
-    opsDetailName: { fontSize: 16, color: '#0F172A', fontWeight: '900' },
+    opsDetailName: { fontSize: 16, color: COLORS.textPrimary, fontWeight: '900' },
 
     dataCard: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         borderRadius: 10,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         paddingVertical: 8,
         paddingHorizontal: 10,
         marginBottom: 8
     },
-    cellDate: { fontSize: 11, fontWeight: '900', color: '#1E293B', marginBottom: 3 },
-    cellMain: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
-    cellSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
+    cellDate: { fontSize: 11, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 3 },
+    cellMain: { fontSize: 12, fontWeight: '800', color: COLORS.textPrimary },
+    cellSub: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
     cellSubStrong: { fontSize: 11, color: '#1D4ED8', marginTop: 2, fontWeight: '900' },
 
     emptyRow: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         borderRadius: 10,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         paddingVertical: 10,
         paddingHorizontal: 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6
     },
-    emptyText: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
+    emptyText: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
 
     summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     summaryItem: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         borderRadius: 10,
         paddingVertical: 10,
         paddingHorizontal: 10,
-        backgroundColor: '#F8FAFC'
+        backgroundColor: COLORS.background
     },
-    summaryLabel: { fontSize: 10, color: '#64748B', fontWeight: '800', textTransform: 'uppercase' },
-    summaryValue: { fontSize: 15, fontWeight: '900', color: '#0F172A', marginTop: 2 },
+    summaryLabel: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '800', textTransform: 'uppercase' },
+    summaryValue: { fontSize: 15, fontWeight: '900', color: COLORS.textPrimary, marginTop: 2 },
 
     jobCard: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 12,
+        borderColor: COLORS.border,
+        borderRadius: SIZES.radiusBtn,
         padding: 10,
         marginBottom: 8,
-        backgroundColor: '#F8FAFC'
+        backgroundColor: COLORS.background
     },
     jobHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    jobName: { flex: 1, fontSize: 13, fontWeight: '900', color: '#1E293B', paddingRight: 8 },
+    jobName: { flex: 1, fontSize: 13, fontWeight: '900', color: COLORS.textPrimary, paddingRight: 8 },
     badgeText: {
         fontSize: 10,
         fontWeight: '900',
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 3
     },
-    jobMeta: { fontSize: 11, color: '#64748B', fontWeight: '700', marginTop: 4 }
+    jobMeta: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginTop: 4 }
 });
 
 export default ReportsScreen;

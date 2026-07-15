@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { uploadMultipart } from '../../utils/api';
@@ -174,7 +174,7 @@ const RFIListScreen = ({ navigation }) => {
             case 'answered': return { bg: '#F5F3FF', color: '#8B5CF6', label: 'Answered' };
             case 'closed': return { bg: '#ECFDF5', color: '#10B981', label: 'Closed' };
             case 'in_review': return { bg: '#FFFBEB', color: '#F59E0B', label: 'In Review' };
-            default: return { bg: '#F1F5F9', color: '#64748B', label: status };
+            default: return { bg: '#F1F5F9', color: COLORS.textSecondary, label: status };
         }
     };
 
@@ -183,7 +183,7 @@ const RFIListScreen = ({ navigation }) => {
             case 'low': return { bg: '#ECFDF5', color: '#10B981', label: 'Low' };
             case 'medium': return { bg: '#FFFBEB', color: '#F59E0B', label: 'Medium' };
             case 'high': return { bg: '#FEF2F2', color: '#EF4444', label: 'High' };
-            default: return { bg: '#F1F5F9', color: '#64748B', label: p };
+            default: return { bg: '#F1F5F9', color: COLORS.textSecondary, label: p };
         }
     };
 
@@ -293,7 +293,7 @@ const RFIListScreen = ({ navigation }) => {
                             onPress={() => navigation.navigate('RFIDetail', { rfiId: item._id })}
                         >
                             <MaterialCommunityIcons name="eye-outline" size={15} color="#64748B" />
-                            <Text style={[styles.actionBtnTxt, { color: '#64748B' }]}>View</Text>
+                            <Text style={[styles.actionBtnTxt, { color: COLORS.textSecondary }]}>View</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -389,7 +389,7 @@ const RFIListScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                     <View style={[styles.modalCard, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 24 }]}>
@@ -472,7 +472,7 @@ const RFIListScreen = ({ navigation }) => {
                                             style={[styles.selectorBtn, formData.priority === p && { backgroundColor: st.color, borderColor: st.color }]}
                                             onPress={() => setFormData({ ...formData, priority: p })}
                                         >
-                                            <Text style={[styles.selectorBtnTxt, formData.priority === p && { color: '#fff' }]}>{st.label}</Text>
+                                            <Text style={[styles.selectorBtnTxt, formData.priority === p && { color: COLORS.white }]}>{st.label}</Text>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -514,7 +514,7 @@ const RFIListScreen = ({ navigation }) => {
                                 <Text style={styles.attachSub}>PDF, DWG, Images, etc.</Text>
                             </TouchableOpacity>
                             {files.length > 0 ? (
-                                <View style={{ marginTop: 10, gap: 8 }}>
+                                <View style={{ marginTop: 10, gap: SPACING.s }}>
                                     {files.map((file, idx) => (
                                         <View key={`${file.uri}-${idx}`} style={styles.fileRow}>
                                             <Text style={styles.fileName} numberOfLines={1}>{file.name || `Attachment ${idx + 1}`}</Text>
@@ -599,35 +599,35 @@ const RFIListScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
 
-    pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    pageTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    pageSubtitle: { fontSize: 12, color: '#94A3B8', fontWeight: '800', marginTop: 2 },
+    pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.m, paddingTop: 16, paddingBottom: 12, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    pageTitle: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    pageSubtitle: { fontSize: 12, color: COLORS.textMuted, fontWeight: '800', marginTop: 2 },
     headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-    backBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    newBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, gap: 6 },
-    newBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    backBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    newBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563EB', paddingHorizontal: 14, paddingVertical: 9, borderRadius: SIZES.radiusBtn, gap: 6 },
+    newBtnTxt: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
 
-    filtersBar: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, height: 44, gap: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10 },
-    searchInput: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B' },
-    filterChips: { flexDirection: 'row', gap: 8 },
-    filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 12, minHeight: 44, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-    filterDropdownTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', maxWidth: 160, flexShrink: 1 },
+    filtersBar: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.m, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, paddingHorizontal: 14, height: 44, gap: 10, borderWidth: 1, borderColor: COLORS.border, marginBottom: 10 },
+    searchInput: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+    filterChips: { flexDirection: 'row', gap: SPACING.s },
+    filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 12, minHeight: 44, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: COLORS.border },
+    filterDropdownTxt: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary, maxWidth: 160, flexShrink: 1 },
 
-    countRow: { paddingHorizontal: 20, paddingVertical: 10 },
-    countText: { fontSize: 12, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
+    countRow: { paddingHorizontal: SPACING.m, paddingVertical: 10 },
+    countText: { fontSize: 12, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-    listContent: { paddingHorizontal: 16, paddingBottom: 100 },
+    listContent: { paddingHorizontal: SPACING.m, paddingBottom: 100 },
 
-    rfiCard: { backgroundColor: '#fff', borderRadius: 20, marginBottom: 14, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+    rfiCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, marginBottom: 14, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
     rfiCardOverdue: { borderColor: '#FEE2E2' },
     priorityStrip: { width: 5 },
-    cardBody: { flex: 1, padding: 16 },
+    cardBody: { flex: 1, padding: SPACING.m },
 
     cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    rfiNumWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rfiNumWrap: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
     rfiNum: { fontSize: 13, fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
     overdueChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2E2', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
     overdueChipTxt: { fontSize: 9, fontWeight: '900', color: '#EF4444' },
@@ -635,67 +635,67 @@ const styles = StyleSheet.create({
     statusPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     statusPillTxt: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
 
-    subject: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 8, lineHeight: 22 },
+    subject: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 8, lineHeight: 22 },
     projectRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-    projectName: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    projectName: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
 
-    divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 14 },
+    divider: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginBottom: 14 },
 
-    infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 14 },
+    infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: 14 },
     infoCol: { minWidth: '40%' },
-    infoLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' },
-    infoVal: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+    infoLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' },
+    infoVal: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
 
     priorityPill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     priorityPillTxt: { fontSize: 10, fontWeight: '900' },
 
     actionRow: { flexDirection: 'row', gap: 10 },
     actionBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 6 },
-    actionBtnGhost: { backgroundColor: '#F8FAFC' },
+    actionBtnGhost: { backgroundColor: COLORS.background },
     actionBtnTxt: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
 
     emptyWrap: { alignItems: 'center', paddingVertical: 60 },
-    emptyTitle: { fontSize: 18, fontWeight: '900', color: '#94A3B8', marginTop: 16 },
+    emptyTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textMuted, marginTop: SPACING.m },
     emptySubtitle: { fontSize: 13, fontWeight: '700', color: '#CBD5E1', marginTop: 6, textAlign: 'center' },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.7)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, alignSelf: 'center' },
+    modalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-    modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
-    modalSubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
+    modalTitle: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary },
+    modalSubtitle: { fontSize: 13, color: COLORS.textMuted, fontWeight: '700', marginTop: 4 },
 
-    inputLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 16, marginBottom: 8 },
-    input: { backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontWeight: '700', color: '#1E293B' },
-    chipList: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    inputLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: SPACING.m, marginBottom: 8 },
+    input: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, paddingVertical: 14, fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
+    chipList: { flexDirection: 'row', gap: SPACING.s, paddingVertical: 4 },
+    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border },
     chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    chipTxt: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-    chipTxtActive: { color: '#fff' },
+    chipTxt: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary },
+    chipTxtActive: { color: COLORS.white },
 
     selectorRow: { flexDirection: 'row', gap: 10 },
-    selectorBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    selectorBtnTxt: { fontSize: 13, fontWeight: '900', color: '#64748B' },
+    selectorBtn: { flex: 1, height: 44, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    selectorBtnTxt: { fontSize: 13, fontWeight: '900', color: COLORS.textSecondary },
     attachDropzone: {
         borderWidth: 1.5,
         borderStyle: 'dashed',
         borderColor: '#CBD5E1',
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         minHeight: 90,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         paddingHorizontal: 14,
         marginTop: 2
     },
-    attachTitle: { fontSize: 12, fontWeight: '800', color: '#475569', marginTop: 6 },
-    attachSub: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 3 },
+    attachTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary, marginTop: 6 },
+    attachSub: { fontSize: 10, color: COLORS.textMuted, fontWeight: '700', marginTop: 3 },
     fileRow: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 12,
         paddingVertical: 10,
         flexDirection: 'row',
@@ -703,17 +703,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 10
     },
-    fileName: { flex: 1, fontSize: 12, color: '#334155', fontWeight: '700' },
+    fileName: { flex: 1, fontSize: 12, color: COLORS.textSecondary, fontWeight: '700' },
 
-    submitBtn: { height: 58, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 28 },
-    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    submitBtn: { height: 58, backgroundColor: '#2563EB', borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center', marginTop: 28 },
+    submitBtnTxt: { color: COLORS.white, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
 
     // Filter modal
     filterOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 30 },
-    filterModalBox: { backgroundColor: '#fff', borderRadius: 24, padding: 20, maxHeight: 400 },
-    filterModalTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 16 },
-    filterOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    filterOptionTxt: { fontSize: 15, fontWeight: '700', color: '#475569' },
+    filterModalBox: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, maxHeight: 400 },
+    filterModalTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
+    filterOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    filterOptionTxt: { fontSize: 15, fontWeight: '700', color: COLORS.textSecondary },
 });
 
 export default RFIListScreen;

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "sdkVersion": "55.0.0",
+    "sdkVersion": "54.0.0",
     "name": "Kaal-ca",
     "slug": "buildmaster-pro",
     "version": "1.0.0",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kaal.construction",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -76,7 +76,8 @@
       "expo-dev-client",
       "expo-audio",
       "@react-native-community/datetimepicker",
-      "expo-asset"
+      "expo-asset",
+      "expo-build-properties"
     ],
     "extra": {
       "eas": {

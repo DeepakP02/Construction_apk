@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     View, Text, StyleSheet, FlatList, TouchableOpacity, 
     TextInput, Animated, ActivityIndicator, Dimensions, 
-    SafeAreaView, StatusBar, useWindowDimensions
+    StatusBar, useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, contentBottomForTabBar } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
+
 import { Card } from '../../components/shared/CommonUI';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -108,7 +109,7 @@ const WorkerTasksScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <WorkerHeader showBranding={true} title="Tasks" />
 
@@ -143,43 +144,44 @@ const WorkerTasksScreen = ({ navigation }) => {
                     />
                 </Animated.View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     content: { flex: 1 },
-    titleSection: { },
-    mainTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    titleSection: { paddingHorizontal: SPACING.m, paddingTop: SPACING.s },
+    mainTitle: { ...TYPOGRAPHY.screenTitle, color: COLORS.textPrimary },
     subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-    subtitleText: { fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
-    statsRow: { flexDirection: 'row' },
+    subtitleText: { ...TYPOGRAPHY.caption, color: COLORS.textMuted },
+    statsRow: { flexDirection: 'row', paddingHorizontal: SPACING.m, marginVertical: SPACING.s, backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, paddingVertical: SPACING.s, borderHeight: 1, borderColor: COLORS.border, ...SHADOWS.small },
     statBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 4, justifyContent: 'center' },
-    statDot: { },
-    statText: { fontWeight: '900' },
-    searchSection: { },
-    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
-    searchInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
+    statDot: { width: 8, height: 8, borderRadius: 4 },
+    statText: { ...TYPOGRAPHY.badge },
+    searchSection: { paddingHorizontal: SPACING.m, marginBottom: SPACING.s },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: SIZES.radiusInput, borderWidth: 1, borderColor: COLORS.border, height: 48, paddingHorizontal: SPACING.sm },
+    searchInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: COLORS.textPrimary, fontSize: moderateScale(15) },
     listContainer: { },
-    taskCard: { backgroundColor: '#FFFFFF', marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', ...SHADOWS.small },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    taskTitle: { fontWeight: '900', color: '#0F172A', marginBottom: 8 },
+    taskCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.card },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: SPACING.m },
+    taskTitle: { ...TYPOGRAPHY.subtitle, color: COLORS.textPrimary, marginBottom: SPACING.xs },
     inlineProgressContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    inlineProgressBarBg: { flex: 1, backgroundColor: '#F1F5F9', overflow: 'hidden' },
-    inlineProgressBarFill: { height: '100%', backgroundColor: '#2563EB' },
-    inlineProgressText: { fontWeight: '800', color: '#94A3B8' },
-    statusBadge: { },
-    statusBadgeText: { fontWeight: '900' },
-    cardDetails: { backgroundColor: '#F8FAFC', marginBottom: 16 },
+    inlineProgressBarBg: { flex: 1, backgroundColor: COLORS.surfaceSecondary, height: 8, borderRadius: 4, overflow: 'hidden' },
+    inlineProgressBarFill: { height: '100%', backgroundColor: '#2563EB', borderRadius: 4 },
+    inlineProgressText: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: SIZES.radiusCard, borderWidth: 1 },
+    statusBadgeText: { ...TYPOGRAPHY.badge },
+    cardDetails: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusCard, padding: SPACING.m, marginBottom: SPACING.m },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
     detailItem: { flex: 1 },
-    detailLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 2 },
-    detailValue: { fontWeight: '700', color: '#334155' },
-    actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-    actionBtnText: { fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
+    detailLabel: { ...TYPOGRAPHY.badge, color: COLORS.textMuted, marginBottom: 2 },
+    detailValue: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, fontWeight: '700' },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.sm },
+    actionBtnText: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, fontWeight: '900' },
     emptyState: { alignItems: 'center', marginTop: 60 },
-    emptyText: { marginTop: 12, color: '#94A3B8', fontWeight: '700' },
+    emptyText: { marginTop: 12, color: COLORS.textMuted, ...TYPOGRAPHY.caption, fontWeight: '700' },
 });
 
 export default WorkerTasksScreen;
+

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { ProgressBar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
 export const OverviewTab = ({ project }) => {
@@ -121,55 +121,55 @@ export const OverviewTab = ({ project }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F1F5F9' },
-    content: { padding: 20 },
+    container: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
+    content: { padding: SPACING.m },
 
     // Premium Card
-    premiumCard: { backgroundColor: '#fff', borderRadius: 28, padding: 24, marginBottom: 20 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    projectType: { fontSize: 10, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
+    premiumCard: { backgroundColor: COLORS.card, borderRadius: 28, padding: 24, marginBottom: SPACING.m },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    projectType: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
     liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
     liveText: { fontSize: 9, fontWeight: '900', color: '#059669' },
-    pTitle: { fontSize: 15, fontWeight: '900', color: '#1E293B', marginBottom: 20 },
-    progressDetail: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 12 },
+    pTitle: { fontSize: 15, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
+    progressDetail: { flexDirection: 'row', alignItems: 'baseline', gap: SPACING.s, marginBottom: 12 },
     pPercent: { fontSize: 32, fontWeight: '900' },
-    pSub: { fontSize: 10, fontWeight: '800', color: '#94A3B8' },
-    pBar: { height: 10, borderRadius: 5, backgroundColor: '#F1F5F9' },
-    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingVertical: 12, borderTopWidth: 1, borderColor: '#F1F5F9' },
-    dateItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    dateVal: { fontSize: 11, fontWeight: '900', color: '#1E293B' },
+    pSub: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted },
+    pBar: { height: 10, borderRadius: 5, backgroundColor: COLORS.surfaceSecondary },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingVertical: 12, borderTopWidth: 1, borderColor: COLORS.border },
+    dateItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
+    dateVal: { fontSize: 11, fontWeight: '900', color: COLORS.textPrimary },
     dateDivider: { width: 1, height: 14, backgroundColor: '#E2E8F0' },
 
     // KPI Grid
     kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-    statCard: { width: '31.3%', minWidth: 90, backgroundColor: '#fff', borderRadius: 24, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+    statCard: { width: '31.3%', minWidth: 90, backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: 12, borderWidth: 1, borderColor: COLORS.border },
     statHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
     statIconBox: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-    statLabel: { fontSize: 8, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
+    statLabel: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 0.5 },
     statVal: { fontSize: 14, fontWeight: '900' },
 
     // Section Header
-    sectionHeader: { marginBottom: 16, borderLeftWidth: 3, borderColor: COLORS.primary, paddingLeft: 12 },
-    sTitle: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
+    sectionHeader: { marginBottom: SPACING.m, borderLeftWidth: 3, borderColor: COLORS.primary, paddingLeft: 12 },
+    sTitle: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
 
     // Lead Card
-    leadCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', padding: 16, borderRadius: 24, marginBottom: 24 },
-    leadInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    leadAvatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center' },
+    leadCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: SIZES.radiusCard, marginBottom: 24 },
+    leadInfo: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+    leadAvatar: { width: 44, height: 44, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center' },
     leadInitial: { fontSize: 20, fontWeight: '900', color: COLORS.primary },
-    leadName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    leadRole: { fontSize: 9, fontWeight: '800', color: '#94A3B8', marginTop: 2 },
-    chatAction: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+    leadName: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+    leadRole: { fontSize: 9, fontWeight: '800', color: COLORS.textMuted, marginTop: 2 },
+    chatAction: { width: 44, height: 44, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
 
     // Loc Card
-    locCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 20, borderRadius: 24, gap: 16 },
-    locIconBox: { width: 48, height: 48, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    locText: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
+    locCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: SIZES.radiusCard, gap: 16 },
+    locIconBox: { width: 48, height: 48, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    locText: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 6 },
     gpsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     gpsPulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#BFDBFE' },
     gpsText: { fontSize: 9, fontWeight: '900', color: '#3B82F6' },
-    mapBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center' },
+    mapBtn: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center' },
 });
 
 export default OverviewTab;

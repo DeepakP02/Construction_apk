@@ -5,7 +5,7 @@ import {
     RefreshControl, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { getServerUrl } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
@@ -293,35 +293,35 @@ const ClientPhotosScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FFFFFF' },
+    screen: { flex: 1, backgroundColor: COLORS.surface },
 
     // Loading
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
-    loadingText: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 2 },
+    loadingText: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 2 },
 
     // Page Header
-    pageHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-    pageTitle: { fontSize: isSmallDevice ? 24 : 28, fontWeight: '950', color: '#0F172A', letterSpacing: -1.5 },
-    pageSubtitle: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 4, lineHeight: 18 },
+    pageHeader: { paddingHorizontal: SPACING.m, paddingTop: 16, paddingBottom: 12 },
+    pageTitle: { fontSize: isSmallDevice ? 24 : 28, fontWeight: '950', color: COLORS.textPrimary, letterSpacing: -1.5 },
+    pageSubtitle: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, marginTop: 4, lineHeight: 18 },
 
     // Tabs — matching web's pill tab style
     tabsContainer: {
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         marginBottom: 12,
     },
     tabsScroll: {
         flexDirection: 'row',
-        gap: 8,
-        backgroundColor: '#F8FAFC',
+        gap: SPACING.s,
+        backgroundColor: COLORS.background,
         padding: 6,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
     tabBtn: {
         paddingHorizontal: isSmallDevice ? 12 : 16,
         paddingVertical: 10,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
     },
     tabBtnActive: {
         backgroundColor: '#3B82F6',
@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: isSmallDevice ? 9 : 10,
         fontWeight: '900',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
     tabTextActive: {
-        color: '#FFFFFF',
+        color: COLORS.white,
     },
 
     // Grid
@@ -349,16 +349,16 @@ const styles = StyleSheet.create({
         margin: CARD_GAP / 2,
     },
     photoCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusCard,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
     imageContainer: {
         width: '100%',
         height: isSmallDevice ? 140 : 160,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
     },
     photoImg: {
         width: '100%',
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     photoBadgeText: {
-        color: '#FFFFFF',
+        color: COLORS.white,
         fontSize: 8,
         fontWeight: '900',
         letterSpacing: 0.5,
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     photoProjectTitle: {
         fontSize: isSmallDevice ? 11 : 12,
         fontWeight: '900',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         textTransform: 'uppercase',
         letterSpacing: -0.5,
         marginBottom: 6,
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     dateText: {
         fontSize: 9,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
     },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     },
     descriptionText: {
         fontSize: 10,
-        color: '#64748B',
+        color: COLORS.textSecondary,
         fontStyle: 'italic',
         lineHeight: 15,
         marginTop: 4,
@@ -444,8 +444,8 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '900',
-        color: '#94A3B8',
-        marginTop: 16,
+        color: COLORS.textMuted,
+        marginTop: SPACING.m,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
         zIndex: 10,
         width: 48,
         height: 48,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -478,12 +478,12 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
     },
     lightboxImage: {
         width: SCREEN_WIDTH - 32,
         height: SCREEN_WIDTH - 32,
-        borderRadius: 24,
+        borderRadius: SIZES.radiusCard,
     },
     lightboxInfoPanel: {
         paddingHorizontal: 24,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: 'rgba(255, 255, 255, 0.08)',
     },
-    lightboxInfoLeft: { marginBottom: 16 },
+    lightboxInfoLeft: { marginBottom: SPACING.m },
     lightboxLabel: {
         fontSize: 9,
         fontWeight: '900',
@@ -502,14 +502,14 @@ const styles = StyleSheet.create({
     lightboxProjectName: {
         fontSize: 22,
         fontWeight: '950',
-        color: '#FFFFFF',
+        color: COLORS.white,
         textTransform: 'uppercase',
         letterSpacing: -1,
     },
     lightboxDateRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: SPACING.s,
         marginTop: 8,
     },
     lightboxDateText: {
@@ -519,8 +519,8 @@ const styles = StyleSheet.create({
     },
     lightboxDescBox: {
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        padding: 16,
-        borderRadius: 16,
+        padding: SPACING.m,
+        borderRadius: SIZES.radiusCard,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
     },

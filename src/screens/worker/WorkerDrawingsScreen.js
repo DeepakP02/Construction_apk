@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     View, Text, StyleSheet, FlatList, TouchableOpacity, 
     TextInput, Animated, ActivityIndicator, Dimensions, 
-    ScrollView, Share, Linking, Modal, Pressable, Alert, SafeAreaView, StatusBar, useWindowDimensions 
+    ScrollView, Share, Linking, Modal, Pressable, Alert, StatusBar, useWindowDimensions 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { getServerUrl } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 const WorkerDrawingsScreen = () => {
     const { projects, selectedProject: globalSelectedProject } = useApp();
@@ -179,7 +181,7 @@ const WorkerDrawingsScreen = () => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <WorkerHeader hideSearch={true} title="Drawing Management" />
             
@@ -299,70 +301,70 @@ const WorkerDrawingsScreen = () => {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    listContent: { paddingBottom: 100 },
+    listContent: { paddingBottom: 100, paddingHorizontal: SPACING.m },
 
-    headerArea: { padding: 20, backgroundColor: '#FFFFFF' },
-    titleInfo: { marginBottom: 25 },
-    mainTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    subTitle: { fontWeight: '600', color: '#64748B', marginTop: 4 },
+    headerArea: { padding: SPACING.m, backgroundColor: COLORS.surface },
+    titleInfo: { marginBottom: SPACING.md },
+    mainTitle: { ...TYPOGRAPHY.screenTitle, color: COLORS.textPrimary },
+    subTitle: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, marginTop: 4 },
 
-    controlPanel: { marginBottom: 20 },
-    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 14, paddingHorizontal: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 15 },
-    searchInput: { flex: 1, marginLeft: 10, fontWeight: '700', color: '#1E293B' },
+    controlPanel: { paddingHorizontal: SPACING.m, marginBottom: SPACING.m },
+    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: SIZES.radiusInput, height: 48, paddingHorizontal: SPACING.m, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.sm },
+    searchInput: { flex: 1, marginLeft: 10, fontWeight: '700', color: COLORS.textPrimary, fontSize: moderateScale(14) },
 
-    filtersRow: { flexDirection: 'row', gap: 12 },
-    dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-    dropdownLabel: { fontWeight: '800', color: '#475569', flex: 1 },
+    filtersRow: { flexDirection: 'row', gap: SPACING.sm },
+    dropdown: { flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.card, borderRadius: SIZES.radiusInput, paddingHorizontal: SPACING.sm, borderWidth: 1, borderColor: COLORS.border },
+    dropdownLabel: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, flex: 1 },
 
-    tableHead: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginTop: 10 },
-    headCol: { fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
+    tableHead: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, marginTop: 10 },
+    headCol: { ...TYPOGRAPHY.label, color: COLORS.textMuted },
 
-    tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', paddingHorizontal: 4 },
-    rowName: { fontWeight: '900', color: '#0F172A' },
-    rowSubName: { fontWeight: '700', color: '#94A3B8', marginTop: 1 },
-    rowProject: { fontWeight: '800', color: '#444' },
-    vBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    vText: { fontWeight: '900', color: '#64748B' },
-    rowDate: { fontWeight: '700', color: '#94A3B8' },
+    tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary, paddingHorizontal: 4 },
+    rowName: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '800' },
+    rowSubName: { ...TYPOGRAPHY.badge, color: COLORS.textMuted, marginTop: 1 },
+    rowProject: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, fontWeight: '700' },
+    vBadge: { backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    vText: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary },
+    rowDate: { ...TYPOGRAPHY.badge, color: COLORS.textMuted },
 
-    loadingInfo: { marginTop: 15, fontWeight: '700', color: '#64748B' },
+    loadingInfo: { marginTop: 15, ...TYPOGRAPHY.caption, color: COLORS.textSecondary },
     emptyContent: { alignItems: 'center', marginTop: 80, paddingHorizontal: 40 },
-    emptyMainText: { marginTop: 16, fontWeight: '900', color: '#1E293B' },
-    emptySubText: { marginTop: 4, fontWeight: '600', color: '#94A3B8', textAlign: 'center' },
+    emptyMainText: { marginTop: SPACING.m, ...TYPOGRAPHY.subtitle, color: COLORS.textPrimary },
+    emptySubText: { marginTop: 4, ...TYPOGRAPHY.caption, color: COLORS.textMuted, textAlign: 'center' },
 
-    selectorOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 30 },
-    selectorContent: { backgroundColor: '#fff', borderRadius: 24, padding: 20, width: '100%', maxHeight: '70%' },
-    selectorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selectorTitle: { fontWeight: '900', color: '#0F172A' },
-    selectorItem: { paddingVertical: 15, paddingHorizontal: 15, borderRadius: 12, marginBottom: 5 },
+    selectorOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: SPACING.md },
+    selectorContent: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: SPACING.m, width: '100%', maxHeight: '70%' },
+    selectorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m, paddingBottom: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selectorTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.textPrimary },
+    selectorItem: { paddingVertical: SPACING.sm, paddingHorizontal: SPACING.sm, borderRadius: SIZES.radiusCard, marginBottom: 4 },
     selectorItemActive: { backgroundColor: '#EFF6FF' },
-    selectorText: { fontWeight: '700', color: '#475569' },
+    selectorText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
     selectorTextActive: { color: '#2563EB', fontWeight: '900' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end',  },
-    modalPanel: { backgroundColor: '#fff', padding: 25, minHeight: '55%' },
-    modalTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-    modalHeaderTitle: { fontWeight: '900', color: '#0F172A' },
-    docBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', marginBottom: 25 },
-    pdfIconBox: { backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
-    bannerTitle: { fontWeight: '900', color: '#1E293B' },
-    bannerMeta: { fontWeight: '700', color: '#94A3B8', marginTop: 4 },
-    gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 35 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end' },
+    modalPanel: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: SPACING.md, minHeight: '55%' },
+    modalTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+    modalHeaderTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.textPrimary },
+    docBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusCard, padding: SPACING.sm, marginBottom: SPACING.md },
+    pdfIconBox: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.s, justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
+    bannerTitle: { ...TYPOGRAPHY.subtitle, color: COLORS.textPrimary },
+    bannerMeta: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: 4 },
+    gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.m, marginBottom: SPACING.md },
     gridItem: { width: '46%' },
-    gridLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 4 },
-    gridValue: { fontWeight: '800', color: '#1E293B' },
-    actionRow: { flexDirection: 'row', gap: 15 },
-    btnAlt: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-    btnAltText: { fontWeight: '900', color: '#1E293B' },
-    btnMain: { flex: 2, backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, ...SHADOWS.small },
-    btnMainText: { fontWeight: '900', color: '#fff' }
+    gridLabel: { ...TYPOGRAPHY.label, color: COLORS.textMuted, marginBottom: 4 },
+    gridValue: { ...TYPOGRAPHY.body, color: COLORS.textPrimary, fontWeight: '700' },
+    actionRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm },
+    btnAlt: { flex: 1, height: 52, backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border, borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s },
+    btnAltText: { ...TYPOGRAPHY.body, fontWeight: '900', color: COLORS.textPrimary },
+    btnMain: { flex: 2, height: 52, backgroundColor: '#2563EB', borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s, ...SHADOWS.medium },
+    btnMainText: { ...TYPOGRAPHY.body, fontWeight: '900', color: COLORS.white }
 });
 
 export default WorkerDrawingsScreen;

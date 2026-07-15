@@ -4,7 +4,7 @@ import {
     Dimensions, ActivityIndicator, StatusBar, RefreshControl, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
 import { useApp } from '../../context/AppContext';
@@ -69,7 +69,7 @@ const ClientInvoicesScreen = ({ navigation }) => {
             case 'sent':
                 return { bg: '#EFF6FF', color: '#3B82F6', border: '#DBEAFE', label: 'Sent', icon: 'send' };
             case 'draft':
-                return { bg: '#F8FAFC', color: '#94A3B8', border: '#E2E8F0', label: 'Draft', icon: 'file-document-edit-outline' };
+                return { bg: '#F8FAFC', color: COLORS.textMuted, border: '#E2E8F0', label: 'Draft', icon: 'file-document-edit-outline' };
             default:
                 return { bg: '#FFFBEB', color: '#F59E0B', border: '#FEF3C7', label: 'Unpaid', icon: 'clock-alert-outline' };
         }
@@ -237,42 +237,42 @@ const ClientInvoicesScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
+    screen: { flex: 1, backgroundColor: COLORS.background },
 
     // Loading
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
-    loadingText: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 2 },
+    loadingText: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 2 },
 
     // Page Header — matching web's layout
     pageHeader: {
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.m,
         paddingTop: 16,
         paddingBottom: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: COLORS.border,
     },
     headerLeft: { flex: 1, marginRight: 12 },
     pageTitle: {
         fontSize: isSmallDevice ? 18 : 20,
         fontWeight: '950',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         letterSpacing: -0.5,
     },
     pageSubtitle: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         marginTop: 4,
     },
     outstandingCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 14,
         paddingVertical: 10,
         alignItems: 'flex-end',
@@ -280,30 +280,30 @@ const styles = StyleSheet.create({
     outstandingLabel: {
         fontSize: 8,
         fontWeight: '900',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         letterSpacing: 1,
         marginBottom: 2,
     },
     outstandingValue: {
         fontSize: 20,
         fontWeight: '950',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         letterSpacing: -1,
     },
 
     // Table Header — matching web's column header row
     tableHeader: {
         flexDirection: 'row',
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 12,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
     },
     thText: {
         fontSize: 9,
         fontWeight: '900',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         letterSpacing: 1,
         textTransform: 'uppercase',
     },
@@ -313,16 +313,16 @@ const styles = StyleSheet.create({
 
     // Invoice Card — mobile card version of web table row
     invoiceCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusCard,
         marginBottom: 10,
         flexDirection: 'row',
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
     statusStrip: { width: 4 },
-    cardBody: { flex: 1, padding: 16 },
+    cardBody: { flex: 1, padding: SPACING.m },
 
     cardTopRow: {
         flexDirection: 'row',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     invoiceId: {
         fontSize: 13,
         fontWeight: '900',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
         letterSpacing: 0.3,
     },
     statusPill: {
@@ -355,20 +355,20 @@ const styles = StyleSheet.create({
     projectName: {
         fontSize: 15,
         fontWeight: '900',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         marginBottom: 10,
         letterSpacing: -0.3,
     },
 
-    divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
+    divider: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginBottom: 12 },
 
     // Info Grid — DATE, AMOUNT, DUE DATE, CLIENT
-    infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
     infoCol: { minWidth: '40%' },
     infoLabel: {
         fontSize: 8,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 1,
         marginBottom: 3,
         textTransform: 'uppercase',
@@ -376,10 +376,10 @@ const styles = StyleSheet.create({
     infoVal: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
     amountText: {
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         fontWeight: '950',
         fontSize: 15,
     },
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     itemsHeader: {
         fontSize: 9,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 1.5,
         marginBottom: 10,
     },
@@ -404,12 +404,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: COLORS.surfaceSecondary,
     },
     lineItemLeft: { flex: 1, marginRight: 12 },
-    lineItemDesc: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-    lineItemMeta: { fontSize: 10, fontWeight: '700', color: '#94A3B8', marginTop: 2 },
-    lineItemTotal: { fontSize: 13, fontWeight: '900', color: '#0F172A' },
+    lineItemDesc: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+    lineItemMeta: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginTop: 2 },
+    lineItemTotal: { fontSize: 13, fontWeight: '900', color: COLORS.textPrimary },
 
     totalRow: {
         flexDirection: 'row',
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1.5,
         borderTopColor: '#E2E8F0',
     },
-    totalLabel: { fontSize: 12, fontWeight: '900', color: '#0F172A' },
+    totalLabel: { fontSize: 12, fontWeight: '900', color: COLORS.textPrimary },
     totalValue: { fontSize: 18, fontWeight: '950', color: '#2563EB', letterSpacing: -0.5 },
 
     // Empty State
@@ -432,8 +432,8 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#94A3B8',
-        marginTop: 16,
+        color: COLORS.textMuted,
+        marginTop: SPACING.m,
     },
     emptySubtitle: {
         fontSize: 13,

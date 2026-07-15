@@ -1,24 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Image,
-    ActivityIndicator,
-    Alert,
-    Modal,
-    TextInput,
-    Platform,
-    ScrollView,
-    Animated,
-    SafeAreaView,
-    useWindowDimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, TextInput, Platform, ScrollView, Animated, useWindowDimensions, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { useApp } from '../../context/AppContext';
@@ -55,6 +39,7 @@ const SubcontractorPhotosScreen = () => {
     const [selTitle, setSelTitle] = useState('');
     const [selOptions, setSelOptions] = useState([]);
     const [selOnSelect, setSelOnSelect] = useState(() => () => {});
+    const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -262,7 +247,7 @@ const SubcontractorPhotosScreen = () => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <WorkerHeader 
                 hideSearch={true} 
                 title="Site Photos" 
@@ -295,7 +280,9 @@ const SubcontractorPhotosScreen = () => {
 
             {/* UPLOAD MODAL */}
             <Modal visible={uploadModal} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => Keyboard.dismiss()}>
+                    <TouchableWithoutFeedback>
                     <View style={[styles.modalContent, { borderTopLeftRadius: moderateScale(35), borderTopRightRadius: moderateScale(35), padding: scale(25), maxWidth: 600, alignSelf: 'center', width: '100%' }]}>
                         <View style={[styles.modalHeader, { marginBottom: verticalScale(20) }]}>
                             <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>Upload to Site</Text>
@@ -309,17 +296,7 @@ const SubcontractorPhotosScreen = () => {
                         <Text style={[styles.inputLabel, { fontSize: moderateScale(10), marginBottom: verticalScale(10) }]}>SELECT PROJECT</Text>
                         <TouchableOpacity
                             style={[styles.projectDropdown, { borderRadius: moderateScale(12), paddingHorizontal: scale(14), height: verticalScale(50), marginBottom: verticalScale(20) }]}
-                            onPress={() =>
-                                openDropdown(
-                                    'SELECT PROJECT',
-                                    projects.map((p) => ({
-                                        label: p.name,
-                                        value: projectIdFromDoc(p),
-                                        icon: 'office-building',
-                                    })),
-                                    (opt) => setTargetProjectId(idKey(opt.value))
-                                )
-                            }
+                            onPress={() => setProjectPickerOpen(true)}
                         >
                             <View style={styles.projectDropdownLeft}>
                                 <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
@@ -347,7 +324,40 @@ const SubcontractorPhotosScreen = () => {
                             {uploading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.mainUploadBtnText, { fontSize: moderateScale(16) }]}>CONFIRM UPLOAD</Text>}
                         </TouchableOpacity>
                     </View>
-                </View>
+                    </TouchableWithoutFeedback>
+                </TouchableOpacity>
+                {projectPickerOpen && (
+                    <TouchableOpacity 
+                        style={[StyleSheet.absoluteFill, styles.selOverlayModal, { justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}
+                        activeOpacity={1}
+                        onPress={() => setProjectPickerOpen(false)}
+                    >
+                        <View style={[styles.selBox, { width: isTablet ? 420 : '86%', borderRadius: moderateScale(24), padding: scale(20) }]}>
+                            <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>SELECT PROJECT</Text>
+                            <ScrollView style={{ maxHeight: verticalScale(300) }} keyboardShouldPersistTaps="handled">
+                                {projects.map((p, i) => (
+                                    <TouchableOpacity
+                                        key={`upload-proj-${i}`}
+                                        style={[styles.selItem, { paddingVertical: verticalScale(12) }]}
+                                        onPress={() => {
+                                            setTargetProjectId(projectIdFromDoc(p));
+                                            setProjectPickerOpen(false);
+                                        }}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name="office-building"
+                                            size={moderateScale(17)}
+                                            color="#2563EB"
+                                            style={{ marginRight: scale(12) }}
+                                        />
+                                        <Text style={[styles.selLabelText, { fontSize: moderateScale(13) }]}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </TouchableOpacity>
+                )}
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* Filter / upload project picker (same UX as Foreman Site Photos dropdown list) */}
@@ -394,74 +404,74 @@ const SubcontractorPhotosScreen = () => {
                     )}
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     listContainer: { },
-    headerTop: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    headerTop: { backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    headerTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     headerLabel: { fontWeight: '900', color: '#2563EB', letterSpacing: 1.5 },
     customDropdownBtn: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     dropdownLeft: { flexDirection: 'row', alignItems: 'center' },
-    dropdownValueText: { fontWeight: '800', color: '#1E293B' },
-    row: { justifyContent: 'space-between', paddingHorizontal: 16 },
+    dropdownValueText: { fontWeight: '800', color: COLORS.textPrimary },
+    row: { justifyContent: 'space-between', paddingHorizontal: SPACING.m },
     subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     titleSection: { flex: 1 },
     pageUploadBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', ...SHADOWS.small },
-    pageUploadBtnText: { color: '#fff', fontWeight: '900' },
-    photoCard: { backgroundColor: '#fff', overflow: 'hidden', ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
-    photoImg: { width: '100%', backgroundColor: '#F1F5F9' },
+    pageUploadBtnText: { color: COLORS.white, fontWeight: '900' },
+    photoCard: { backgroundColor: COLORS.card, overflow: 'hidden', ...SHADOWS.small, borderWidth: 1, borderColor: COLORS.border },
+    photoImg: { width: '100%', backgroundColor: COLORS.surfaceSecondary },
     photoOverlay: { position: 'absolute' },
     projectTag: { backgroundColor: 'rgba(15, 23, 42, 0.7)' },
-    projectTagText: { color: '#fff', fontWeight: '800' },
+    projectTagText: { color: COLORS.white, fontWeight: '800' },
     photoInfo: { },
-    photoDesc: { fontWeight: '800', color: '#1E293B' },
-    photoDate: { fontWeight: '700', color: '#94A3B8' },
-    loadingText: { fontWeight: '700', color: '#64748B' },
+    photoDesc: { fontWeight: '800', color: COLORS.textPrimary },
+    photoDate: { fontWeight: '700', color: COLORS.textMuted },
+    loadingText: { fontWeight: '700', color: COLORS.textSecondary },
     emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
-    emptyText: { fontWeight: '700', color: '#94A3B8', textAlign: 'center' },
+    emptyText: { fontWeight: '700', color: COLORS.textMuted, textAlign: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', minHeight: '60%' },
+    modalContent: { backgroundColor: COLORS.card, minHeight: '60%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
     previewThumb: { width: '100%' },
-    inputLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
-    projectDropdown: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    inputLabel: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1 },
+    projectDropdown: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     projectDropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
-    projectDropdownText: { fontWeight: '800', color: '#1E293B', flex: 1 },
-    projChip: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    projectDropdownText: { fontWeight: '800', color: COLORS.textPrimary, flex: 1 },
+    projChip: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
     projChipActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
-    projChipText: { fontWeight: '700', color: '#64748B' },
+    projChipText: { fontWeight: '700', color: COLORS.textSecondary },
     projChipActiveText: { color: '#2563EB' },
     selOverlayModal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { backgroundColor: '#fff' },
-    selTitle: { fontWeight: '900', color: '#0F172A', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1.2 },
-    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    selBox: { backgroundColor: COLORS.card },
+    selTitle: { fontWeight: '900', color: COLORS.textPrimary, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1.2 },
+    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     selItemActive: { backgroundColor: '#EFF6FF' },
-    selLabelText: { fontWeight: '700', color: '#334155' },
+    selLabelText: { fontWeight: '700', color: COLORS.textSecondary },
     selLabelTextActive: { color: '#2563EB' },
-    input: { backgroundColor: '#F8FAFC', color: '#0F172A', textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0', marginTop: 5 },
+    input: { backgroundColor: COLORS.background, color: COLORS.textPrimary, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.border, marginTop: 5 },
     mainUploadBtn: { backgroundColor: '#2563EB', alignItems: 'center', ...SHADOWS.small },
-    mainUploadBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
+    mainUploadBtnText: { color: COLORS.white, fontWeight: '900', letterSpacing: 0.5 },
     fullPreviewOverlay: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
     closeFull: { position: 'absolute', zIndex: 100 },
     fullContent: { flex: 1, justifyContent: 'center' },
     fullImage: { width: '100%', height: '70%' },
     fullFooter: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.5)' },
     fullProjName: { fontWeight: '900', color: '#2563EB', textTransform: 'uppercase' },
-    fullDesc: { fontWeight: '800', color: '#fff' },
-    fullMeta: { fontWeight: '700', color: '#94A3B8' }
+    fullDesc: { fontWeight: '800', color: COLORS.white },
+    fullMeta: { fontWeight: '700', color: COLORS.textMuted }
 });
 
 export default SubcontractorPhotosScreen;

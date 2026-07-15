@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -94,29 +94,29 @@ const ProjectManagerProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     scroll: { },
-    profileCard: { backgroundColor: '#fff' },
+    profileCard: { backgroundColor: COLORS.card },
     avatarSection: { alignItems: 'center' },
     avatarGlow: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
     avatar: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-    avatarText: { fontWeight: '900', color: '#fff' },
-    fullName: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    avatarText: { fontWeight: '900', color: COLORS.white },
+    fullName: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     roleBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#10B981' },
-    roleText: { color: '#fff', fontWeight: '900', letterSpacing: 1 },
-    email: { color: '#64748B', fontWeight: '600' },
+    roleText: { color: COLORS.white, fontWeight: '900', letterSpacing: 1 },
+    email: { color: COLORS.textSecondary, fontWeight: '600' },
     statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
     statBox: { alignItems: 'center', flex: 1 },
-    statValue: { fontWeight: '900', color: '#0F172A' },
-    statLabel: { fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
+    statValue: { fontWeight: '900', color: COLORS.textPrimary },
+    statLabel: { fontWeight: '800', color: COLORS.textMuted, letterSpacing: 1 },
     sectionHeader: { },
-    sectionTitle: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5 },
+    sectionTitle: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5 },
     actionList: { },
-    actionItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
-    actionIcon: { backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
+    actionItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
+    actionIcon: { backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
     actionBody: { flex: 1 },
-    actionLabel: { fontWeight: '800', color: '#1E293B' },
-    actionSub: { color: '#94A3B8', fontWeight: '600' },
+    actionLabel: { fontWeight: '800', color: COLORS.textPrimary },
+    actionSub: { color: COLORS.textMuted, fontWeight: '600' },
     logoutBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FEE2E2' },
     logoutText: { color: '#EF4444', fontWeight: '900', letterSpacing: 1 }
 });

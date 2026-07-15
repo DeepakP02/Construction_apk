@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 
@@ -115,51 +115,51 @@ const ClientRFIScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
-    scrollContent: { padding: 16 },
+    screen: { flex: 1, backgroundColor: COLORS.background },
+    scrollContent: { padding: SPACING.m },
     
     headerTitleSection: { marginBottom: 24, paddingHorizontal: 4 },
-    mainTitle: { fontSize: 32, fontWeight: '950', color: '#0F172A', letterSpacing: -1.5 },
-    subTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 4 },
+    mainTitle: { fontSize: 32, fontWeight: '950', color: COLORS.textPrimary, letterSpacing: -1.5 },
+    subTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary, marginTop: 4 },
 
     dashboardGrid: { gap: 16, marginBottom: 24 },
     dashboardCard: { 
-        backgroundColor: '#FFFFFF', 
-        borderRadius: 24, 
+        backgroundColor: COLORS.surface, 
+        borderRadius: SIZES.radiusCard, 
         padding: 24, 
         minHeight: isSmallDevice ? 150 : 170,
         justifyContent: 'space-between'
     },
     cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    titleWithIcon: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    cardHeaderTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 },
+    titleWithIcon: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
+    cardHeaderTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     viewAllText: { fontSize: 12, fontWeight: '900', color: '#3B82F6' },
     
-    countBadgeRed: { backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+    countBadgeRed: { backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: SIZES.radiusBtn },
     badgeTextRed: { fontSize: 12, fontWeight: '900', color: '#EF4444' },
-    countBadgeOrange: { backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+    countBadgeOrange: { backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: SIZES.radiusBtn },
     badgeTextOrange: { fontSize: 12, fontWeight: '900', color: '#F59E0B' },
 
     cardBody: { flex: 1 },
     cardBodyCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     rfiMiniItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 6 },
     rfiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6' },
-    rfiTitleText: { fontSize: 13, fontWeight: '700', color: '#475569' },
+    rfiTitleText: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
 
     emptyStateBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyText: { fontSize: 13, color: '#94A3B8', fontWeight: '800' },
-    emptyStateSubtitle: { fontSize: 13, fontWeight: '800', color: '#64748B', textAlign: 'center' },
+    emptyText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '800' },
+    emptyStateSubtitle: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary, textAlign: 'center' },
 
     mainActionBtn: { 
         backgroundColor: '#3B82F6', 
-        borderRadius: 24, 
+        borderRadius: SIZES.radiusCard, 
         padding: 24, 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         marginTop: 10
     },
-    btnMainLabel: { fontSize: 19, fontWeight: '950', color: '#FFFFFF', letterSpacing: -0.5 },
+    btnMainLabel: { fontSize: 19, fontWeight: '950', color: COLORS.white, letterSpacing: -0.5 },
     btnSubLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.8)', marginTop: 2 }
 });
 

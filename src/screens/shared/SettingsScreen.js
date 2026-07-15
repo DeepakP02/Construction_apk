@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../../components/shared/CommonUI';
@@ -70,21 +70,21 @@ export const SettingsScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    list: { padding: SPACING.m },
+    list: { padding: SPACING.m, paddingBottom: 120 },
     settingSection: { fontSize: 11, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5, marginTop: SPACING.m, marginBottom: SPACING.s },
     settingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-    settingIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    settingIcon: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
     settingLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
     profileCard: { backgroundColor: COLORS.primaryDark, borderRadius: 28, padding: 24, marginBottom: 24 },
     profileHeader: { flexDirection: 'row', alignItems: 'center' },
-    profileAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-    profileInitial: { fontSize: 28, fontWeight: '900', color: '#fff' },
+    profileAvatar: { width: 64, height: 64, borderRadius: SIZES.radiusModal, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+    profileInitial: { fontSize: 28, fontWeight: '900', color: COLORS.white },
     onlineBadge: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#10B981', position: 'absolute', bottom: 2, right: 2, borderWidth: 2, borderColor: COLORS.primaryDark },
     profileInfo: { flex: 1, marginLeft: 16 },
-    profileName: { fontSize: 20, fontWeight: '900', color: '#fff' },
+    profileName: { fontSize: 20, fontWeight: '900', color: COLORS.white },
     roleChip: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 6, alignSelf: 'flex-start' },
-    roleText: { color: '#fff', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
-    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#FFF1F2', padding: 18, borderRadius: 20, marginTop: 32, borderWidth: 1, borderColor: '#FECACA' },
+    roleText: { color: COLORS.white, fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#FFF1F2', padding: 18, borderRadius: SIZES.radiusCard, marginTop: 32, borderWidth: 1, borderColor: '#FECACA' },
     logoutText: { color: '#EF4444', fontWeight: '900', fontSize: 13 }
 });
 

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Platform, Alert, AppState } from 'react-native';
@@ -48,7 +48,6 @@ function resolveCanonicalTaskParentId(parentId, taskList) {
 }
 
 const STRICT_SYNC_LABELS = new Set([
-    'Projects',
     'Tasks',
     'Jobs',
     'ChatRooms',
@@ -343,6 +342,7 @@ export const AppProvider = ({ children }) => {
 
             // SEQUENTIAL FETCH for stability on mobile devices
             const projRes = await fetchData('/projects', setProjects, 'Projects');
+            console.log('[fetchInitialData] Projects loaded:', projRes?.data?.length || 0, 'projects');
             // Give the backend a moment to settle after any recent POST operations
             await new Promise(r => setTimeout(r, 800)); 
             const taskRes = await fetchData('/tasks', (data) => {
@@ -604,6 +604,25 @@ export const AppProvider = ({ children }) => {
             setChatRooms(chatRes.data);
         } catch (e) {}
     };
+
+    const refreshProjects = useCallback(async () => {
+        try {
+            console.log('[refreshProjects] Starting projects fetch...');
+            const res = await api.get('/projects');
+            console.log('[refreshProjects] Response received:', res.status, res.data);
+            const data = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || res.data);
+            console.log('[refreshProjects] Processed data:', data?.length, 'projects');
+            setProjects(data);
+            return { success: true, count: data?.length || 0 };
+        } catch (e) {
+            console.error('[refreshProjects] Error:', e.response?.status, e.response?.data || e.message);
+            // Fall back to mock data if API fails
+            console.warn('[refreshProjects] Falling back to mock projects');
+            const { MOCK_PROJECTS } = require('../mock/data');
+            setProjects(MOCK_PROJECTS);
+            return { success: true, count: MOCK_PROJECTS.length, fromMock: true };
+        }
+    }, []);
 
 
 
@@ -1694,7 +1713,7 @@ export const AppProvider = ({ children }) => {
             user, login, logout, registerCompany,
             updateProfile, updatePassword,
             teamMembers, fetchTeamMembers, inviteMember, updateTeamMember, deleteTeamMember,
-            projects, addProject, updateProject, deleteProject,
+            projects, addProject, updateProject, deleteProject, refreshProjects,
             tasks, addTask, addChildTask, updateTask, deleteTask, setTasks,
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,

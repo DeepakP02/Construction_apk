@@ -7,16 +7,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 2) Known production host candidates (auto-failover)
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
-    // Local backend - your Mac's LAN IP, backend runs on port 8080
-    'http://192.168.1.46:8080',  // ✅ This Mac (LAN IP) - primary local backend
-    'http://10.0.2.2:8080',      // Android Emulator loopback to host
+    // Local backend - your Mac's LAN IP, backend runs on port 4000
+    'http://192.168.1.32:4000',  // ✅ This Mac (LAN IP) - primary local backend
+    'http://10.0.2.2:4000',      // Android Emulator loopback to host
     // Production fallback (Railway) - used if local is unreachable
     'https://construction-production-b18f.up.railway.app',
-].filter(Boolean);
+].filter(url => typeof url === 'string' && url.startsWith('http'));
 
 let currentBaseIndex = 0;
-const getActiveBaseUrl = () => BASE_URL_CANDIDATES[currentBaseIndex];
-const getApiBaseUrl = () => `${getActiveBaseUrl()}/api`;
+const getActiveBaseUrl = () => {
+    // Clamp index within bounds to prevent undefined access after failover exhaustion
+    if (currentBaseIndex >= BASE_URL_CANDIDATES.length) {
+        currentBaseIndex = BASE_URL_CANDIDATES.length - 1;
+    }
+    return BASE_URL_CANDIDATES[currentBaseIndex] || BASE_URL_CANDIDATES[0] || '';
+};
+const getApiBaseUrl = () => {
+    const base = getActiveBaseUrl();
+    return base ? `${base}/api` : '/api';
+};
 const moveToNextBaseUrl = () => {
     if (currentBaseIndex >= BASE_URL_CANDIDATES.length - 1) return false;
     currentBaseIndex += 1;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 
 import { OverviewTab } from '../projects/OverviewTab';

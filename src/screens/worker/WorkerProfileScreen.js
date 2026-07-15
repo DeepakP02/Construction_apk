@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Animated, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../../components/shared/CommonUI';
@@ -94,16 +94,16 @@ const styles = StyleSheet.create({
     scroll: { },
     profileBox: { alignItems: 'center' },
     avatar: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-    avatarText: { fontWeight: '900', color: '#fff' },
+    avatarText: { fontWeight: '900', color: COLORS.white },
     statusDot: { position: 'absolute', bottom: 4, right: 4, backgroundColor: '#10B981', borderWidth: 4, borderColor: COLORS.background },
     userName: { fontWeight: '900', color: COLORS.textPrimary },
-    roleChip: { backgroundColor: '#F1F5F9' },
+    roleChip: { backgroundColor: COLORS.surfaceSecondary },
     roleText: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.5, textTransform: 'uppercase' },
-    statsRow: { flexDirection: 'row', backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
+    statsRow: { flexDirection: 'row', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
     statItem: { flex: 1, alignItems: 'center' },
     statNum: { fontWeight: '900', color: COLORS.textPrimary },
     statLabel: { fontWeight: '800', color: COLORS.textMuted },
-    dividerV: { width: 1, backgroundColor: '#F1F5F9' },
+    dividerV: { width: 1, backgroundColor: COLORS.surfaceSecondary },
     sectionTitle: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5, marginLeft: 4 },
     card: { },
     row: { flexDirection: 'row', alignItems: 'center' },

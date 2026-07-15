@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, 
-    ScrollView, Dimensions, StatusBar, SafeAreaView, RefreshControl, 
+    ScrollView, Dimensions, StatusBar, RefreshControl, 
     Modal, TextInput, Alert, KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
@@ -117,7 +117,7 @@ const SubcontractorRFIScreen = ({ navigation }) => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <WorkerHeader title="Dashboard" showBranding={true} />
 
@@ -222,7 +222,7 @@ const SubcontractorRFIScreen = ({ navigation }) => {
             >
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView 
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         style={styles.keyboardView}
                     >
                         <View style={styles.modalCard}>
@@ -256,7 +256,7 @@ const SubcontractorRFIScreen = ({ navigation }) => {
                                     style={[styles.dropdownField, form.projectId && styles.dropdownFieldActive]}
                                     onPress={() => setShowProjectList(!showProjectList)}
                                 >
-                                    <Text style={[styles.dropdownText, !form.projectId && { color: '#94A3B8' }]}>
+                                    <Text style={[styles.dropdownText, !form.projectId && { color: COLORS.textMuted }]}>
                                         {form.projectId ? projects.find(p => p._id === form.projectId)?.name : 'Select Project...'}
                                     </Text>
                                     <MaterialCommunityIcons 
@@ -322,7 +322,7 @@ const SubcontractorRFIScreen = ({ navigation }) => {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.inputLabel}>Category</Text>
                                         <View style={styles.modalInput}>
-                                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{form.category}</Text>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.textPrimary }}>{form.category}</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -345,13 +345,13 @@ const SubcontractorRFIScreen = ({ navigation }) => {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.inputLabel}>Assign To</Text>
                                         <View style={styles.modalInput}>
-                                            <Text style={{ fontSize: 13, color: '#94A3B8' }}>Unassigned</Text>
+                                            <Text style={{ fontSize: 13, color: COLORS.textMuted }}>Unassigned</Text>
                                         </View>
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.inputLabel}>Due Date</Text>
                                         <View style={[styles.modalInput, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-                                            <Text style={{ fontSize: 13, color: '#94A3B8' }}>dd-mm-yyyy</Text>
+                                            <Text style={{ fontSize: 13, color: COLORS.textMuted }}>dd-mm-yyyy</Text>
                                             <MaterialCommunityIcons name="calendar" size={16} color="#94A3B8" />
                                         </View>
                                     </View>
@@ -398,106 +398,106 @@ const SubcontractorRFIScreen = ({ navigation }) => {
                     </KeyboardAvoidingView>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    dashboardHeader: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
+    dashboardHeader: { paddingHorizontal: SPACING.m, paddingTop: 20, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTextContainer: { flex: 1, marginRight: 12 },
-    mainTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    mainSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '800', marginTop: 4 },
-    newBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4 },
-    newBtnText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    mainTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    mainSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '800', marginTop: 4 },
+    newBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: SIZES.radiusBtn, gap: 4 },
+    newBtnText: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
 
-    sectionHeader: { paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
+    sectionHeader: { paddingHorizontal: SPACING.m, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
     viewAllText: { fontSize: 13, fontWeight: '800', color: '#2563EB' },
-    recentView: { paddingHorizontal: 20 },
+    recentView: { paddingHorizontal: SPACING.m },
 
-    rfiCard: { backgroundColor: '#fff', padding: 16, borderRadius: 18, marginBottom: 10, borderWidth: 1, borderColor: '#F1F5F9' },
+    rfiCard: { backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: 18, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
     rfiHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     rfiNumber: { fontSize: 11, fontWeight: '900', color: '#2563EB' },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     statusText: { fontSize: 9, fontWeight: '900' },
-    rfiSubject: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+    rfiSubject: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
     rfiFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-    rfiProject: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
+    rfiProject: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
 
-    alertSection: { paddingHorizontal: 20, marginTop: 10 },
-    alertCard: { backgroundColor: '#F8FAFC', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+    alertSection: { paddingHorizontal: SPACING.m, marginTop: 10 },
+    alertCard: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
     alertHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    alertHeaderTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A', marginLeft: 8, flex: 1 },
-    alertCount: { backgroundColor: '#FEE2E2', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    alertHeaderTitle: { fontSize: 15, fontWeight: '900', color: COLORS.textPrimary, marginLeft: 8, flex: 1 },
+    alertCount: { backgroundColor: '#FEE2E2', width: 24, height: 24, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
     alertCountTxt: { fontSize: 11, fontWeight: '900', color: '#EF4444' },
-    emptyAlertText: { fontSize: 12, color: '#94A3B8', fontWeight: '800', textAlign: 'center', paddingVertical: 6 },
-    alertItem: { backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 6 },
-    alertItemTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-    alertItemMeta: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
+    emptyAlertText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '800', textAlign: 'center', paddingVertical: 6 },
+    alertItem: { backgroundColor: COLORS.card, padding: 12, borderRadius: SIZES.radiusBtn, marginBottom: 6 },
+    alertItemTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+    alertItemMeta: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
 
-    footerLink: { margin: 20, backgroundColor: '#2563EB', padding: 20, borderRadius: 24, flexDirection: 'row', alignItems: 'center' },
-    footerLinkText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+    footerLink: { margin: 20, backgroundColor: '#2563EB', padding: SPACING.m, borderRadius: SIZES.radiusCard, flexDirection: 'row', alignItems: 'center' },
+    footerLinkText: { color: COLORS.white, fontSize: 15, fontWeight: '900' },
     footerLinkSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '800' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.8)', justifyContent: 'center' },
-    keyboardView: { flex: 1, justifyContent: 'center', padding: 16 },
-    modalCard: { backgroundColor: '#fff', borderRadius: 32, padding: 20, maxHeight: '90%', overflow: 'hidden' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    iconCircle: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
-    modalTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
-    modalSubtitle: { fontSize: 11, color: '#94A3B8', fontWeight: '800', marginTop: 1 },
+    keyboardView: { flex: 1, justifyContent: 'center', padding: SPACING.m },
+    modalCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: SPACING.m, maxHeight: '90%', overflow: 'hidden' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    iconCircle: { width: 36, height: 36, borderRadius: SIZES.radiusBtn, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
+    modalTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary },
+    modalSubtitle: { fontSize: 11, color: COLORS.textMuted, fontWeight: '800', marginTop: 1 },
     formContent: { paddingVertical: 10, paddingBottom: 30 },
-    inputLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 16, marginBottom: 8 },
-    modalInput: { backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 14, fontSize: 13, fontWeight: '700', color: '#1E293B', justifyContent: 'center' },
+    inputLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: SPACING.m, marginBottom: 8 },
+    modalInput: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, paddingVertical: 14, fontSize: 13, fontWeight: '700', color: COLORS.textPrimary, justifyContent: 'center' },
     
     dropdownField: { 
-        backgroundColor: '#F8FAFC', 
-        borderRadius: 14, 
+        backgroundColor: COLORS.background, 
+        borderRadius: SIZES.radiusBtn, 
         borderWidth: 1, 
-        borderColor: '#E2E8F0', 
-        paddingHorizontal: 16, 
+        borderColor: COLORS.border, 
+        paddingHorizontal: SPACING.m, 
         paddingVertical: 14, 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center' 
     },
     dropdownFieldActive: { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
-    dropdownText: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
-    dropdownList: { backgroundColor: '#FFF', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 4, overflow: 'hidden' },
-    dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    dropdownItemTxt: { fontSize: 13, fontWeight: '700', color: '#475569' },
+    dropdownText: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
+    dropdownList: { backgroundColor: '#FFF', borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, marginTop: 4, overflow: 'hidden' },
+    dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    dropdownItemTxt: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
 
-    formRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
-    priorityToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 4, marginTop: 4 },
+    formRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: 4 },
+    priorityToggle: { flexDirection: 'row', backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, padding: 4, marginTop: 4 },
     pBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
     pBtnActive: { backgroundColor: '#FFB800' },
-    pBtnTxt: { fontSize: 11, fontWeight: '900', color: '#64748B' },
-    pBtnTxtActive: { color: '#fff' },
+    pBtnTxt: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary },
+    pBtnTxtActive: { color: COLORS.white },
     
-    attachmentBox: { marginTop: 24, padding: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-    attachmentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-    attachmentTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
-    uploadArea: { borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 16, padding: 30, alignItems: 'center', backgroundColor: '#F8FAFC' },
-    uploadTitle: { fontSize: 13, fontWeight: '900', color: '#475569', marginTop: 12 },
-    uploadSub: { fontSize: 10, fontWeight: '700', color: '#94A3B8', marginTop: 2 },
+    attachmentBox: { marginTop: 24, padding: SPACING.m, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+    attachmentHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s, marginBottom: SPACING.m },
+    attachmentTitle: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary },
+    uploadArea: { borderStyle: 'dashed', borderWidth: 2, borderColor: COLORS.border, borderRadius: SIZES.radiusCard, padding: 30, alignItems: 'center', backgroundColor: COLORS.background },
+    uploadTitle: { fontSize: 13, fontWeight: '900', color: COLORS.textSecondary, marginTop: 12 },
+    uploadSub: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginTop: 2 },
 
-    formFooter: { flexDirection: 'row', gap: 12, marginTop: 32, paddingHorizontal: 4 },
-    cancelBtn: { flex: 1, height: 50, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-    cancelBtnTxt: { fontSize: 13, fontWeight: '900', color: '#475569' },
-    submitBtnForm: { flex: 2, height: 50, borderRadius: 12, backgroundColor: '#2563EB', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-    submitBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '900' },
+    formFooter: { flexDirection: 'row', gap: SPACING.sm, marginTop: 32, paddingHorizontal: 4 },
+    cancelBtn: { flex: 1, height: 50, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.card },
+    cancelBtnTxt: { fontSize: 13, fontWeight: '900', color: COLORS.textSecondary },
+    submitBtnForm: { flex: 2, height: 50, borderRadius: SIZES.radiusBtn, backgroundColor: '#2563EB', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SPACING.s },
+    submitBtnTxt: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
 
-    chipList: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F1F5F9' },
+    chipList: { flexDirection: 'row', gap: SPACING.s, paddingVertical: 4 },
+    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: COLORS.surfaceSecondary },
     chipActive: { backgroundColor: '#2563EB' },
-    chipTxt: { fontSize: 12, fontWeight: '800', color: '#64748B' },
-    chipTxtActive: { color: '#fff' },
-    submitBtn: { height: 54, backgroundColor: '#2563EB', borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
-    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900' },
-    emptyCard: { padding: 20, backgroundColor: '#F8FAFC', borderRadius: 18, alignItems: 'center' },
-    emptyCardText: { fontSize: 12, color: '#94A3B8', fontWeight: '700' }
+    chipTxt: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
+    chipTxtActive: { color: COLORS.white },
+    submitBtn: { height: 54, backgroundColor: '#2563EB', borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+    submitBtnTxt: { color: COLORS.white, fontSize: 14, fontWeight: '900' },
+    emptyCard: { padding: SPACING.m, backgroundColor: COLORS.background, borderRadius: 18, alignItems: 'center' },
+    emptyCardText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '700' }
 });
 
 export default SubcontractorRFIScreen;

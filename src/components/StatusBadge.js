@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/theme';
+import { COLORS, TYPOGRAPHY } from '../constants/theme';
+import { moderateScale } from '../utils/responsive';
 
 const StatusBadge = ({ status }) => {
     const getStatusConfig = () => {
@@ -33,23 +34,21 @@ const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 20,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
     },
     dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: moderateScale(6),
+        height: moderateScale(6),
+        borderRadius: moderateScale(3),
         marginRight: 6,
     },
     text: {
-        fontSize: 10,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        ...TYPOGRAPHY.badge,
     },
 });
 
 export default StatusBadge;
+

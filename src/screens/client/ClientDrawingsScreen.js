@@ -4,7 +4,7 @@ import {
     Animated, TextInput, Linking, ActivityIndicator, StatusBar, Platform, Share, Alert, Image, useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
 import WorkerHeader from '../../components/WorkerHeader';
@@ -157,7 +157,7 @@ const ClientDrawingsScreen = () => {
             'structural': { icon: 'office-building', color: '#10B981', bg: '#ECFDF5' },
             'mechanical': { icon: 'cog', color: '#F59E0B', bg: '#FFFBEB' },
             'electrical': { icon: 'flash', color: '#EF4444', bg: '#FEF2F2' },
-        }[item.category?.toLowerCase()] || { icon: 'file-document', color: '#64748B', bg: '#F8FAFC' };
+        }[item.category?.toLowerCase()] || { icon: 'file-document', color: COLORS.textSecondary, bg: '#F8FAFC' };
 
         return (
             <TouchableOpacity 
@@ -426,93 +426,93 @@ const ClientDrawingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { padding: 20, backgroundColor: '#fff' },
-    headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    headerSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 4 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { padding: SPACING.m, backgroundColor: COLORS.card },
+    headerTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    headerSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '600', marginTop: 4 },
     
-    filterSection: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 12, height: 48, marginBottom: 12 },
-    searchInput: { flex: 1, marginLeft: 10, fontSize: 15, fontWeight: '600', color: '#1E293B' },
+    filterSection: { paddingHorizontal: SPACING.m, paddingBottom: 16, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusBtn, paddingHorizontal: 12, height: 48, marginBottom: 12 },
+    searchInput: { flex: 1, marginLeft: 10, fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
     
     dropdownRow: { flexDirection: 'row', gap: 10 },
-    dropdown: { flex: 1, height: 40, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
-    dropdownText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
+    dropdown: { flex: 1, height: 40, backgroundColor: COLORS.card, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+    dropdownText: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
 
-    listContainer: { padding: 16, paddingBottom: 100 },
-    drawingRow: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, alignItems: 'center' },
+    listContainer: { padding: SPACING.m, paddingBottom: 100 },
+    drawingRow: { flexDirection: 'row', backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, marginBottom: 12, alignItems: 'center' },
     disciplineIndicator: { width: 4, height: 40, borderRadius: 2, marginRight: 16 },
     drawingInfo: { flex: 1 },
-    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    drawingTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', flex: 1 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s, marginBottom: 4 },
+    drawingTitle: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary, flex: 1 },
     versionBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
     versionText: { fontSize: 10, fontWeight: '900' },
-    drawingMeta: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 6 },
+    drawingMeta: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginBottom: 6 },
     projectRow: { flexDirection: 'row', alignItems: 'center' },
-    projectName: { fontSize: 11, fontWeight: '700', color: '#64748B', marginLeft: 4, flex: 1 },
-    dateText: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+    projectName: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginLeft: 4, flex: 1 },
+    dateText: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
     
-    actionRow: { flexDirection: 'row', gap: 8 },
-    actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+    actionRow: { flexDirection: 'row', gap: SPACING.s },
+    actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
 
     emptyContainer: { alignItems: 'center', marginTop: 100 },
-    emptyTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 16 },
-    emptySubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    emptyTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, marginTop: SPACING.m },
+    emptySubtitle: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600', marginTop: 4, textAlign: 'center' },
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
-    modalDragHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: 24, paddingBottom: 40 },
+    modalDragHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: SPACING.m },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', flex: 1, marginRight: 10 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, flex: 1, marginRight: 10 },
     modalMain: { gap: 24 },
     infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
     infoItem: { width: '45%' },
-    infoLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 4 },
-    infoValue: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    infoLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 4 },
+    infoValue: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
 
-    modalActionRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-    modalAction: { flex: 1, height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    modalActionRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: 10 },
+    modalAction: { flex: 1, height: 48, borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
     modalActionText: { fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
 
-    openBtn: { backgroundColor: '#2563EB', height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...SHADOWS.medium },
-    openBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+    openBtn: { backgroundColor: '#2563EB', height: 56, borderRadius: SIZES.radiusCard, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, ...SHADOWS.medium },
+    openBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '900' },
 
     // Share Modal REFINED
-    shareDrawingCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 16, borderRadius: 18, marginBottom: 24, gap: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-    shareIconBox: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2' },
+    shareDrawingCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, padding: SPACING.m, borderRadius: 18, marginBottom: 24, gap: 16, borderWidth: 1, borderColor: COLORS.border },
+    shareIconBox: { width: 50, height: 50, borderRadius: SIZES.radiusBtn, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2' },
     pdfIconSmall: { width: 28, height: 28 },
-    shareDrawingLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
-    shareDrawingName: { fontSize: 18, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    shareSectionLabel: { fontSize: 14, fontWeight: '900', color: '#1E293B', marginBottom: 16 },
+    shareDrawingLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1 },
+    shareDrawingName: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    shareSectionLabel: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
     
     catScrollWrapper: { marginHorizontal: -24, marginBottom: 24 },
     catScrollContent: { paddingHorizontal: 24, gap: 10 },
-    catPill: { paddingHorizontal: 22, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+    catPill: { paddingHorizontal: 22, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
     catPillActive: { backgroundColor: COLORS.primaryAccent, borderColor: COLORS.primaryAccent },
-    catPillText: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-    catPillTextActive: { color: '#fff' },
+    catPillText: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary },
+    catPillTextActive: { color: COLORS.white },
     
-    tradesHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
-    tradesCounterText: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+    tradesHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m, paddingHorizontal: 4 },
+    tradesCounterText: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted },
     selectAllLinkText: { fontSize: 12, fontWeight: '900', color: COLORS.primaryAccent },
     
-    tradeListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', justifyContent: 'space-between' },
+    tradeListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary, justifyContent: 'space-between' },
     tradeInfoArea: { flex: 1 },
-    tradeNameText: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-    tradeSubText: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginTop: 2 },
+    tradeNameText: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+    tradeSubText: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, marginTop: 2 },
     
-    mainSendBtn: { backgroundColor: '#0F172A', height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 10, ...SHADOWS.medium },
-    mainSendBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+    mainSendBtn: { backgroundColor: '#0F172A', height: 56, borderRadius: SIZES.radiusCard, alignItems: 'center', justifyContent: 'center', marginTop: 10, ...SHADOWS.medium },
+    mainSendBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
 
     // Sel Modal
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: '85%', backgroundColor: '#fff', borderRadius: 24, padding: 20 },
-    selTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 16, textAlign: 'center' },
-    selItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selLabel: { fontSize: 14, fontWeight: '700', color: '#334155', marginLeft: 12 },
-    selCancel: { marginTop: 16, alignItems: 'center' },
-    selCancelText: { fontSize: 14, fontWeight: '900', color: '#64748B' }
+    selBox: { width: '85%', backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m },
+    selTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m, textAlign: 'center' },
+    selItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selLabel: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary, marginLeft: 12 },
+    selCancel: { marginTop: SPACING.m, alignItems: 'center' },
+    selCancelText: { fontSize: 14, fontWeight: '900', color: COLORS.textSecondary }
 });
 
 export default ClientDrawingsScreen;

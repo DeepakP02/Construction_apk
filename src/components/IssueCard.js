@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, SPACING } from '../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { getServerUrl } from '../utils/api';
 
 const IssueCard = ({ issue }) => {
@@ -71,8 +71,8 @@ const IssueCard = ({ issue }) => {
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.card,
-        borderRadius: SIZES.radius,
-        marginBottom: SPACING.s,
+        borderRadius: SIZES.radiusCard,
+        marginBottom: SPACING.sm,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
@@ -90,12 +90,12 @@ const styles = StyleSheet.create({
     mainRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: SPACING.sm,
     },
     thumbnailContainer: {
         width: 50,
         height: 50,
-        borderRadius: 8,
+        borderRadius: SPACING.s,
         backgroundColor: COLORS.background,
         overflow: 'hidden',
         borderWidth: 1,
@@ -109,24 +109,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+        marginBottom: SPACING.s,
     },
     title: {
-        fontSize: 16,
-        fontWeight: '800',
+        ...TYPOGRAPHY.subtitle,
         color: COLORS.textPrimary,
         flex: 1,
-        marginRight: 8,
+        marginRight: SPACING.s,
     },
     badge: {
-        paddingHorizontal: 8,
+        paddingHorizontal: SPACING.s,
         paddingVertical: 2,
         borderRadius: 6,
     },
     badgeText: {
-        fontSize: 10,
-        fontWeight: '900',
-        textTransform: 'uppercase',
+        ...TYPOGRAPHY.badge,
     },
     footer: {
         flexDirection: 'row',
@@ -135,14 +132,15 @@ const styles = StyleSheet.create({
     meta: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: SPACING.m,
     },
     metaText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        marginLeft: 4,
+        ...TYPOGRAPHY.label,
         fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginLeft: SPACING.xs,
     },
 });
 
 export default IssueCard;
+

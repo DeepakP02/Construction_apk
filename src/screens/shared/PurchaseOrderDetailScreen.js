@@ -11,6 +11,7 @@ import {
     useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api from '../../utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -194,36 +195,36 @@ function Row({ icon, label, value }) {
 }
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: '#FFFFFF' },
+    safe: { flex: 1, backgroundColor: COLORS.surface },
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
+    scrollContent: { paddingHorizontal: SPACING.m, paddingTop: 8, paddingBottom: 24 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-    errorText: { marginTop: 12, fontSize: 14, fontWeight: '600', color: '#64748B', textAlign: 'center' },
+    errorText: { marginTop: 12, fontSize: 14, fontWeight: '600', color: COLORS.textSecondary, textAlign: 'center' },
     hero: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 16,
-        padding: 16,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    poNum: { fontSize: 20, fontWeight: '900', color: '#0F172A', flex: 1, marginRight: 12 },
+    poNum: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, flex: 1, marginRight: 12 },
     statusPill: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
     statusTxt: { fontSize: 10, fontWeight: '900', color: '#2563EB' },
-    heroSub: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+    heroSub: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary },
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     cardTitle: {
         fontSize: 11,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 0.6,
         marginBottom: 12,
         textTransform: 'uppercase',
@@ -231,23 +232,23 @@ const styles = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
     rowIcon: { marginTop: 2, marginRight: 10 },
     rowText: { flex: 1, minWidth: 0 },
-    rowLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', marginBottom: 2 },
-    rowValue: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+    rowLabel: { fontSize: 11, fontWeight: '800', color: COLORS.textMuted, marginBottom: 2 },
+    rowValue: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
     lineRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: COLORS.border,
     },
     lineMain: { flex: 1, marginRight: 12, minWidth: 0 },
-    lineName: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-    lineDesc: { fontSize: 13, color: '#64748B', marginTop: 4, fontWeight: '600' },
-    lineMeta: { fontSize: 12, color: '#94A3B8', marginTop: 6, fontWeight: '700' },
+    lineName: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+    lineDesc: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4, fontWeight: '600' },
+    lineMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 6, fontWeight: '700' },
     noteBlock: { marginBottom: 12 },
-    noteLabel: { fontSize: 11, fontWeight: '900', color: '#94A3B8', marginBottom: 4 },
-    noteBody: { fontSize: 14, color: '#475569', fontWeight: '600', lineHeight: 20 },
+    noteLabel: { fontSize: 11, fontWeight: '900', color: COLORS.textMuted, marginBottom: 4 },
+    noteBody: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '600', lineHeight: 20 },
 });
 
 export default PurchaseOrderDetailScreen;

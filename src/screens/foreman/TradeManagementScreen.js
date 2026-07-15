@@ -3,6 +3,7 @@ import {
     View, Text, StyleSheet, StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 
 const TradeManagementScreen = () => {
@@ -21,10 +22,10 @@ const TradeManagementScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FFFFFF' },
+    screen: { flex: 1, backgroundColor: COLORS.surface },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 100 },
-    emptyTitle: { fontSize: 24, fontWeight: '900', color: '#1E293B', marginTop: 16 },
-    emptySubtitle: { fontSize: 14, fontWeight: '600', color: '#94A3B8', textAlign: 'center', marginTop: 8 },
+    emptyTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, marginTop: SPACING.m },
+    emptySubtitle: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, textAlign: 'center', marginTop: 8 },
 });
 
 export default TradeManagementScreen;

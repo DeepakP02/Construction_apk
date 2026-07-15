@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../constants/theme';
+import { COLORS, SIZES, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { moderateScale } from '../utils/responsive';
 
 const StatsCard = ({ label, value, icon, color = COLORS.primary }) => {
     return (
@@ -9,7 +10,7 @@ const StatsCard = ({ label, value, icon, color = COLORS.primary }) => {
             <View style={styles.top}>
                 {/* Colored icon badge - exact KAAL design */}
                 <View style={[styles.badge, { backgroundColor: color }]}>
-                    <MaterialCommunityIcons name={icon} size={18} color="#FFFFFF" />
+                    <MaterialCommunityIcons name={icon} size={moderateScale(18)} color="#FFFFFF" />
                 </View>
                 <Text style={styles.label}>{label.toUpperCase()}</Text>
             </View>
@@ -21,38 +22,34 @@ const StatsCard = ({ label, value, icon, color = COLORS.primary }) => {
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.card,
-        borderRadius: 14,
-        padding: 14,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
         width: '48%',
-        marginBottom: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 2,
+        marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.card,
     },
     top: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 10,
+        gap: SPACING.s,
+        marginBottom: SPACING.sm,
     },
     badge: {
-        width: 32,
-        height: 32,
-        borderRadius: 9,
+        width: moderateScale(32),
+        height: moderateScale(32),
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
     label: {
-        fontSize: 10,
+        ...TYPOGRAPHY.badge,
         color: COLORS.textSecondary,
-        fontWeight: '700',
-        letterSpacing: 0.5,
         flex: 1,
     },
     value: {
-        fontSize: 36,
+        fontSize: moderateScale(34),
         fontWeight: '900',
         color: COLORS.textPrimary,
         letterSpacing: -1,
@@ -60,3 +57,4 @@ const styles = StyleSheet.create({
 });
 
 export default StatsCard;
+

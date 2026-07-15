@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, SPACING } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { MOCK_DRAWINGS } from '../../mock/data';
 
 export const DrawingsTab = () => {

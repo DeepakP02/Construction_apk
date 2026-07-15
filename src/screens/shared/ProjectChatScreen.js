@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import AppHeader from '../../components/AppHeader';
 import { getServerUrl } from '../../utils/api';
@@ -219,7 +219,7 @@ const ProjectChatScreen = ({ route }) => {
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 24}
             >
                 <FlatList
@@ -276,25 +276,25 @@ const ProjectChatScreen = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    list: { padding: 16, paddingBottom: 20 },
-    messageWrapper: { flexDirection: 'row', marginBottom: 12, maxWidth: '85%', gap: 8 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    list: { padding: SPACING.m, paddingBottom: 20 },
+    messageWrapper: { flexDirection: 'row', marginBottom: 12, maxWidth: '85%', gap: SPACING.s },
     myMessage: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
     theirMessage: { alignSelf: 'flex-start' },
-    avatarMain: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', ...SHADOWS.small, borderWidth: 1, borderColor: '#E2E8F0' },
+    avatarMain: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center', ...SHADOWS.small, borderWidth: 1, borderColor: COLORS.border },
     avatarText: { fontSize: 13, fontWeight: '900', color: COLORS.primaryAccent },
     senderNameText: { fontSize: 10, fontWeight: '900', color: COLORS.primaryAccent, marginBottom: 4, marginLeft: 4, textTransform: 'uppercase' },
-    bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, ...SHADOWS.small },
+    bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: SIZES.radiusCard, ...SHADOWS.small },
     myBubble: { backgroundColor: '#E0F2FE', borderBottomRightRadius: 4 },
-    theirBubble: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+    theirBubble: { backgroundColor: COLORS.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: COLORS.border },
     messageText: { fontSize: 15, lineHeight: 21, fontWeight: '500' },
-    myText: { color: '#1E293B' },
-    theirText: { color: '#1E293B' },
+    myText: { color: COLORS.textPrimary },
+    theirText: { color: COLORS.textPrimary },
     time: { fontSize: 10, alignSelf: 'flex-end', marginTop: 4, fontWeight: '600', opacity: 0.7 },
-    myTime: { color: '#64748B' },
-    theirTime: { color: '#94A3B8' },
-    attachmentContainer: { marginBottom: 6, borderRadius: 12, overflow: 'hidden' },
-    attachmentImage: { width: 220, height: 220, borderRadius: 12 },
+    myTime: { color: COLORS.textSecondary },
+    theirTime: { color: COLORS.textMuted },
+    attachmentContainer: { marginBottom: 6, borderRadius: SIZES.radiusBtn, overflow: 'hidden' },
+    attachmentImage: { width: 220, height: 220, borderRadius: SIZES.radiusBtn },
     viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)' },
     viewerScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
     viewerImage: { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 },
@@ -302,14 +302,14 @@ const styles = StyleSheet.create({
     footerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingBottom: Platform.OS === 'ios' ? 30 : 10,
         paddingTop: 12,
-        backgroundColor: '#F8FAFC'
+        backgroundColor: COLORS.background
     },
-    whatsAppInputLine: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 28, paddingHorizontal: 16, minHeight: 52, borderWidth: 1, borderColor: '#E2E8F0', marginRight: 10 },
+    whatsAppInputLine: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: 28, paddingHorizontal: SPACING.m, minHeight: 52, borderWidth: 1, borderColor: COLORS.border, marginRight: 10 },
     sideIconBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-    mainInputField: { flex: 1, fontSize: 16, color: '#1E293B', paddingVertical: 10, fontWeight: '500' },
+    mainInputField: { flex: 1, fontSize: 16, color: COLORS.textPrimary, paddingVertical: 10, fontWeight: '500' },
     rightActions: { flexDirection: 'row', alignItems: 'center' },
     sendFab: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryAccent, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium }
 });

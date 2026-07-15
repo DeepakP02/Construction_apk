@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SIZES } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
 export const ChatTab = ({ project }) => {
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '900',
         color: COLORS.textPrimary,
-        marginTop: 20,
+        marginTop: SPACING.m,
         textAlign: 'center',
     },
     restrictedText: {
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     messageWrapper: {
-        marginBottom: 16,
+        marginBottom: SPACING.m,
         maxWidth: '80%',
     },
     myMessage: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     bubble: {
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 10,
         borderRadius: 18,
     },
@@ -195,8 +195,8 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         backgroundColor: COLORS.background,
-        borderRadius: 24,
-        paddingHorizontal: 16,
+        borderRadius: SIZES.radiusCard,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 10,
         color: COLORS.textPrimary,
         maxHeight: 100,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Alert, Keyboard, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -326,7 +326,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <FlatList
@@ -402,15 +402,15 @@ const WorkerChatScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    messageList: { padding: 16, paddingBottom: 20 },
-    messageRow: { marginBottom: 16, width: '100%' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    messageList: { padding: SPACING.m, paddingBottom: 20 },
+    messageRow: { marginBottom: SPACING.m, width: '100%' },
     sentRow: { alignItems: 'flex-end' },
     receivedRow: { alignItems: 'flex-start' },
     bubble: {
         maxWidth: '82%',
         padding: 12,
-        borderRadius: 20,
+        borderRadius: SIZES.radiusCard,
         ...SHADOWS.small,
     },
     sentBubble: {
@@ -418,18 +418,18 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 4,
     },
     receivedBubble: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderBottomLeftRadius: 4,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
-    senderHeader: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 4 },
+    senderHeader: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 4 },
     messageText: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
-    sentText: { color: '#1E293B' },
-    receivedText: { color: '#1E293B' },
+    sentText: { color: COLORS.textPrimary },
+    receivedText: { color: COLORS.textPrimary },
     timeText: { fontSize: 10, marginTop: 4, opacity: 0.7, fontWeight: '600' },
-    sentTime: { color: '#64748B', textAlign: 'right' },
-    receivedTime: { color: '#94A3B8' },
+    sentTime: { color: COLORS.textSecondary, textAlign: 'right' },
+    receivedTime: { color: COLORS.textMuted },
     timeMuted: { color: '#999' },
 
     attachmentContainer: { marginBottom: 6, borderRadius: 8, overflow: 'hidden' },
@@ -446,17 +446,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingBottom: Platform.OS === 'ios' ? 30 : 10,
         paddingTop: 10,
-        backgroundColor: '#F8FAFC'
+        backgroundColor: COLORS.background
     },
     whatsAppInputLine: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderRadius: 28,
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 8,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         flex: 1,
         marginRight: 10,
     },

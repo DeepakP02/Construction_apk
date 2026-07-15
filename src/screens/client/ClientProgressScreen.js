@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl } from '../../utils/api';
 
@@ -249,7 +249,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
         return (
             <View style={[styles.container, styles.centerMsg]}>
                 <Text style={styles.centerMsgTxt}>Missing project.</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: SPACING.m }}>
                     <Text style={styles.linkBack}>Go back</Text>
                 </TouchableOpacity>
             </View>
@@ -269,7 +269,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
         return (
             <View style={[styles.container, styles.centerMsg]}>
                 <Text style={styles.centerMsgTxt}>Could not load progress for this project.</Text>
-                <TouchableOpacity onPress={load} style={{ marginTop: 16 }}>
+                <TouchableOpacity onPress={load} style={{ marginTop: SPACING.m }}>
                     <Text style={styles.linkBack}>Retry</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 8 }}>
@@ -345,7 +345,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
 
                         {updates.length === 0 ? (
                             <View style={styles.emptyActivityBox}>
-                                <MaterialCommunityIcons name="comment-text-outline" size={32} color="#E2E8F0" style={{ marginBottom: 16 }} />
+                                <MaterialCommunityIcons name="comment-text-outline" size={32} color="#E2E8F0" style={{ marginBottom: SPACING.m }} />
                                 <Text style={styles.emptyActivityText}>NO UPDATES POSTED YET.</Text>
                             </View>
                         ) : (
@@ -376,7 +376,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
                         )}
                     </>
                 ) : activeTab === 'deliverables' ? (
-                    <View style={{ gap: 12, marginBottom: 24 }}>
+                    <View style={{ gap: SPACING.sm, marginBottom: 24 }}>
                         <View style={[styles.tableCard, SHADOWS.small]}>
                             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
                                 <View style={{ minWidth: Math.max(width - (isCompact ? 40 : 52), tableLayout.minWidth) }}>
@@ -462,10 +462,10 @@ const ClientProgressScreen = ({ route, navigation }) => {
                         </View>
                     </View>
                 ) : (
-                    <View style={{ gap: 12, marginBottom: 24 }}>
+                    <View style={{ gap: SPACING.sm, marginBottom: 24 }}>
                         {rfiList.length === 0 ? (
                             <View style={styles.emptyActivityBox}>
-                                <MaterialCommunityIcons name="file-question-outline" size={32} color="#E2E8F0" style={{ marginBottom: 16 }} />
+                                <MaterialCommunityIcons name="file-question-outline" size={32} color="#E2E8F0" style={{ marginBottom: SPACING.m }} />
                                 <Text style={styles.emptyActivityText}>NO PROJECT RFIS FOUND.</Text>
                             </View>
                         ) : (
@@ -496,72 +496,72 @@ const ClientProgressScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     centerMsg: { justifyContent: 'center', alignItems: 'center', padding: 24 },
-    centerMsgTxt: { fontSize: 15, fontWeight: '700', color: '#64748B', textAlign: 'center' },
+    centerMsgTxt: { fontSize: 15, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center' },
     linkBack: { fontWeight: '900', color: '#2563EB', fontSize: 14 },
-    header: { paddingHorizontal: 20, backgroundColor: '#FFFFFF', paddingBottom: 16 },
-    topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    header: { paddingHorizontal: SPACING.m, backgroundColor: COLORS.surface, paddingBottom: 16 },
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
     backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'left' },
     projectHeaderInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    projectName: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1.5, flex: 1 },
-    statusBadge: { backgroundColor: '#DBEAFE', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+    projectName: { fontSize: 28, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1.5, flex: 1 },
+    statusBadge: { backgroundColor: '#DBEAFE', paddingHorizontal: 12, paddingVertical: 4, borderRadius: SIZES.radiusCard },
     statusText: { fontSize: 10, fontWeight: '900', color: '#1D4ED8', letterSpacing: 0.5 },
     breadcrumbRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, opacity: 0.8 },
-    breadcrumbText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
+    breadcrumbText: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
 
-    scrollContent: { padding: 16 },
-    tabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    scrollContent: { padding: SPACING.m },
+    tabRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.s, marginBottom: SPACING.m },
     tabChip: {
         borderRadius: 10,
         paddingHorizontal: 10,
         paddingVertical: 8,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     tabChipActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
-    tabChipText: { fontSize: 11, fontWeight: '800', color: '#64748B' },
+    tabChipText: { fontSize: 11, fontWeight: '800', color: COLORS.textSecondary },
     tabChipTextActive: { color: '#1D4ED8' },
-    activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginBottom: 16 },
-    activitySectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginBottom: SPACING.m },
+    activitySectionTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     emptyActivityBox: {
         height: 180,
-        borderRadius: 32,
+        borderRadius: SIZES.radiusModal,
         borderWidth: 1.5,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
     },
     emptyActivityText: { fontSize: 10, fontWeight: '900', color: '#CBD5E1', letterSpacing: 1 },
     updateCard: {
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        padding: 16,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
-    updateCardHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 8 },
-    updateTitle: { flex: 1, fontSize: 16, fontWeight: '900', color: '#0F172A' },
+    updateCardHead: { flexDirection: 'row', justifyContent: 'space-between', gap: SPACING.s, marginBottom: 8 },
+    updateTitle: { flex: 1, fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
     updateDatePill: {
         fontSize: 10,
         fontWeight: '900',
-        color: '#64748B',
-        backgroundColor: '#F8FAFC',
+        color: COLORS.textSecondary,
+        backgroundColor: COLORS.background,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 10,
         overflow: 'hidden',
     },
-    updateBody: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '600' },
-    updateThumb: { width: 72, height: 72, borderRadius: 12, marginRight: 8, backgroundColor: '#F1F5F9' },
+    updateBody: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20, fontWeight: '600' },
+    updateThumb: { width: 72, height: 72, borderRadius: SIZES.radiusBtn, marginRight: 8, backgroundColor: COLORS.surfaceSecondary },
     tableCard: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusCard,
         padding: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
     tableHeaderRow: {
         flexDirection: 'row',
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     tableHeadTxt: {
         fontSize: 10,
         fontWeight: '900',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         textTransform: 'uppercase',
     },
     tableHeadCenter: { textAlign: 'center' },
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: COLORS.surfaceSecondary,
     },
     mainTaskDataRow: {
         backgroundColor: '#FCFDFF',
@@ -592,18 +592,18 @@ const styles = StyleSheet.create({
     priorityCol: { flex: 1.1 },
     progressCol: { flex: 0.9 },
     statusCol: { flex: 1.2 },
-    taskCell: { fontSize: 13, fontWeight: '900', color: '#0F172A', paddingRight: 8 },
-    subTaskCell: { fontSize: 12, fontWeight: '700', color: '#334155', paddingRight: 8 },
+    taskCell: { fontSize: 13, fontWeight: '900', color: COLORS.textPrimary, paddingRight: 8 },
+    subTaskCell: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, paddingRight: 8 },
     mainTaskRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     levelPill: {
         alignSelf: 'flex-start',
         marginTop: 3,
         fontSize: 8,
         fontWeight: '800',
-        color: '#64748B',
-        backgroundColor: '#F8FAFC',
+        color: COLORS.textSecondary,
+        backgroundColor: COLORS.background,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         borderRadius: 6,
         paddingHorizontal: 6,
         paddingVertical: 1,
@@ -615,12 +615,12 @@ const styles = StyleSheet.create({
         color: '#1D4ED8',
     },
     cellCenter: { textAlign: 'center' },
-    cellTxt: { fontSize: 12, color: '#475569', fontWeight: '600', textTransform: 'capitalize' },
-    emptyNoteText: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic', fontWeight: '600' },
+    cellTxt: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', textTransform: 'capitalize' },
+    emptyNoteText: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', fontWeight: '600' },
     linkBtn: {
         marginTop: 4,
         backgroundColor: '#EFF6FF',
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
         borderColor: '#BFDBFE',
         paddingVertical: 10,

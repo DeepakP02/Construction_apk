@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    TextInput, ActivityIndicator, SafeAreaView, Modal,
-    StatusBar, Platform, Alert, Dimensions, RefreshControl
+    TextInput, ActivityIndicator, Modal,
+    StatusBar, Platform, Alert, Dimensions, RefreshControl, SafeAreaView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 import WorkerHeader from '../../components/WorkerHeader';
-import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -276,60 +276,60 @@ const CrewClockScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     
-    dashboardHeader: { padding: 20 },
+    dashboardHeader: { padding: SPACING.m },
 
     // Control Panel
-    controlPanel: { gap: 12 },
+    controlPanel: { gap: SPACING.sm },
     searchRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-    premiumSearchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 52, borderRadius: 16, paddingHorizontal: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    premiumInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#1E293B' },
+    premiumSearchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, height: 52, borderRadius: SIZES.radiusCard, paddingHorizontal: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    premiumInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
     bulkSelectBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
 
-    targetSiteCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#E2E8F0' },
-    siteIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-    targetLabel: { fontSize: 8, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
-    targetValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+    targetSiteCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
+    siteIconWrap: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+    targetLabel: { fontSize: 8, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.5 },
+    targetValue: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
 
     // Worker Rows
-    row: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', alignItems: 'center' },
+    row: { flexDirection: 'row', padding: SPACING.m, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border, alignItems: 'center' },
     selectedRow: { backgroundColor: '#EFF6FF' },
     checkCol: { width: 40 },
-    checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+    checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
     checkboxActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
     identityCol: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-    avatar: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-    avatarTxt: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
+    avatar: { width: 38, height: 38, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.surfaceSecondary, alignItems: 'center', justifyContent: 'center' },
+    avatarTxt: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary },
     workerMeta: { marginLeft: 12 },
-    workerName: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
+    workerName: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary },
     workerRole: { fontSize: 9, fontWeight: '900', color: '#2563EB', marginTop: 2 },
     siteCol: { flex: 0.8 },
     sitePill: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    siteTxt: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    siteTxt: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
     statusCol: { flex: 0.8, alignItems: 'flex-end' },
     statusTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     statusTagTxt: { fontSize: 9, fontWeight: '900' },
 
     // Floating UI
-    floatingAction: { position: 'absolute', bottom: 30, left: 20, right: 20, backgroundColor: '#0F172A', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    floatingAction: { position: 'absolute', bottom: 30, left: 20, right: 20, backgroundColor: '#0F172A', borderRadius: SIZES.radiusCard, padding: SPACING.m, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     actionInfo: { alignItems: 'center', paddingHorizontal: 10, borderRightWidth: 1, borderRightColor: '#334155' },
-    actionCount: { color: '#fff', fontSize: 18, fontWeight: '900' },
-    actionText: { color: '#94A3B8', fontSize: 8, fontWeight: '800' },
+    actionCount: { color: COLORS.white, fontSize: 18, fontWeight: '900' },
+    actionText: { color: COLORS.textMuted, fontSize: 8, fontWeight: '800' },
     actionButtons: { flex: 1, flexDirection: 'row', gap: 10, marginLeft: 15 },
-    primaryActionBtn: { flex: 1, height: 48, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    actionBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    primaryActionBtn: { flex: 1, height: 48, borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s },
+    actionBtnTxt: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
 
     noWorkers: { alignItems: 'center', padding: 100 },
-    noWorkersTxt: { color: '#94A3B8', marginTop: 12, fontWeight: '700' },
+    noWorkersTxt: { color: COLORS.textMuted, marginTop: 12, fontWeight: '700' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 24, padding: 24 },
-    modalTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 20 },
-    modalItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    modalItemTxt: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
-    closeBtn: { marginTop: 24, alignItems: 'center', padding: 14, backgroundColor: '#F1F5F9', borderRadius: 16 },
-    closeTxt: { fontWeight: '900', color: '#0F172A' }
+    modalContent: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: 24 },
+    modalTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
+    modalItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    modalItemTxt: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
+    closeBtn: { marginTop: 24, alignItems: 'center', padding: 14, backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusCard },
+    closeTxt: { fontWeight: '900', color: COLORS.textPrimary }
 });
 
 export default CrewClockScreen;

@@ -4,7 +4,7 @@ import {
     TextInput, FlatList, StatusBar, ActivityIndicator, Dimensions, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../utils/api';
@@ -444,45 +444,45 @@ const SubcontractorJobDetailsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { padding: 16, backgroundColor: '#FFFFFF', paddingBottom: 12 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { padding: SPACING.m, backgroundColor: COLORS.surface, paddingBottom: 12 },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
     backCircle: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         justifyContent: 'center',
         alignItems: 'center'
     },
-    backText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 0.8 },
-    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    jobName: { fontSize: isSmallDevice ? 18 : 22, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    planBadge: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#F1F5F9', borderRadius: 20 },
-    planText: { fontSize: 8, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
+    backText: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 0.8 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s, marginBottom: 4 },
+    jobName: { fontSize: isSmallDevice ? 18 : 22, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    planBadge: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusCard },
+    planText: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
     locRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    locText: { fontSize: 12, fontWeight: '700', color: '#64748B', flex: 1 },
+    locText: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, flex: 1 },
 
-    metricsContainer: { paddingHorizontal: 16, marginTop: 10 },
+    metricsContainer: { paddingHorizontal: SPACING.m, marginTop: 10 },
     metricRow: { flexDirection: 'row', gap: isSmallDevice ? 6 : 8 },
     metricCard: {
         flex: 1,
         padding: isSmallDevice ? 10 : 12,
-        borderRadius: 20,
+        borderRadius: SIZES.radiusCard,
         justifyContent: 'space-between',
         height: isSmallDevice ? 85 : 95
     },
     mIconHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     pChartText: { fontSize: isSmallDevice ? 10 : 12, fontWeight: '900', color: '#2563EB' },
-    mLabel: { fontSize: 8, fontWeight: '900', color: '#64748B', letterSpacing: 0.5, marginTop: 8 },
-    mVal: { fontSize: isSmallDevice ? 11 : 12, fontWeight: '900', color: '#0F172A' },
-    mValSmall: { fontSize: 10, fontWeight: '900', color: '#475569' },
+    mLabel: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 0.5, marginTop: 8 },
+    mVal: { fontSize: isSmallDevice ? 11 : 12, fontWeight: '900', color: COLORS.textPrimary },
+    mValSmall: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary },
 
     tabContainer: {
         marginHorizontal: 16,
         marginVertical: 12,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusCard,
         flexDirection: 'row',
         padding: 4,
         justifyContent: 'space-between'
@@ -493,98 +493,98 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         paddingVertical: 8,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         justifyContent: 'center'
     },
-    tabActive: { backgroundColor: '#F1F5F9' },
-    tabText: { fontSize: isSmallDevice ? 8 : 9, fontWeight: '900', color: '#94A3B8' },
+    tabActive: { backgroundColor: COLORS.surfaceSecondary },
+    tabText: { fontSize: isSmallDevice ? 8 : 9, fontWeight: '900', color: COLORS.textMuted },
     tabTextActive: { color: '#2563EB' },
 
-    taskHeader: { paddingHorizontal: 16, gap: 10, marginBottom: 12 },
+    taskHeader: { paddingHorizontal: SPACING.m, gap: 10, marginBottom: 12 },
     searchBar: {
         height: 44,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12
     },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 12, fontWeight: '600', color: '#0F172A' },
-    filterRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 12, fontWeight: '600', color: COLORS.textPrimary },
+    filterRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: SPACING.s },
     filterBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 8
     },
-    filterBtnTxt: { fontSize: 8, fontWeight: '900', color: '#475569' },
+    filterBtnTxt: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary },
 
     tableHeader: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9'
+        borderBottomColor: COLORS.border
     },
-    tableHeadTxt: { fontSize: 8, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
+    tableHeadTxt: { fontSize: 8, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.5 },
     tableRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 14,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: COLORS.surfaceSecondary,
         alignItems: 'center'
     },
     col: { justifyContent: 'center' },
     statusPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     statusText: { fontSize: 7, fontWeight: '900' },
-    taskTitle: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
+    taskTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textPrimary },
     avatarMini: {
         width: 22,
         height: 22,
         borderRadius: 8,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         justifyContent: 'center',
         alignItems: 'center'
     },
-    avatarTxt: { fontSize: 9, fontWeight: '900', color: '#64748B' },
+    avatarTxt: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary },
     priorityTxt: { fontSize: 9, fontWeight: '900' },
 
-    panelPad: { paddingHorizontal: 16, paddingTop: 4 },
+    panelPad: { paddingHorizontal: SPACING.m, paddingTop: 4 },
     historyRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         padding: 14,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    historyTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
-    historyMeta: { fontSize: 11, color: '#94A3B8', marginTop: 4, fontWeight: '600' },
+    historyTitle: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
+    historyMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 4, fontWeight: '600' },
 
     noteComposer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusBtn,
         padding: 12,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        marginBottom: 16
+        borderColor: COLORS.border,
+        marginBottom: SPACING.m
     },
     noteInput: {
         minHeight: 72,
         fontSize: 14,
         fontWeight: '600',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         textAlignVertical: 'top'
     },
     noteSaveBtn: {
@@ -594,21 +594,21 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center'
     },
-    noteSaveTxt: { color: '#fff', fontWeight: '900', fontSize: 12 },
+    noteSaveTxt: { color: COLORS.white, fontWeight: '900', fontSize: 12 },
     noteCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusBtn,
         padding: 14,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    noteAuthor: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
-    noteDate: { fontSize: 11, color: '#94A3B8', marginTop: 2, marginBottom: 8 },
-    noteBody: { fontSize: 14, color: '#334155', lineHeight: 20 },
+    noteAuthor: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+    noteDate: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, marginBottom: 8 },
+    noteBody: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20 },
 
     empty: { padding: 40, alignItems: 'center' },
-    emptyText: { fontSize: 12, color: '#94A3B8', fontWeight: '700' }
+    emptyText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '700' }
 });
 
 export default SubcontractorJobDetailsScreen;

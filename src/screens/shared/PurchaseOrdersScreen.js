@@ -19,7 +19,7 @@ import {
     Keyboard
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import api from '../../utils/api';
 import { useApp } from '../../context/AppContext';
@@ -304,7 +304,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                             </View>
                         </View>
                         <View style={styles.vendorWrap}>
-                            <View style={[styles.vendorAvatar, { backgroundColor: '#F8FAFC', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' }]}>
+                            <View style={[styles.vendorAvatar, { backgroundColor: COLORS.background, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' }]}>
                                 <Text style={styles.vendorAvatarTxt}>{item.vendorName?.charAt(0) || 'V'}</Text>
                             </View>
                             <Text style={styles.vendorNameTxt} numberOfLines={1}>{item.vendorName || 'Unknown'}</Text>
@@ -466,7 +466,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                 <View style={styles.createOverlay}>
                     <KeyboardAvoidingView
                         style={styles.createKeyboard}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                     <View style={[styles.createSheet, { width: createSheetMaxWidth, alignSelf: 'center', maxWidth: createSheetMaxWidth, maxHeight: createSheetMaxHeight }]}>
@@ -668,8 +668,8 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                 </TouchableWithoutFeedback>
 
                 {/* Project Select Nested Modal */}
-                <Modal visible={selProjectVisible} transparent animationType="fade">
-                    <View style={styles.selBack}>
+                {selProjectVisible && (
+                    <View style={[StyleSheet.absoluteFill, styles.selBack, { zIndex: 9999 }]}>
                         <View style={styles.selCard}>
                              <Text style={styles.selTitle}>Selection</Text>
                              <FlatList 
@@ -692,9 +692,10 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                              </TouchableOpacity>
                         </View>
                     </View>
-                </Modal>
-                <Modal visible={selJobVisible} transparent animationType="fade" onRequestClose={() => setSelJobVisible(false)}>
-                    <View style={styles.selBack}>
+                )}
+                {/* Job Select Nested Modal */}
+                {selJobVisible && (
+                    <View style={[StyleSheet.absoluteFill, styles.selBack, { zIndex: 9999 }]}>
                         <View style={styles.selCard}>
                              <Text style={styles.selTitle}>Select Job</Text>
                              <FlatList
@@ -718,7 +719,7 @@ const PurchaseOrdersScreen = ({ navigation }) => {
                              </TouchableOpacity>
                         </View>
                     </View>
-                </Modal>
+                )}
                 {Platform.OS === 'ios' && showIOSDatePicker ? (
                     <View style={styles.iosDatePickerWrap}>
                         <DateTimePicker
@@ -740,35 +741,35 @@ const PurchaseOrdersScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    pageHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
+    pageHeader: { paddingHorizontal: SPACING.m, paddingTop: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTextContainer: { flex: 1, marginRight: 12 },
-    mainTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.7 },
-    mainSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '800', marginTop: 4 },
-    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, gap: 6 },
-    addBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+    mainTitle: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.7 },
+    mainSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '800', marginTop: 4 },
+    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: SIZES.radiusBtn, gap: 6 },
+    addBtnText: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
 
-    filterSection: { paddingHorizontal: 20, marginBottom: 12, gap: 12 },
-    searchBox: { height: 52, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
-    searchInput: { flex: 1, marginLeft: 12, fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    filterSection: { paddingHorizontal: SPACING.m, marginBottom: 12, gap: SPACING.sm },
+    searchBox: { height: 52, backgroundColor: COLORS.background, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.m },
+    searchInput: { flex: 1, marginLeft: 12, fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
     toolsRow: { gap: 10, paddingRight: 20 },
-    toolBtn: { minHeight: 44, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: 8, justifyContent: 'center' },
-    toolBtnTxt: { fontSize: 11, fontWeight: '800', color: '#64748B' },
-    toolBtnIcon: { width: 40, height: 40, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
-    listArea: { padding: 16, paddingBottom: 100 },
-    poCard: { backgroundColor: '#fff', borderRadius: 24, marginBottom: 14, overflow: 'hidden', flexDirection: 'row' },
+    toolBtn: { minHeight: 44, backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: SPACING.s, justifyContent: 'center' },
+    toolBtnTxt: { fontSize: 11, fontWeight: '800', color: COLORS.textSecondary },
+    toolBtnIcon: { width: 40, height: 40, backgroundColor: COLORS.background, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+    listArea: { padding: SPACING.m, paddingBottom: 100 },
+    poCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, marginBottom: 14, overflow: 'hidden', flexDirection: 'row' },
     statusAccent: { width: 6 },
-    poCardInfo: { flex: 1, padding: 16 },
+    poCardInfo: { flex: 1, padding: SPACING.m },
     poCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
     poNumWrap: { flexDirection: 'row', gap: 10, flex: 1, minWidth: 0, marginRight: 8 },
     hashBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    poNumberTxt: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
-    poProjectTxt: { fontSize: 12, fontWeight: '800', color: '#64748B', marginTop: 2, flexShrink: 1 },
+    poNumberTxt: { fontSize: 17, fontWeight: '900', color: COLORS.textPrimary },
+    poProjectTxt: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary, marginTop: 2, flexShrink: 1 },
     poProjectSub: { fontSize: 8, fontWeight: '900', color: '#CBD5E1', letterSpacing: 0.5 },
     vendorWrap: { alignItems: 'flex-end', gap: 6, width: 84 },
-    vendorAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    vendorAvatar: { width: 32, height: 32, borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center' },
     vendorAvatarTxt: { fontSize: 12, fontWeight: '900', color: '#2563EB' },
-    vendorNameTxt: { fontSize: 12, fontWeight: '800', color: '#1E293B', maxWidth: 84, textAlign: 'right' },
+    vendorNameTxt: { fontSize: 12, fontWeight: '800', color: COLORS.textPrimary, maxWidth: 84, textAlign: 'right' },
     poCardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
     poMetaWrap: { flex: 1 },
     poMetaLabel: { fontSize: 8, fontWeight: '900', color: '#CBD5E1', letterSpacing: 0.5 },
@@ -776,21 +777,21 @@ const styles = StyleSheet.create({
     poStatusWrap: { alignItems: 'flex-end', gap: 6, width: 116 },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     statusText: { fontSize: 9, fontWeight: '900' },
-    poDateTxt: { fontSize: 10, fontWeight: '800', color: '#94A3B8', maxWidth: 116 },
+    poDateTxt: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted, maxWidth: 116 },
     detailsBtn: { padding: 2, marginLeft: 10, marginBottom: 2 },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     // Modal Create PO
     createOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     createKeyboard: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    createSheet: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
+    createSheet: { backgroundColor: COLORS.background, borderTopLeftRadius: 30, borderTopRightRadius: 30 },
     createHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.m,
         paddingVertical: 14,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
         borderTopLeftRadius: 30,
@@ -798,58 +799,58 @@ const styles = StyleSheet.create({
     },
     closeBtnModal: { padding: 4, marginLeft: 10 },
     createHeaderText: { flex: 1, minWidth: 0 },
-    createTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
+    createTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.4 },
     createSubWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
     createSub: { fontSize: 12, fontWeight: '700', color: '#2563EB' },
-    createScroll: { padding: 16, paddingBottom: 28 },
-    sectionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    sectionTitle: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 0.8, marginBottom: 14, textTransform: 'uppercase' },
-    sectionTitleInline: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 0.8, textTransform: 'uppercase' },
-    sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 },
+    createScroll: { padding: SPACING.m, paddingBottom: 28 },
+    sectionCard: { backgroundColor: COLORS.surface, borderRadius: SIZES.radiusCard, padding: 18, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    sectionTitle: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 0.8, marginBottom: 14, textTransform: 'uppercase' },
+    sectionTitleInline: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase' },
+    sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: SPACING.sm },
     fieldsStack: { gap: 16 },
     formField: { width: '100%' },
-    labelGrp: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-    formLabel: { fontSize: 12, fontWeight: '800', color: '#475569' },
+    labelGrp: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s, marginBottom: 8 },
+    formLabel: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
     modalSelector: {
         minHeight: 48,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 14,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    selText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#0F172A', marginRight: 8 },
-    selTextPlaceholder: { color: '#94A3B8', fontWeight: '600' },
+    selText: { flex: 1, fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginRight: 8 },
+    selTextPlaceholder: { color: COLORS.textMuted, fontWeight: '600' },
     formInp: {
         minHeight: 48,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 14,
         paddingVertical: 12,
         fontSize: 15,
         fontWeight: '600',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
     formInpBox: {
         minHeight: 48,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 14,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    inpValTxt: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+    inpValTxt: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
     btnAddItem: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#BFDBFE' },
     btnAddItemTxt: { fontSize: 12, fontWeight: '900', color: '#2563EB' },
-    lineItemBox: { backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+    lineItemBox: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border },
     lineItemHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
     lineItemNameInp: {
         flex: 1,
@@ -857,51 +858,51 @@ const styles = StyleSheet.create({
         minHeight: 44,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         fontSize: 15,
         fontWeight: '800',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
     },
     lineItemRemove: { padding: 4 },
     lineItemDescInp: {
         minHeight: 44,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         fontSize: 14,
-        color: '#475569',
+        color: COLORS.textSecondary,
         fontWeight: '600',
         marginBottom: 12,
         textAlignVertical: 'top',
     },
     lineItemCalcRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     calcBox: { flex: 1, minWidth: 0 },
-    calcLab: { fontSize: 10, fontWeight: '900', color: '#64748B', marginBottom: 6, letterSpacing: 0.3 },
+    calcLab: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 6, letterSpacing: 0.3 },
     calcInp: {
         width: '100%',
         minHeight: 44,
         paddingHorizontal: 10,
         paddingVertical: 10,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         fontSize: 15,
         fontWeight: '800',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
     },
     sidebarSection: { marginBottom: 24 },
-    summaryCard: { backgroundColor: '#0F172A', borderRadius: 20, padding: 20 },
-    summaryTitleNotes: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },
+    summaryCard: { backgroundColor: '#0F172A', borderRadius: SIZES.radiusCard, padding: SPACING.m },
+    summaryTitleNotes: { fontSize: 11, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },
     notesInp: {
         backgroundColor: '#1E293B',
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
         borderColor: '#334155',
         paddingHorizontal: 14,
@@ -909,37 +910,37 @@ const styles = StyleSheet.create({
         minHeight: 100,
         fontSize: 14,
         color: '#F8FAFC',
-        marginBottom: 20,
+        marginBottom: SPACING.m,
         textAlignVertical: 'top',
     },
     btnSubmitFinal: {
         backgroundColor: '#2563EB',
         minHeight: 52,
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        gap: SPACING.s,
         shadowColor: '#2563EB',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 4,
     },
-    btnSubmitFinalTxt: { color: '#fff', fontSize: 15, fontWeight: '900' },
-    discardBtn: { alignItems: 'center', paddingVertical: 14, backgroundColor: '#0F172A', borderRadius: 12 },
+    btnSubmitFinalTxt: { color: COLORS.white, fontSize: 15, fontWeight: '900' },
+    discardBtn: { alignItems: 'center', paddingVertical: 14, backgroundColor: '#0F172A', borderRadius: SIZES.radiusBtn },
     discardTxt: { color: '#E2E8F0', fontSize: 14, fontWeight: '700' },
     selBack: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 25 },
-    selCard: { backgroundColor: '#fff', borderRadius: 32, padding: 25, maxHeight: '60%' },
-    selTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 20 },
-    selItem: { paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    selCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: 25, maxHeight: '60%' },
+    selTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
+    selItem: { paddingVertical: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     selItemActive: { backgroundColor: '#EFF6FF' },
-    selItemTxt: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-    selClose: { marginTop: 20, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 16 },
-    selCloseTxt: { color: '#64748B', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
-    emptyHint: { textAlign: 'center', color: '#94A3B8', fontWeight: '700', paddingVertical: 20 },
-    iosDatePickerWrap: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 10 },
+    selItemTxt: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary },
+    selClose: { marginTop: SPACING.m, alignItems: 'center', backgroundColor: COLORS.background, padding: 15, borderRadius: SIZES.radiusCard },
+    selCloseTxt: { color: COLORS.textSecondary, fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+    emptyHint: { textAlign: 'center', color: COLORS.textMuted, fontWeight: '700', paddingVertical: SPACING.m },
+    iosDatePickerWrap: { backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: SPACING.m, paddingVertical: 10 },
     iosDateDoneTxt: { color: '#2563EB', fontSize: 16, fontWeight: '800' }
 });
 

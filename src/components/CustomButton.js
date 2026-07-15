@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Animated } from 'react-native';
-import { COLORS, SIZES } from '../constants/theme';
+import { COLORS, SIZES, TYPOGRAPHY, SPACING } from '../constants/theme';
+import { verticalScale, moderateScale } from '../utils/responsive';
 
 const CustomButton = ({ title, onPress, type = 'primary', loading = false, style, disabled = false }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -53,24 +54,24 @@ const styles = StyleSheet.create({
         minWidth: 72
     },
     container: {
-        height: 52, // Standard professional height
-        borderRadius: SIZES.radius,
+        height: Math.max(verticalScale(52), 48),
+        borderRadius: SIZES.radiusBtn,
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        paddingHorizontal: 12,
+        paddingHorizontal: SPACING.m,
         minWidth: 72
     },
     primary: {
         backgroundColor: COLORS.primary,
         shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 10,
         elevation: 6,
     },
     outline: {
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         borderWidth: 2,
         borderColor: COLORS.primary,
     },
@@ -78,13 +79,13 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     text: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         fontWeight: '900',
         letterSpacing: 1.2,
         textTransform: 'uppercase',
     },
     primaryText: {
-        color: COLORS.white, // White on dark navy primary
+        color: COLORS.white,
     },
     outlineText: {
         color: COLORS.primary,
@@ -93,3 +94,4 @@ const styles = StyleSheet.create({
 });
 
 export default CustomButton;
+

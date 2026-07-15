@@ -5,6 +5,7 @@ import {
     StatusBar, Platform, ScrollView, Alert, Pressable, Dimensions, useWindowDimensions, KeyboardAvoidingView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 import * as Location from 'expo-location';
@@ -32,12 +33,12 @@ const toastStyles = StyleSheet.create({
         position: 'absolute',
         alignSelf: 'center', zIndex: 9999, flexDirection: 'row',
         alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12,
-        borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+        borderRadius: SIZES.radiusCard, shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2, shadowRadius: 8, elevation: 10,
     },
     success: { backgroundColor: '#10B981' },
     error: { backgroundColor: '#EF4444' },
-    text: { color: '#fff', fontWeight: '800' },
+    text: { color: COLORS.white, fontWeight: '800' },
 });
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
@@ -169,7 +170,10 @@ const PMCrewControlScreen = ({ navigation }) => {
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const loc = await Location.getCurrentPositionAsync({ 
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 3000
+                    });
                     coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude, accuracy: loc.coords.accuracy };
                 }
             } catch (lex) {}
@@ -205,7 +209,10 @@ const PMCrewControlScreen = ({ navigation }) => {
             try {
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const loc = await Location.getCurrentPositionAsync({ 
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 3000
+                    });
                     coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude, accuracy: loc.coords.accuracy };
                 }
             } catch (lex) { }
@@ -248,7 +255,10 @@ const PMCrewControlScreen = ({ navigation }) => {
             try {
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const loc = await Location.getCurrentPositionAsync({ 
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 3000
+                    });
                     coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude, accuracy: loc.coords.accuracy };
                 }
             } catch (lex) { }
@@ -521,7 +531,7 @@ const PMCrewControlScreen = ({ navigation }) => {
                                 return (
                                     <TouchableOpacity style={[styles.projectItem, isActive && styles.projectItemActive, { padding: scale(16), borderRadius: moderateScale(16) }]} onPress={() => { setSelectedProject(item); setProjectModalVisible(false); }}>
                                         <View>
-                                            <Text style={[styles.projectName, isActive && { color: '#fff' }, { fontSize: moderateScale(15) }]}>{item.name}</Text>
+                                            <Text style={[styles.projectName, isActive && { color: COLORS.white }, { fontSize: moderateScale(15) }]}>{item.name}</Text>
                                             <Text style={[styles.projectLoc, isActive && { color: 'rgba(255,255,255,0.7)' }, { fontSize: moderateScale(11) }]}>{(typeof item.location === 'object' ? item.location?.address : item.location) || 'Site Location'}</Text>
                                         </View>
                                         {isActive && <MaterialCommunityIcons name="check-circle" size={moderateScale(20)} color="#fff" />}
@@ -537,7 +547,7 @@ const PMCrewControlScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={{ width: '100%', flex: 1 }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? moderateScale(88) : moderateScale(20)}
                     >
                     <ScrollView
@@ -573,7 +583,7 @@ const PMCrewControlScreen = ({ navigation }) => {
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
                                         {(projects || []).map(p => (
                                             <TouchableOpacity key={p._id || p.id || p.name} style={[styles.projectChip, (manualData.projectId || selectedProject?._id) === p._id && styles.projectChipActive, { paddingHorizontal: scale(12), paddingVertical: verticalScale(6) }]} onPress={() => setManualData({ ...manualData, projectId: p._id })}>
-                                                <Text style={[styles.projectChipText, (manualData.projectId || selectedProject?._id) === p._id && { color: '#fff' }, { fontSize: moderateScale(12) }]}>{p.name}</Text>
+                                                <Text style={[styles.projectChipText, (manualData.projectId || selectedProject?._id) === p._id && { color: COLORS.white }, { fontSize: moderateScale(12) }]}>{p.name}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -627,96 +637,96 @@ const PMCrewControlScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    backBtn: { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    pageTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    pageSubtitle: { fontWeight: '700', color: '#64748B', marginTop: 1 },
+    safeArea: { flex: 1, backgroundColor: COLORS.background },
+    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    backBtn: { backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    pageTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    pageSubtitle: { fontWeight: '700', color: COLORS.textSecondary, marginTop: 1 },
     scrollContent: { },
-    livePill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, gap: 8 },
+    livePill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.m, gap: SPACING.s },
     pulseDotGreen: { backgroundColor: '#10B981' },
-    livePillText: { fontWeight: '900', color: '#1E293B', letterSpacing: 0.5 },
-    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', gap: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
-    searchInput: { flex: 1, fontWeight: '700', color: '#0F172A' },
-    siteSelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 },
-    siteSelectorLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5 },
-    siteSelectorValue: { fontWeight: '800', color: '#1E293B' },
+    livePillText: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: 0.5 },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, gap: 10, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
+    searchInput: { flex: 1, fontWeight: '700', color: COLORS.textPrimary },
+    siteSelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.m },
+    siteSelectorLabel: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5 },
+    siteSelectorValue: { fontWeight: '800', color: COLORS.textPrimary },
     actionBar: { flexDirection: 'row', gap: 10, zIndex: 10 },
     actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
     actionBtnText: { fontWeight: '900', letterSpacing: 0.5 },
-    dropdown: { position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999, backgroundColor: '#fff', marginTop: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
+    dropdown: { position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999, backgroundColor: COLORS.card, marginTop: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
     dropdownItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     dropdownItemText: { fontWeight: '800', letterSpacing: 0.3 },
-    dropdownDivider: { height: 1, backgroundColor: '#F8FAFC' },
-    tableHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', marginBottom: 10, gap: 10 },
-    headerCheckbox: { borderWidth: 2, borderColor: '#CBD5E1', backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+    dropdownDivider: { height: 1, backgroundColor: COLORS.background },
+    tableHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, marginBottom: 10, gap: 10 },
+    headerCheckbox: { borderWidth: 2, borderColor: '#CBD5E1', backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center' },
     headerCheckboxActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    tableHeaderText: { fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1 },
-    workerCard: { backgroundColor: '#fff', marginBottom: 12, borderWidth: 1.5, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' },
+    tableHeaderText: { fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+    workerCard: { backgroundColor: COLORS.card, marginBottom: 12, borderWidth: 1.5, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' },
     workerCardSelected: { borderColor: '#BFDBFE', backgroundColor: '#F0F7FF' },
     cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    checkbox: { borderWidth: 2, borderColor: '#CBD5E1', backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+    checkbox: { borderWidth: 2, borderColor: '#CBD5E1', backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center' },
     checkboxActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
     avatarCircle: { backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#BFDBFE' },
     avatarLetter: { fontWeight: '900', color: '#1D4ED8' },
-    workerName: { fontWeight: '900', color: '#0F172A' },
+    workerName: { fontWeight: '900', color: COLORS.textPrimary },
     rolePill: { backgroundColor: '#EFF6FF', alignSelf: 'flex-start', marginTop: 3 },
     rolePillText: { fontWeight: '900', color: '#2563EB', letterSpacing: 1 },
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 50, borderWidth: 1 },
     statusLive: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
-    statusOff:  { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+    statusOff:  { backgroundColor: COLORS.background, borderColor: COLORS.border },
     pulseDot: { backgroundColor: '#10B981' },
     statusBadgeText: { fontWeight: '900', letterSpacing: 0.5 },
-    siteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    siteIconBox: { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    siteText: { fontWeight: '700', color: '#64748B', flex: 1 },
+    siteRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
+    siteIconBox: { backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    siteText: { fontWeight: '700', color: COLORS.textSecondary, flex: 1 },
     manualPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
     manualDot: { backgroundColor: '#F59E0B' },
     manualPillText: { fontWeight: '900', color: '#92400E', letterSpacing: 0.5 },
     metricsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
     metricsLeft: { flex: 1 },
-    metricsLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.2, textTransform: 'uppercase' },
-    metricsValue: { fontWeight: '700', color: '#475569', marginTop: 2 },
+    metricsLabel: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' },
+    metricsValue: { fontWeight: '700', color: COLORS.textSecondary, marginTop: 2 },
     metricsRight: { alignItems: 'flex-end', gap: 5 },
     loggedActiveChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0' },
     loggedActiveText: { fontWeight: '900', color: '#059669' },
     offDutyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
-    offDutyText: { fontWeight: '900', color: '#94A3B8' },
+    offDutyText: { fontWeight: '900', color: COLORS.textMuted },
     elapsedRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     elapsedText: { fontWeight: '700', color: '#10B981' },
     shiftLogBtn: { flexDirection: 'row', alignItems: 'center' },
-    shiftLogText: { fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5, textDecorationLine: 'underline', textDecorationColor: '#E2E8F0' },
-    loadingView: { paddingVertical: 60, alignItems: 'center', gap: 12 },
-    loadingText: { fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5 },
+    shiftLogText: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.5, textDecorationLine: 'underline', textDecorationColor: '#E2E8F0' },
+    loadingView: { paddingVertical: 60, alignItems: 'center', gap: SPACING.sm },
+    loadingText: { fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
     emptyView: { paddingVertical: 60, alignItems: 'center', gap: 10 },
     emptyText: { fontWeight: '800', color: '#CBD5E1' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'flex-end' },
-    modalSheet: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12, maxHeight: '90%' },
-    modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: 16 },
+    modalSheet: { backgroundColor: COLORS.card, paddingHorizontal: SPACING.m, paddingTop: 12, maxHeight: '90%' },
+    modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: SPACING.m },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    modalSubtitle: { fontWeight: '700', color: '#64748B', marginTop: 2 },
-    projectItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    modalSubtitle: { fontWeight: '700', color: COLORS.textSecondary, marginTop: 2 },
+    projectItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
     projectItemActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    projectName: { fontWeight: '800', color: '#1E293B' },
-    projectLoc: { color: '#64748B', marginTop: 2 },
+    projectName: { fontWeight: '800', color: COLORS.textPrimary },
+    projectLoc: { color: COLORS.textSecondary, marginTop: 2 },
     formGroup: { marginBottom: 14 },
-    formLabel: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 6 },
-    formInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-    formInputText: { flex: 1, fontWeight: '700', color: '#1E293B' },
-    formInputReadonly: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F1F5F9' },
-    readonlyText: { fontWeight: '700', color: '#64748B' },
-    formPickerWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    formLabel: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5, marginBottom: 6 },
+    formInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
+    formInputText: { flex: 1, fontWeight: '700', color: COLORS.textPrimary },
+    formInputReadonly: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.surfaceSecondary },
+    readonlyText: { fontWeight: '700', color: COLORS.textSecondary },
+    formPickerWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
     projectChip: { backgroundColor: '#E2E8F0', marginRight: 8 },
     projectChipActive: { backgroundColor: '#2563EB' },
-    projectChipText: { fontWeight: '700', color: '#475569' },
+    projectChipText: { fontWeight: '700', color: COLORS.textSecondary },
     formRow: { flexDirection: 'row' },
-    formTextarea: { backgroundColor: '#F8FAFC', paddingTop: 12, paddingBottom: 12, minHeight: 90, borderWidth: 1, borderColor: '#E2E8F0', fontWeight: '600', color: '#1E293B' },
+    formTextarea: { backgroundColor: COLORS.background, paddingTop: 12, paddingBottom: 12, minHeight: 90, borderWidth: 1, borderColor: COLORS.border, fontWeight: '600', color: COLORS.textPrimary },
     manualBtnRow: { flexDirection: 'row', marginTop: 8 },
-    cancelBtn: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1F5F9' },
-    cancelBtnText: { fontWeight: '900', color: '#64748B' },
-    submitBtn: { flex: 1.5, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#2563EB' },
-    submitBtnText: { fontWeight: '900', color: '#fff' },
+    cancelBtn: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary },
+    cancelBtnText: { fontWeight: '900', color: COLORS.textSecondary },
+    submitBtn: { flex: 1.5, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: SPACING.s, backgroundColor: '#2563EB' },
+    submitBtnText: { fontWeight: '900', color: COLORS.white },
 });
 
 export default PMCrewControlScreen;

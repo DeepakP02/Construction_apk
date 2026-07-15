@@ -4,7 +4,7 @@ import {
     StatusBar, Dimensions, Animated, ActivityIndicator, Modal
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,8 +31,8 @@ const TaskDetailScreen = ({ navigation, route }) => {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#94A3B8" />
-                <Text style={{ marginTop: 12, color: '#64748B', fontWeight: '700' }}>Task data missing</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+                <Text style={{ marginTop: 12, color: COLORS.textSecondary, fontWeight: '700' }}>Task data missing</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: SPACING.m }}>
                     <Text style={{ color: '#3B82F6', fontWeight: '900' }}>GO BACK</Text>
                 </TouchableOpacity>
             </View>
@@ -241,8 +241,8 @@ const TaskDetailScreen = ({ navigation, route }) => {
                             </View>
 
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setEditModalVisible(false)}>
-                                    <Text style={[styles.modalBtnText, { color: '#64748B' }]}>CANCEL</Text>
+                                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.surfaceSecondary }]} onPress={() => setEditModalVisible(false)}>
+                                    <Text style={[styles.modalBtnText, { color: COLORS.textSecondary }]}>CANCEL</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     style={[styles.modalBtn, { backgroundColor: '#3B82F6' }]} 
@@ -266,21 +266,21 @@ const TaskDetailScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     header: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        paddingHorizontal: 16, 
+        paddingHorizontal: SPACING.m, 
         paddingBottom: 16, 
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9'
+        borderBottomColor: COLORS.border
     },
-    backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
-    headerTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
-    shareBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    scrollContent: { padding: 20 },
+    backBtn: { width: 44, height: 44, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 17, fontWeight: '900', color: COLORS.textPrimary },
+    shareBtn: { width: 44, height: 44, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
+    scrollContent: { padding: SPACING.m },
     titleSection: { marginBottom: 24 },
     priorityBadge: { 
         flexDirection: 'row', 
@@ -294,42 +294,42 @@ const styles = StyleSheet.create({
     },
     priorityDot: { width: 6, height: 6, borderRadius: 3 },
     priorityText: { fontSize: 9, fontWeight: '900' },
-    mainTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -0.8 },
+    mainTitle: { fontSize: 26, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.8 },
     projectIdRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
-    projectIdText: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+    projectIdText: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted },
     dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0' },
     card: { 
-        backgroundColor: '#FFFFFF', 
-        borderRadius: 24, 
-        padding: 20, 
-        marginBottom: 20, 
+        backgroundColor: COLORS.surface, 
+        borderRadius: SIZES.radiusCard, 
+        padding: SPACING.m, 
+        marginBottom: SPACING.m, 
         borderWidth: 1, 
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
         ...SHADOWS.small 
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 },
-    cardTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', marginBottom: 16 },
-    progressPercent: { fontSize: 24, fontWeight: '900', color: '#0F172A', marginBottom: 8 },
-    progressBg: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
+    cardTitle: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
+    progressPercent: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 8 },
+    progressBg: { height: 8, backgroundColor: COLORS.surfaceSecondary, borderRadius: 4, overflow: 'hidden' },
     progressFill: { height: '100%', borderRadius: 4 },
-    statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
-    statusLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.m },
+    statusLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
     statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
     statusPillText: { fontSize: 10, fontWeight: '900' },
-    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
-    iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: SPACING.m },
+    iconContainer: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
     infoTextContainer: { flex: 1 },
-    infoLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
-    infoValue: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginTop: 1 },
-    descriptionText: { fontSize: 14, lineHeight: 22, color: '#475569', fontWeight: '600' },
+    infoLabel: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+    infoValue: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginTop: 1 },
+    descriptionText: { fontSize: 14, lineHeight: 22, color: COLORS.textSecondary, fontWeight: '600' },
     mainActionBtn: { 
         backgroundColor: '#3B82F6', 
         height: 60, 
-        borderRadius: 20, 
+        borderRadius: SIZES.radiusCard, 
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        gap: 12,
+        gap: SPACING.sm,
         ...SHADOWS.medium 
     },
     completedActionBtn: { backgroundColor: '#64748B' },
@@ -340,35 +340,35 @@ const styles = StyleSheet.create({
     menuContent: { 
         position: 'absolute', 
         right: 20, 
-        backgroundColor: '#fff', 
-        borderRadius: 16, 
+        backgroundColor: COLORS.card, 
+        borderRadius: SIZES.radiusCard, 
         width: 180, 
         padding: 8,
         ...SHADOWS.medium,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 8 },
-    menuItemText: { fontSize: 14, fontWeight: '700', color: '#475569' },
-    menuDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: 12, borderRadius: 8 },
+    menuItemText: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary },
+    menuDivider: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginVertical: 4 },
 
     // Edit Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-    modalContentFull: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '85%' },
-    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 24 },
-    formItem: { marginBottom: 20 },
-    fieldLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 8 },
-    inputWrapper: { height: 50, backgroundColor: '#F8FAFC', borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-    inputText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-    pillRow: { flexDirection: 'row', gap: 8 },
-    pill: { flex: 1, height: 40, borderRadius: 10, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+    modalContentFull: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: 24, maxHeight: '85%' },
+    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: SPACING.m },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 24 },
+    formItem: { marginBottom: SPACING.m },
+    fieldLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 8 },
+    inputWrapper: { height: 50, backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.m, gap: SPACING.sm, borderWidth: 1, borderColor: COLORS.border },
+    inputText: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+    pillRow: { flexDirection: 'row', gap: SPACING.s },
+    pill: { flex: 1, height: 40, borderRadius: 10, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
     pillActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
-    pillText: { fontSize: 10, fontWeight: '900', color: '#64748B' },
-    pillTextActive: { color: '#fff' },
-    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
-    modalBtn: { flex: 1, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-    modalBtnText: { fontSize: 13, fontWeight: '900', color: '#fff', letterSpacing: 0.5 }
+    pillText: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary },
+    pillTextActive: { color: COLORS.white },
+    modalButtons: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.m },
+    modalBtn: { flex: 1, height: 52, borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center' },
+    modalBtnText: { fontSize: 13, fontWeight: '900', color: COLORS.white, letterSpacing: 0.5 }
 });
 
 export default TaskDetailScreen;

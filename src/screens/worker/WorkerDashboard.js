@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SIZES } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
 const { width } = Dimensions.get('window');
@@ -25,7 +25,7 @@ const WorkerDashboard = ({ navigation, timer, isClockedIn, handleClockToggle, se
 
     return (
         <View style={styles.workerContainer}>
-            <View style={{ marginBottom: 20 }}>
+            <View style={{ marginBottom: SPACING.m }}>
                 <Text style={styles.workerSubtitle}>
                     Organization
                 </Text>
@@ -127,17 +127,17 @@ const WorkerDashboard = ({ navigation, timer, isClockedIn, handleClockToggle, se
                 </TouchableOpacity>
                 
                 <TouchableOpacity style={styles.quickActionBtn} onPress={() => navigation.navigate('Photos')}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0' }]}>
+                    <View style={[styles.quickActionIcon, { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border }]}>
                         <MaterialCommunityIcons name="camera-plus" size={26} color="#64748B" />
                     </View>
-                    <Text style={[styles.quickActionLabel, { color: '#64748B' }]}>Submit Photo</Text>
+                    <Text style={[styles.quickActionLabel, { color: COLORS.textSecondary }]}>Submit Photo</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity style={styles.quickActionBtn} onPress={() => navigation.navigate('WorkerLogs')}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0' }]}>
+                    <View style={[styles.quickActionIcon, { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border }]}>
                         <MaterialCommunityIcons name="refresh-circle" size={26} color="#64748B" />
                     </View>
-                    <Text style={[styles.quickActionLabel, { color: '#64748B' }]}>Request Correction</Text>
+                    <Text style={[styles.quickActionLabel, { color: COLORS.textSecondary }]}>Request Correction</Text>
                 </TouchableOpacity>
             </View>
 
@@ -170,47 +170,47 @@ const WorkerDashboard = ({ navigation, timer, isClockedIn, handleClockToggle, se
 const styles = StyleSheet.create({
     workerContainer: { flex: 1, padding: 14, paddingTop: 2 },
     workerSubtitle: { fontSize: Dimensions.get('window').width < 380 ? 28 : 32, fontWeight: '900', color: COLORS.primary, letterSpacing: -1, marginTop: 4, textTransform: 'uppercase' },
-    modernClockCard: { backgroundColor: '#fff', borderRadius: 32, padding: 24, marginBottom: 24, overflow: 'hidden' },
+    modernClockCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: 24, marginBottom: 24, overflow: 'hidden' },
     clockIconBg: { position: 'absolute', right: -40, top: -40, opacity: 0.5 },
     clockTop: { alignItems: 'center', marginBottom: 24 },
-    statusBadgeModern: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, gap: 6 },
+    statusBadgeModern: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, paddingHorizontal: 12, paddingVertical: 6, borderRadius: SIZES.radiusBtn, gap: 6 },
     statusDotModern: { width: 6, height: 6, borderRadius: 3 },
-    statusTextModern: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
-    digitalTimer: { fontSize: 44, fontWeight: '900', color: '#0F172A', letterSpacing: -1, marginVertical: 8 },
-    projectPicker: { width: '100%', backgroundColor: '#F8FAFC', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-    projectPickerLabel: { fontSize: 9, fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
+    statusTextModern: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
+    digitalTimer: { fontSize: 44, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1, marginVertical: 8 },
+    projectPicker: { width: '100%', backgroundColor: COLORS.background, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
+    projectPickerLabel: { fontSize: 9, fontWeight: '800', color: COLORS.textMuted, letterSpacing: 1 },
     projectPickerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-    projectPickerText: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-    startClockBtn: { alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 24, alignItems: 'center', marginTop: 12, flexDirection: 'row', width: '100%', justifyContent: 'center' },
-    startClockBtnText: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
-    clockFooterPremium: { backgroundColor: '#F8FAFC', padding: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', gap: 16, marginHorizontal: -24, marginBottom: -24, marginTop: 24 },
+    projectPickerText: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+    startClockBtn: { alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 32, borderRadius: SIZES.radiusCard, alignItems: 'center', marginTop: 12, flexDirection: 'row', width: '100%', justifyContent: 'center' },
+    startClockBtnText: { color: COLORS.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+    clockFooterPremium: { backgroundColor: COLORS.background, padding: SPACING.m, borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', gap: 16, marginHorizontal: -24, marginBottom: -24, marginTop: 24 },
     footerItem: { flex: 1, alignItems: 'center' },
-    footerLabel: { fontSize: 8, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 4 },
-    footerValue: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
+    footerLabel: { fontSize: 8, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 4 },
+    footerValue: { fontSize: 12, fontWeight: '800', color: COLORS.textPrimary },
     footerDivider: { width: 1, height: '60%', backgroundColor: '#E2E8F0', alignSelf: 'center' },
-    clockFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16 },
-    clockFooterText: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
-    workerStatsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-    workerStatCard: { flex: 1, backgroundColor: '#fff', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9' },
-    workerStatIconWrap: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    workerStatValue: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
-    workerStatSubValue: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
-    workerStatLabel: { fontSize: 8, fontWeight: '800', color: '#64748B', marginTop: 4, letterSpacing: 0.5 },
-    sectionHeaderNew: { fontSize: 10, fontWeight: '900', color: '#0F172A', letterSpacing: 1.5, marginBottom: 16, textTransform: 'uppercase' },
-    quickActionsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-    quickActionBtn: { flex: 1, alignItems: 'center', gap: 8 },
+    clockFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: SPACING.m },
+    clockFooterText: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted },
+    workerStatsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: 24 },
+    workerStatCard: { flex: 1, backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
+    workerStatIconWrap: { width: 36, height: 36, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    workerStatValue: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary },
+    workerStatSubValue: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
+    workerStatLabel: { fontSize: 8, fontWeight: '800', color: COLORS.textSecondary, marginTop: 4, letterSpacing: 0.5 },
+    sectionHeaderNew: { fontSize: 10, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: 1.5, marginBottom: SPACING.m, textTransform: 'uppercase' },
+    quickActionsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: 24 },
+    quickActionBtn: { flex: 1, alignItems: 'center', gap: SPACING.s },
     quickActionIcon: { width: 56, height: 56, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-    quickActionLabel: { fontSize: 10, fontWeight: '800', color: '#1E293B', textAlign: 'center' },
-    sectionHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    quickActionLabel: { fontSize: 10, fontWeight: '800', color: COLORS.textPrimary, textAlign: 'center' },
+    sectionHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
     viewMoreText: { fontSize: 11, fontWeight: '900', color: COLORS.primary },
-    tasksContainerModern: { backgroundColor: '#fff', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-    taskRowModern: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    tasksContainerModern: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    taskRowModern: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     taskInfoModern: { flex: 1, marginLeft: 12 },
-    taskNameModern: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-    taskProjectModern: { fontSize: 11, color: '#64748B', marginTop: 2 },
-    taskStatusBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    taskStatusText: { fontSize: 9, fontWeight: '900', color: '#64748B' },
-    emptyText: { textAlign: 'center', color: '#94A3B8', fontSize: 12, paddingVertical: 20 }
+    taskNameModern: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
+    taskProjectModern: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
+    taskStatusBadge: { backgroundColor: COLORS.background, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    taskStatusText: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary },
+    emptyText: { textAlign: 'center', color: COLORS.textMuted, fontSize: 12, paddingVertical: SPACING.m }
 });
 
 export default WorkerDashboard;

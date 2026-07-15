@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 
 const COLLAPSE_KEY = 'taskHierarchyCollapsedV1';
 const PRIORITIES = ['Low', 'Medium', 'High'];
@@ -27,8 +27,8 @@ const getAssignableRoleOptions = (currentRole) => {
 };
 
 const STATUS_PALETTE = {
-    todo: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
-    pending: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
+    todo: { color: COLORS.textSecondary, bg: '#F1F5F9', label: 'TODO' },
+    pending: { color: COLORS.textSecondary, bg: '#F1F5F9', label: 'TODO' },
     in_progress: { color: '#3B82F6', bg: '#EFF6FF', label: 'LIVE' },
     review: { color: '#F59E0B', bg: '#FFFBEB', label: 'REVIEW' },
     completed: { color: '#10B981', bg: '#ECFDF5', label: 'DONE' }
@@ -627,7 +627,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
             <Modal visible={!!editTarget} transparent animationType="slide" statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={() => setEditTarget(null)}>
                 <KeyboardAvoidingView
                     style={styles.modalOverlay}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 12 : 24}
                 >
                     <View style={styles.modalOverlayInner}>
@@ -768,7 +768,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
             </Modal>
 
             {Platform.OS === 'ios' && datePickerField ? (
-                <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                <View style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
                     <DateTimePicker
                         value={parsePickerDate(editForm[datePickerField])}
                         mode="date"
@@ -791,49 +791,49 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-    headerTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-    headerSubtitle: { fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 1, marginTop: 2 },
-    content: { padding: 16, paddingBottom: 40 },
-    sectionLabel: { fontSize: 10, fontWeight: '900', color: '#64748B', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.m, paddingVertical: 12, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    headerTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
+    headerSubtitle: { fontSize: 9, fontWeight: '800', color: COLORS.textSecondary, letterSpacing: 1, marginTop: 2 },
+    content: { padding: SPACING.m, paddingBottom: 40 },
+    sectionLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' },
     breadcrumbCard: { backgroundColor: '#EEF2FF', borderRadius: 10, borderWidth: 1, borderColor: '#C7D2FE', padding: 10, marginBottom: 10 },
     breadcrumbLabel: { fontSize: 10, color: '#6366F1', fontWeight: '900', textTransform: 'uppercase' },
     breadcrumbText: { marginTop: 4, color: '#1E3A8A', fontSize: 12, fontWeight: '700' },
-    mainCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
-    mainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-    mainTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginTop: 4 },
-    mainProjectLine: { fontSize: 10, fontWeight: '700', color: '#64748B', marginTop: 4 },
-    metaText: { color: '#64748B', marginTop: 8, fontSize: 12, lineHeight: 18 },
+    mainCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusBtn, padding: 14, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 },
+    mainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.s },
+    mainTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginTop: 4 },
+    mainProjectLine: { fontSize: 10, fontWeight: '700', color: COLORS.textSecondary, marginTop: 4 },
+    metaText: { color: COLORS.textSecondary, marginTop: 8, fontSize: 12, lineHeight: 18 },
     progressTrack: { height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, overflow: 'hidden' },
     progressFill: { height: '100%', backgroundColor: '#3B82F6', borderRadius: 2 },
-    progressLabel: { fontSize: 9, fontWeight: '800', color: '#94A3B8', marginTop: 4 },
-    actions: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
+    progressLabel: { fontSize: 9, fontWeight: '800', color: COLORS.textMuted, marginTop: 4 },
+    actions: { flexDirection: 'row', gap: SPACING.s, marginTop: 12, alignItems: 'center' },
     primaryBtn: { backgroundColor: '#2563EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 6 },
-    primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+    primaryBtnText: { color: COLORS.white, fontWeight: '800', fontSize: 12 },
     iconBtn: { backgroundColor: '#EFF6FF', borderRadius: 8, padding: 8 },
     taskItemWrapper: { position: 'relative', marginBottom: 10 },
     treeConnector: { position: 'absolute', left: -12, top: 0, bottom: 0, width: 14, zIndex: 1 },
     connectorVertical: { position: 'absolute', left: 7, top: -6, bottom: 20, width: 1.5, backgroundColor: '#CBD5E1' },
     connectorHorizontal: { position: 'absolute', left: 7, top: 20, width: 10, height: 1.5, backgroundColor: '#CBD5E1' },
     hierCard: {
-        backgroundColor: '#fff',
-        borderRadius: 14,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusBtn,
         padding: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    hierCardNested: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+    hierCardNested: { backgroundColor: COLORS.background, borderColor: COLORS.border },
     hierCardApi: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
     hierTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    hierNameCol: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, minWidth: 0 },
+    hierNameCol: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.s, minWidth: 0 },
     indicatorLine: { width: 3, minHeight: 22, borderRadius: 2 },
     badgeRowHier: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 },
     typeBadgeHier: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     typeBadgeTextHier: { fontSize: 7, fontWeight: '900' },
     hierTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-    hierTitleText: { flex: 1, fontSize: 14, fontWeight: '800', color: '#0F172A' },
-    hierProjectLine: { fontSize: 10, fontWeight: '700', color: '#64748B', marginTop: 4 },
+    hierTitleText: { flex: 1, fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
+    hierProjectLine: { fontSize: 10, fontWeight: '700', color: COLORS.textSecondary, marginTop: 4 },
     hierMetricCol: { alignItems: 'flex-end', marginLeft: 6 },
     miniStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
     miniStatusText: { fontSize: 8, fontWeight: '900' },
@@ -846,30 +846,30 @@ const styles = StyleSheet.create({
         paddingTop: 8
     },
     assigneeColHier: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    assigneeTextHier: { fontSize: 10, fontWeight: '800', color: '#64748B', flex: 1 },
+    assigneeTextHier: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary, flex: 1 },
     dateColHier: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    dateTextHier: { fontSize: 10, fontWeight: '800', color: '#64748B' },
-    actionsColHier: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    dateTextHier: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
+    actionsColHier: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
     checkboxBtn: { paddingHorizontal: 2, paddingVertical: 2 },
-    completedText: { textDecorationLine: 'line-through', color: '#64748B' },
-    emptyText: { textAlign: 'center', color: '#64748B', marginTop: 20, fontWeight: '700' },
+    completedText: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
+    emptyText: { textAlign: 'center', color: COLORS.textSecondary, marginTop: SPACING.m, fontWeight: '700' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' },
     modalOverlayInner: { flex: 1, width: '100%', justifyContent: 'flex-end' },
-    modalBody: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '92%' },
+    modalBody: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: SPACING.m, maxHeight: '92%' },
     modalScrollContent: { paddingBottom: 8 },
-    modalTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
-    input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, backgroundColor: '#fff' },
-    chipsRow: { flexDirection: 'row', gap: 8, marginBottom: 10, alignItems: 'center' },
-    chipBtn: { borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+    modalTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 12 },
+    input: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, backgroundColor: COLORS.card },
+    chipsRow: { flexDirection: 'row', gap: SPACING.s, marginBottom: 10, alignItems: 'center' },
+    chipBtn: { borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: COLORS.background, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
     chipBtnActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    chipText: { fontSize: 10, fontWeight: '800', color: '#334155' },
-    chipTextActive: { color: '#fff' },
-    fieldLabel: { fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 6 },
+    chipText: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
+    chipTextActive: { color: COLORS.white },
+    fieldLabel: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '800', marginBottom: 6 },
     dateGrid: { flexDirection: 'row', gap: 10, marginBottom: 8 },
     dropdownField: {
         height: 42,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderRadius: 10,
         borderWidth: 1.5,
         borderColor: '#3B82F633',
@@ -879,20 +879,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         marginBottom: 10
     },
-    dropdownValue: { fontSize: 13, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 8 },
+    dropdownValue: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary, flex: 1, marginRight: 8 },
     modalBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
     modalBtn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-    cancelBtn: { backgroundColor: '#F1F5F9' },
+    cancelBtn: { backgroundColor: COLORS.surfaceSecondary },
     saveBtn: { backgroundColor: '#2563EB' },
-    cancelText: { color: '#475569', fontWeight: '800' },
-    saveText: { color: '#fff', fontWeight: '800' },
+    cancelText: { color: COLORS.textSecondary, fontWeight: '800' },
+    saveText: { color: COLORS.white, fontWeight: '800' },
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: '84%', backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    selTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', textAlign: 'center', marginBottom: 10, textTransform: 'uppercase' },
-    selItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selLabel: { color: '#334155', fontSize: 13, fontWeight: '700' },
+    selBox: { width: '84%', backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    selTitle: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase' },
+    selItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selLabel: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
     selClose: { marginTop: 10, paddingVertical: 10, alignItems: 'center' },
-    selCloseText: { color: '#64748B', fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+    selCloseText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
     pickerDoneBtn: { paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
     pickerDoneText: { color: '#2563EB', fontWeight: '800', fontSize: 14 }
 });

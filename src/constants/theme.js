@@ -19,9 +19,11 @@ export const COLORS = {
     // ── Background / Surface ────────────────────────────
     background: '#F1F5F9',      // Slate 100 – clean page bg
     surface: '#FFFFFF',         // Cards, modals
+    surfaceSecondary: '#F8FAFC', // Subtle secondary surface
     card: '#FFFFFF',
     border: '#E2E8F0',          // Slate 200
     divider: '#F1F5F9',
+    separator: '#F1F5F9',       // Explicit separator alias
 
     // ── Text ────────────────────────────────────────────
     textPrimary: '#0F172A',     // Slate 900
@@ -40,6 +42,12 @@ export const COLORS = {
     info: '#0284C7',            // Sky 600
     infoLight: '#E0F2FE',
 
+    // ── UI State ────────────────────────────────────────
+    disabled: '#CBD5E1',        // Slate 300 – disabled elements
+    inputBg: '#F9FAFB',         // Input background
+    inputBorder: '#E2E8F0',     // Input border (rest)
+    focusBorder: '#2E3647',     // Input border (focused) = primary
+
     // ── Gradients ───────────────────────────────────────
     headerGradient: ['#1E3A8A', '#1D4ED8'],   // deep navy → royal blue
     accentGradient: ['#3B82F6', '#1D4ED8'],
@@ -51,15 +59,38 @@ export const SIZES = {
     radius: 16,
     radiusLg: 24,
     radiusXL: 32,
+    // ── Standardised component radii ────────────────────
+    radiusCard: 16,
+    radiusBtn: 14,
+    radiusInput: 14,
+    radiusModal: 24,
+    radiusBottomSheet: 24,
+    radiusImage: 16,
 };
 
 export const SPACING = {
     xs: 4,
     s: 8,
+    sm: 12,
     m: 16,
+    md: 20,
     l: 24,
     xl: 32,
+    '2xl': 40,
     xxl: 48,
+};
+
+// ── Typography Scale ────────────────────────────────────
+// Consistent font sizes & weights across the entire app.
+export const TYPOGRAPHY = {
+    screenTitle:  { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+    sectionTitle: { fontSize: 22, fontWeight: '900', letterSpacing: -0.3 },
+    cardTitle:    { fontSize: 18, fontWeight: '800', letterSpacing: -0.2 },
+    subtitle:     { fontSize: 16, fontWeight: '700' },
+    body:         { fontSize: 15, fontWeight: '500' },
+    caption:      { fontSize: 13, fontWeight: '600' },
+    label:        { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+    badge:        { fontSize: 11, fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase' },
 };
 
 /** Layout tokens aligned with PM panels (floating tab bar + home indicator). */
@@ -80,32 +111,32 @@ export function contentBottomForTabBar(insetsBottom = 0) {
 }
 
 export const SHADOWS = {
+    small: {
+        shadowColor: '#94A3B8',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+    },
     card: {
-        shadowColor: '#64748B',
+        shadowColor: '#94A3B8',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 3,
     },
     medium: {
-        shadowColor: '#1D4ED8',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 14,
-        elevation: 8,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.10,
+        shadowRadius: 12,
+        elevation: 6,
     },
     large: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
+        shadowColor: '#1E293B',
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 20,
         elevation: 12,
-    },
-    small: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 2,
     },
 };

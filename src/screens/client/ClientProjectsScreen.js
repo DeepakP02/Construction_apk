@@ -5,7 +5,7 @@ import {
     Modal, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -210,7 +210,7 @@ const ClientProjectsScreen = ({ navigation }) => {
                                 >
                                     <View style={[
                                         styles.phaseIcon,
-                                        selectedPhase === phase && { backgroundColor: '#fff' }
+                                        selectedPhase === phase && { backgroundColor: COLORS.card }
                                     ]}>
                                         <MaterialCommunityIcons 
                                             name={phase === 'ALL' ? 'earth' : phase === 'PLANNING' ? 'calendar-blank' : phase === 'IN PROGRESS' ? 'trending-up' : 'check-circle'} 
@@ -220,7 +220,7 @@ const ClientProjectsScreen = ({ navigation }) => {
                                     </View>
                                     <Text style={[
                                         styles.phaseName,
-                                        selectedPhase === phase && { color: '#fff' }
+                                        selectedPhase === phase && { color: COLORS.white }
                                     ]}>{phase}</Text>
                                     {selectedPhase === phase && <MaterialCommunityIcons name="check" size={20} color="#fff" />}
                                 </TouchableOpacity>
@@ -234,7 +234,7 @@ const ClientProjectsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
+    screen: { flex: 1, backgroundColor: COLORS.background },
     scrollContent: { padding: isSmallDevice ? 12 : 16, paddingTop: 10 },
     
     headerSection: { 
@@ -243,35 +243,35 @@ const styles = StyleSheet.create({
         alignItems: 'center', 
         marginBottom: isSmallDevice ? 16 : 20 
     },
-    screenTitle: { fontSize: isSmallDevice ? 24 : 28, fontWeight: '950', color: '#0F172A', letterSpacing: -1 },
-    layoutIcons: { flexDirection: 'row', gap: 12 },
+    screenTitle: { fontSize: isSmallDevice ? 24 : 28, fontWeight: '950', color: COLORS.textPrimary, letterSpacing: -1 },
+    layoutIcons: { flexDirection: 'row', gap: SPACING.sm },
 
     searchRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
     searchContainer: { 
         flex: 1, 
         flexDirection: 'row', 
         alignItems: 'center', 
-        backgroundColor: '#fff', 
-        borderRadius: 14, 
+        backgroundColor: COLORS.card, 
+        borderRadius: SIZES.radiusBtn, 
         paddingHorizontal: 12,
         height: 48,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 14, fontWeight: '700', color: '#1E293B' },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
     filterBtn: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         gap: 6, 
-        backgroundColor: '#fff', 
-        borderRadius: 14, 
+        backgroundColor: COLORS.card, 
+        borderRadius: SIZES.radiusBtn, 
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: '#F1F5F9'
+        borderColor: COLORS.border
     },
-    filterText: { fontSize: 12, fontWeight: '900', color: '#475569' },
+    filterText: { fontSize: 12, fontWeight: '900', color: COLORS.textSecondary },
 
-    card: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', marginBottom: 20 },
+    card: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, overflow: 'hidden', marginBottom: SPACING.m },
     cardImageContainer: { height: 200, width: '100%', position: 'relative' },
     cardImg: { width: '100%', height: '100%' },
     statusBadge: { 
@@ -283,52 +283,52 @@ const styles = StyleSheet.create({
         paddingVertical: 5, 
         borderRadius: 8 
     },
-    statusText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+    statusText: { color: COLORS.white, fontSize: 10, fontWeight: '900' },
     
-    cardContent: { padding: 20 },
+    cardContent: { padding: SPACING.m },
     locRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
     locTxt: { fontSize: 10, fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
-    projTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
-    pmInfo: { fontSize: 12, fontWeight: '800', color: '#64748B', marginBottom: 20 },
+    projTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 4 },
+    pmInfo: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary, marginBottom: SPACING.m },
     
-    progressContainer: { marginBottom: 20 },
+    progressContainer: { marginBottom: SPACING.m },
     progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    progressLabel: { fontSize: 10, fontWeight: '950', color: '#64748B', letterSpacing: 1 },
-    progressValue: { fontSize: 12, fontWeight: '950', color: '#0F172A' },
-    barBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
+    progressLabel: { fontSize: 10, fontWeight: '950', color: COLORS.textSecondary, letterSpacing: 1 },
+    progressValue: { fontSize: 12, fontWeight: '950', color: COLORS.textPrimary },
+    barBg: { height: 6, backgroundColor: COLORS.surfaceSecondary, borderRadius: 3, overflow: 'hidden' },
     barFill: { height: '100%', backgroundColor: '#2563EB' },
     
-    clientInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-    clientLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8' },
-    clientName: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+    clientInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.m },
+    clientLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted },
+    clientName: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
     
-    actionRow: { flexDirection: 'row', gap: 12 },
+    actionRow: { flexDirection: 'row', gap: SPACING.sm },
     outlineBtn: { 
         flex: 1, 
         flexDirection: 'row', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        gap: 8, 
+        gap: SPACING.s, 
         height: 48, 
-        borderRadius: 12, 
+        borderRadius: SIZES.radiusBtn, 
         borderWidth: 1, 
-        borderColor: '#E2E8F0' 
+        borderColor: COLORS.border 
     },
-    outlineBtnTxt: { fontSize: 12, fontWeight: '900', color: '#475569' },
+    outlineBtnTxt: { fontSize: 12, fontWeight: '900', color: COLORS.textSecondary },
     primaryBtn: { 
         flex: 1, 
         flexDirection: 'row', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        gap: 8, 
+        gap: SPACING.s, 
         height: 48, 
-        borderRadius: 12, 
+        borderRadius: SIZES.radiusBtn, 
         backgroundColor: '#2563EB' 
     },
-    primaryBtnTxt: { fontSize: 12, fontWeight: '900', color: '#fff' },
+    primaryBtnTxt: { fontSize: 12, fontWeight: '900', color: COLORS.white },
     
-    emptyCard: { padding: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 24, borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0' },
-    emptyTxt: { fontSize: 14, fontWeight: '800', color: '#94A3B8', marginTop: 12 },
+    emptyCard: { padding: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, borderStyle: 'dashed', borderWidth: 2, borderColor: COLORS.border },
+    emptyTxt: { fontSize: 14, fontWeight: '800', color: COLORS.textMuted, marginTop: 12 },
 
     // Modal Styles
     modalOverlay: {
@@ -337,9 +337,9 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        backgroundColor: COLORS.card,
+        borderTopLeftRadius: SIZES.radiusModal,
+        borderTopRightRadius: SIZES.radiusModal,
         padding: 24,
         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
@@ -352,19 +352,19 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '900',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
     },
     phaseList: {
-        gap: 12,
+        gap: SPACING.sm,
     },
     phaseItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 20,
-        backgroundColor: '#F8FAFC',
+        padding: SPACING.m,
+        borderRadius: SIZES.radiusCard,
+        backgroundColor: COLORS.background,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
         gap: 16,
     },
     phaseItemActive: {
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     phaseIcon: {
         width: 40,
         height: 40,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         backgroundColor: '#EFF6FF',
         justifyContent: 'center',
         alignItems: 'center',
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontWeight: '800',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
 });
 

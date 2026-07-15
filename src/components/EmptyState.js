@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { moderateScale } from '../utils/responsive';
 
 const EmptyState = ({ title, message, icon = 'tray' }) => {
     return (
         <View style={styles.container}>
-            <MaterialCommunityIcons name={icon} size={64} color={COLORS.border} />
+            <MaterialCommunityIcons name={icon} size={moderateScale(60)} color={COLORS.border} />
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.message}>{message}</Text>
         </View>
@@ -21,17 +22,18 @@ const styles = StyleSheet.create({
         padding: SPACING.xl,
     },
     title: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        ...TYPOGRAPHY.cardTitle,
         color: COLORS.textPrimary,
-        marginTop: SPACING.m,
+        marginTop: SPACING.md,
+        textAlign: 'center',
     },
     message: {
-        fontSize: 14,
+        ...TYPOGRAPHY.body,
         color: COLORS.textSecondary,
         textAlign: 'center',
-        marginTop: 8,
+        marginTop: SPACING.s,
     },
 });
 
 export default EmptyState;
+

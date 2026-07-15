@@ -7,7 +7,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient'; // Added for premium look
-import { COLORS } from '../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { scale, verticalScale, moderateScale } from '../utils/responsive';
 import { View, Platform, ActivityIndicator, Text, TouchableOpacity, Image, Dimensions, useWindowDimensions, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
@@ -15,8 +16,9 @@ import { useApp } from '../context/AppContext';
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = width < 380;
 
+
 const getModernTabOptions = (insets, isSmallDevice, windowHeight) => {
-    const bottomPadding = insets.bottom > 0 ? insets.bottom : (isSmallDevice ? 8 : 12);
+    const bottomPadding = Math.max(insets.bottom, 16);
     const barHeight = Platform.OS === 'ios' 
         ? (windowHeight > 750 ? 88 + (insets.bottom > 0 ? insets.bottom - 10 : 0) : 74) 
         : (isSmallDevice ? 65 + insets.bottom : 70 + (insets.bottom > 0 ? insets.bottom : 12));
@@ -42,10 +44,7 @@ const getModernTabOptions = (insets, isSmallDevice, windowHeight) => {
             overflow: 'hidden'
         },
         tabBarLabelStyle: {
-            fontSize: isSmallDevice ? 8 : 10,
-            fontWeight: '900',
-            textTransform: 'uppercase',
-            letterSpacing: isSmallDevice ? 0.3 : 0.8,
+            ...TYPOGRAPHY.badge,
             marginTop: -4,
             marginBottom: 4
         },
@@ -58,6 +57,7 @@ const getModernTabOptions = (insets, isSmallDevice, windowHeight) => {
         ),
     };
 };
+
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -211,93 +211,95 @@ const DrawerHeader = ({ title, subtitle, color = '#2563EB', isWorker = false }) 
     const insets = useSafeAreaInsets();
     return (
         <View style={{ 
-            paddingHorizontal: 8, paddingVertical: 14,            paddingTop: Math.max(insets.top, 16),
+            paddingHorizontal: SPACING.m, 
+            paddingVertical: SPACING.m,
+            paddingTop: Math.max(insets.top, SPACING.m),
             borderBottomWidth: 1, 
-            borderBottomColor: '#F1F5F9', 
-            marginBottom: 8,
-            backgroundColor: '#fff' 
+            borderBottomColor: COLORS.border, 
+            marginBottom: SPACING.s,
+            backgroundColor: COLORS.surface 
         }}>
             <Image 
                 source={require('../../assets/logo.webp')} 
-                style={{ width: 32, height: 32, marginBottom: 6 }} 
+                style={{ width: scale(36), height: scale(36), marginBottom: SPACING.s }} 
                 resizeMode="contain" 
             />
-            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 }}>{title}</Text>
-            <Text style={{ fontSize: 8.5, color: color, fontWeight: '900', marginTop: 1, letterSpacing: 0.8 }}>{subtitle}</Text>
+            <Text style={{ fontSize: moderateScale(16), fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 }}>{title}</Text>
+            <Text style={{ fontSize: moderateScale(10), color: color, fontWeight: '900', marginTop: 2, letterSpacing: 0.8 }}>{subtitle}</Text>
         </View>
     );
 };
 
 const DrawerSection = ({ title }) => (
     <Text style={{ 
-        fontSize: 8.5, 
-        fontWeight: '900', 
-        color: '#94A3B8', 
-        letterSpacing: 1.0, 
-        marginTop: 12, 
-        marginBottom: 6, 
-        marginLeft: 4,        textTransform: 'uppercase'
+        ...TYPOGRAPHY.label, 
+        color: COLORS.textMuted, 
+        marginTop: SPACING.m, 
+        marginBottom: SPACING.xs, 
+        marginLeft: SPACING.xs,
+        textTransform: 'uppercase'
     }}>{title}</Text>
 );
+
 
 const WorkerDrawerContent = (props) => {
     const { logout, user } = useApp();
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
             <DrawerHeader 
                 title="WORKER PANEL" 
                 subtitle={user?.fullName || 'VERIFIED FIELD STAFF'} 
                 color="#10B981" 
                 isWorker 
             />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
+            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Check-In (My Clock)"
                         icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs', { screen: 'Clock' })}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="My Hours (Attendance)"
                         icon={({ color }) => <MaterialCommunityIcons name="timetable" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('WorkerLogs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Daily Site Logs"
                         icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <TouchableOpacity
                         style={{ 
                             flexDirection: 'row', 
                             alignItems: 'center', 
-                            backgroundColor: '#FEF2F2', 
-                            padding: 14, 
-                            borderRadius: 12, 
+                            backgroundColor: COLORS.dangerLight, 
+                            padding: SPACING.sm, 
+                            borderRadius: SIZES.radiusBtn, 
                             marginTop: 30,
-                            marginHorizontal: 8,
+                            marginHorizontal: SPACING.s,
                             marginBottom: 30 
                         }}
                         onPress={logout}
                     >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
-                        <Text style={{ color: '#EF4444', fontWeight: '900', marginLeft: 10, fontSize: 13 }}>LOGOUT</Text>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
+                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -317,7 +319,7 @@ const WorkerDrawer = () => {
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
+                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerStyle: { width: Math.min(width * 0.70, 275) }
             }}
         >
@@ -385,69 +387,69 @@ const ForemanTabs = () => {
 const ForemanDrawerContent = (props) => {
     const { logout } = useApp();
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
             <DrawerHeader title="FOREMAN CONTROL" subtitle="SITE OPERATIONS HUB" color="#3B82F6" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
+            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
                     <DrawerSection title="FIELD OPERATIONS" />
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Check-In (My Clock)"
                         icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('TimeClock')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Clock In Crew"
                         icon={({ color }) => <MaterialCommunityIcons name="account-group" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('CrewClock')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Daily Logs"
                         icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Issues"
                         icon={({ color }) => <MaterialCommunityIcons name="alert-circle" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('ForemanIssues')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Purchase Orders"
                         icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('PurchaseOrders')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <TouchableOpacity
                         style={{ 
                             flexDirection: 'row', 
                             alignItems: 'center', 
-                            backgroundColor: '#FEF2F2', 
-                            padding: 14, 
-                            borderRadius: 12, 
+                            backgroundColor: COLORS.dangerLight, 
+                            padding: SPACING.sm, 
+                            borderRadius: SIZES.radiusBtn, 
                             marginTop: 30,
-                            marginHorizontal: 8,
+                            marginHorizontal: SPACING.s,
                             marginBottom: 30 
                         }}
                         onPress={logout}
                     >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
-                        <Text style={{ color: '#EF4444', fontWeight: '900', marginLeft: 10, fontSize: 13 }}>LOGOUT</Text>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
+                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -467,7 +469,7 @@ const ForemanDrawer = () => {
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
+                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerStyle: { width: Math.min(width * 0.70, 275) }
             }}
         >
@@ -494,16 +496,16 @@ const ForemanDrawer = () => {
 const ClientDrawerContent = (props) => {
     const { logout, user } = useApp();
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
             <DrawerHeader title="CLIENT HUB" subtitle={user?.companyName || 'PREMIUM ACCESS'} color="#6366F1" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
+            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
                     <DrawerSection title="PORTFOLIO CONTROL" />
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="FINANCIALS & RFIS" />
@@ -511,19 +513,19 @@ const ClientDrawerContent = (props) => {
                         label="Project Invoices"
                         icon={({ color }) => <MaterialCommunityIcons name="file-document-outline" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('ClientInvoices')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="RFI Center"
                         icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('ClientRFI')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="ACCOUNT" />
@@ -531,24 +533,24 @@ const ClientDrawerContent = (props) => {
                         label="Settings"
                         icon={({ color }) => <MaterialCommunityIcons name="cog" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Settings')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <TouchableOpacity
                         style={{ 
                             flexDirection: 'row', 
                             alignItems: 'center', 
-                            backgroundColor: '#FEF2F2', 
-                            padding: 14, 
-                            borderRadius: 12, 
+                            backgroundColor: COLORS.dangerLight, 
+                            padding: SPACING.sm, 
+                            borderRadius: SIZES.radiusBtn, 
                             marginTop: 30,
-                            marginHorizontal: 8,
+                            marginHorizontal: SPACING.s,
                             marginBottom: 30 
                         }}
                         onPress={logout}
                     >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
-                        <Text style={{ color: '#EF4444', fontWeight: '900', marginLeft: 10, fontSize: 13 }}>LOGOUT</Text>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
+                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -610,7 +612,7 @@ const ClientDrawer = () => {
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
+                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerStyle: { width: Math.min(width * 0.70, 275) }
             }}
         >
@@ -626,16 +628,16 @@ const ClientDrawer = () => {
 const ProjectManagerDrawerContent = (props) => {
     const { logout } = useApp();
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
             <DrawerHeader title="KAAL CONTROL" subtitle="PROJECT MANAGEMENT OPS" color="#10B981" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
+            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
                     <DrawerSection title="DASHBOARD OVERVIEW" />
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="FIELD OPERATIONS" />
@@ -643,25 +645,25 @@ const ProjectManagerDrawerContent = (props) => {
                         label="Clock In Crew"
                         icon={({ color }) => <MaterialCommunityIcons name="account-group" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('CrewClock')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Daily Logs"
                         icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Issues"
                         icon={({ color }) => <MaterialCommunityIcons name="alert-circle" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('ForemanIssues')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="GPS Tracking"
                         icon={({ color }) => <MaterialCommunityIcons name="crosshairs-gps" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('PMGPSTracking')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="SITE DOCUMENTATION" />
@@ -669,13 +671,13 @@ const ProjectManagerDrawerContent = (props) => {
                         label="Equipment"
                         icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Purchase Orders"
                         icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('PurchaseOrders')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="COMMUNICATIONS" />
@@ -683,36 +685,36 @@ const ProjectManagerDrawerContent = (props) => {
                         label="RFI Center"
                         icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('RFI')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Report Logs"
                         icon={({ color }) => <MaterialCommunityIcons name="chart-box" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Reports')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <TouchableOpacity
                         style={{ 
                             flexDirection: 'row', 
                             alignItems: 'center', 
-                            backgroundColor: '#FEF2F2', 
-                            padding: 14, 
-                            borderRadius: 12, 
+                            backgroundColor: COLORS.dangerLight, 
+                            padding: SPACING.sm, 
+                            borderRadius: SIZES.radiusBtn, 
                             marginTop: 30,
-                            marginHorizontal: 8,
+                            marginHorizontal: SPACING.s,
                             marginBottom: 30 
                         }}
                         onPress={logout}
                     >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
-                        <Text style={{ color: '#EF4444', fontWeight: '900', marginLeft: 10, fontSize: 13 }}>LOGOUT</Text>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
+                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -783,7 +785,7 @@ const ProjectManagerDrawer = () => {
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
+                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerType: 'front',
                 drawerStyle: { width: Math.min(width * 0.70, 275) }
             }}
@@ -817,16 +819,16 @@ const ProjectManagerDrawer = () => {
 const SubcontractorDrawerContent = (props) => {
     const { logout, user } = useApp();
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
             <DrawerHeader title="CONTRACTOR PORTAL" subtitle={user?.fullName || 'VERIFIED PARTNER'} color={COLORS.primary} />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: '#fff' }} contentContainerStyle={{ paddingTop: 0 }}>
+            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
                 <View style={{ paddingHorizontal: 0 }}>
                     <DrawerSection title="DASHBOARD" />
                     <DrawerItem
                         label="Home Dashboard"
                         icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="SITE" />
@@ -834,13 +836,13 @@ const SubcontractorDrawerContent = (props) => {
                         label="Site Check-In (My Clock)"
                         icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('TimeClock')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Equipment"
                         icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <DrawerSection title="COMMUNICATIONS" />
@@ -848,30 +850,30 @@ const SubcontractorDrawerContent = (props) => {
                         label="RFI Center"
                         icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('RFI')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
                     <DrawerItem
                         label="Site Discussions"
                         icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
                         onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ fontWeight: '800', fontSize: 13, marginLeft: -4 }}
+                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
                     />
 
                     <TouchableOpacity
                         style={{ 
                             flexDirection: 'row', 
                             alignItems: 'center', 
-                            backgroundColor: '#FEF2F2', 
-                            padding: 14, 
-                            borderRadius: 12, 
+                            backgroundColor: COLORS.dangerLight, 
+                            padding: SPACING.sm, 
+                            borderRadius: SIZES.radiusBtn, 
                             marginTop: 30,
-                            marginHorizontal: 8,
+                            marginHorizontal: SPACING.s,
                             marginBottom: 30 
                         }}
                         onPress={logout}
                     >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color="#EF4444" />
-                        <Text style={{ color: '#EF4444', fontWeight: '900', marginLeft: 10, fontSize: 13 }}>LOGOUT</Text>
+                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
+                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -942,7 +944,7 @@ const SubcontractorDrawer = () => {
                 drawerActiveBackgroundColor: '#EFF6FF',
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: 13, marginLeft: -4 },
+                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerStyle: { width: Math.min(width * 0.70, 275) }
             }}
         >
@@ -1089,7 +1091,7 @@ const AppNavigation = () => {
                 />
                 <ActivityIndicator size="large" color={COLORS.primaryAccent} />
                 <View style={{ marginTop: 20, alignItems: 'center' }}>
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 1.5, opacity: 0.8 }}>
+                    <Text style={{ color: '#fff', fontSize: moderateScale(13), fontWeight: '900', letterSpacing: 1.5, opacity: 0.8 }}>
                         SECURING YOUR SESSION
                     </Text>
                     <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', marginTop: 4 }}>

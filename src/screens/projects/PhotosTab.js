@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Dimensions, Modal, TextInput, Alert, ScrollView, Platform, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import * as ImagePicker from 'expo-image-picker';
 import CustomButton from '../../components/CustomButton';
 
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
         width: COLUMN_WIDTH,
         height: COLUMN_WIDTH,
         margin: 5,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         overflow: 'hidden',
         backgroundColor: COLORS.card,
         borderWidth: 1,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: COLORS.card,
-        borderRadius: 24,
+        borderRadius: SIZES.radiusCard,
         padding: SPACING.l,
     },
     modalTitle: {
@@ -306,15 +306,15 @@ const styles = StyleSheet.create({
     previewImage: {
         width: '100%',
         height: 200,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         marginBottom: SPACING.m,
     },
     input: {
         backgroundColor: COLORS.background,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1.5,
         borderColor: COLORS.border,
-        padding: 16,
+        padding: SPACING.m,
         fontSize: 16,
         color: COLORS.textPrimary,
         marginBottom: SPACING.l,

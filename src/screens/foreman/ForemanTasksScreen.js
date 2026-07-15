@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Animated, ActivityIndicator, ScrollView, RefreshControl, StatusBar, Modal, Platform, Alert, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
@@ -468,8 +468,8 @@ const ForemanTasksScreen = ({ navigation }) => {
         const isDeepLevel = level >= 3;
         const dynamicMargin = level === 0 ? 0 : level === 1 ? scale(18) : level === 2 ? scale(32) : Math.min(scale(32 + (level - 2) * 8), scale(60));
         const statusColors = {
-            todo: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
-            pending: { color: '#64748B', bg: '#F1F5F9', label: 'TODO' },
+            todo: { color: COLORS.textSecondary, bg: '#F1F5F9', label: 'TODO' },
+            pending: { color: COLORS.textSecondary, bg: '#F1F5F9', label: 'TODO' },
             in_progress: { color: '#3B82F6', bg: '#EFF6FF', label: 'LIVE' },
             review: { color: '#F59E0B', bg: '#FFFBEB', label: 'REVIEW' },
             completed: { color: '#10B981', bg: '#ECFDF5', label: 'DONE' },
@@ -972,24 +972,24 @@ const ForemanTasksScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     headerTitleSection: { },
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    screenTitle: { fontWeight: '900', color: '#0F172A' },
+    screenTitle: { fontWeight: '900', color: COLORS.textPrimary },
     breadcrumbRow: { flexDirection: 'row', alignItems: 'center' },
-    breadcrumbText: { fontWeight: '800', color: '#64748B' },
+    breadcrumbText: { fontWeight: '800', color: COLORS.textSecondary },
     newTaskBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center' },
-    newTaskBtnText: { color: '#fff', fontWeight: '900' },
-    stickyActionArea: { backgroundColor: '#F8FAFC' },
-    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0' },
-    searchInput: { flex: 1, color: '#1E293B' },
+    newTaskBtnText: { color: COLORS.white, fontWeight: '900' },
+    stickyActionArea: { backgroundColor: COLORS.background },
+    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
+    searchInput: { flex: 1, color: COLORS.textPrimary },
     tabsContainer: { flexDirection: 'row', backgroundColor: '#EDF2F7' },
     tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 9 },
-    tabActive: { backgroundColor: '#fff', elevation: 2 },
-    tabText: { fontWeight: '800', color: '#94A3B8' },
-    tabTextActive: { color: '#1E293B' },
+    tabActive: { backgroundColor: COLORS.card, elevation: 2 },
+    tabText: { fontWeight: '800', color: COLORS.textMuted },
+    tabTextActive: { color: COLORS.textPrimary },
     listContainer: {},
-    commandSubtitleForeman: { fontSize: moderateScale(9), fontWeight: '800', color: '#64748B', letterSpacing: 1 },
+    commandSubtitleForeman: { fontSize: moderateScale(9), fontWeight: '800', color: COLORS.textSecondary, letterSpacing: 1 },
 
     taskItemWrapper: { position: 'relative', marginBottom: verticalScale(10) },
     treeConnector: {
@@ -1017,14 +1017,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#CBD5E1',
     },
     taskTableRow: {
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderRadius: moderateScale(16),
         padding: moderateScale(12),
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
-    subtaskCard: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', shadowOpacity: 0.05 },
-    deepSubtaskCard: { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' },
+    subtaskCard: { backgroundColor: COLORS.background, borderColor: COLORS.border, shadowOpacity: 0.05 },
+    deepSubtaskCard: { backgroundColor: COLORS.surfaceSecondary, borderColor: '#CBD5E1' },
     tableTopRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: verticalScale(10) },
     tableNameCol: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: scale(8), minWidth: 0 },
     indicatorLine: { width: scale(3), minHeight: moderateScale(22), borderRadius: 2 },
@@ -1032,17 +1032,17 @@ const styles = StyleSheet.create({
     typeBadge: { paddingHorizontal: scale(6), paddingVertical: verticalScale(2), borderRadius: 4 },
     typeBadgeText: { fontSize: moderateScale(7), fontWeight: '900' },
     parentTag: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         paddingHorizontal: scale(6),
         paddingVertical: verticalScale(2),
         borderRadius: 4,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         maxWidth: scale(120),
     },
-    parentTagText: { fontSize: moderateScale(7), fontWeight: '900', color: '#64748B' },
-    taskTitlePm: { color: '#0F172A' },
-    projectContextPm: { fontSize: moderateScale(10), fontWeight: '700', color: '#64748B', marginTop: verticalScale(2) },
+    parentTagText: { fontSize: moderateScale(7), fontWeight: '900', color: COLORS.textSecondary },
+    taskTitlePm: { color: COLORS.textPrimary },
+    projectContextPm: { fontSize: moderateScale(10), fontWeight: '700', color: COLORS.textSecondary, marginTop: verticalScale(2) },
     progressTrack: {
         height: verticalScale(4),
         backgroundColor: '#E2E8F0',
@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     progressFill: { height: '100%', backgroundColor: '#3B82F6', borderRadius: 2 },
-    progressLabel: { fontSize: moderateScale(9), fontWeight: '800', color: '#94A3B8', marginTop: verticalScale(3) },
+    progressLabel: { fontSize: moderateScale(9), fontWeight: '800', color: COLORS.textMuted, marginTop: verticalScale(3) },
     tableMetricCol: { alignItems: 'flex-end', gap: 4 },
     miniStatusBadge: { paddingHorizontal: scale(8), paddingVertical: verticalScale(2), borderRadius: 6, borderWidth: 1 },
     miniStatusText: { fontSize: moderateScale(8), fontWeight: '900' },
@@ -1063,18 +1063,18 @@ const styles = StyleSheet.create({
         paddingTop: verticalScale(8),
     },
     assigneeColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(4) },
-    assigneeTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: '#64748B', flex: 1 },
+    assigneeTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: COLORS.textSecondary, flex: 1 },
     dateColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(4) },
-    tableDateTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: '#64748B' },
+    tableDateTextPm: { fontSize: moderateScale(10), fontWeight: '800', color: COLORS.textSecondary },
     actionsColPm: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
     emptyView: { alignItems: 'center' },
-    emptyTitle: { fontWeight: '800', color: '#1E293B' },
-    emptySub: { color: '#94A3B8', textAlign: 'center' },
+    emptyTitle: { fontWeight: '800', color: COLORS.textPrimary },
+    emptySub: { color: COLORS.textMuted, textAlign: 'center' },
     loaderOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', justifyContent: 'flex-end' },
     sheetContent: {
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         paddingHorizontal: scale(18),
@@ -1084,13 +1084,13 @@ const styles = StyleSheet.create({
     },
     sheetIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: verticalScale(12) },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: verticalScale(8) },
-    sheetTitle: { fontSize: moderateScale(20), fontWeight: '900', color: '#0F172A', flex: 1 },
-    sheetCloseBtn: { padding: scale(6), borderRadius: 12, backgroundColor: '#F1F5F9' },
+    sheetTitle: { fontSize: moderateScale(20), fontWeight: '900', color: COLORS.textPrimary, flex: 1 },
+    sheetCloseBtn: { padding: scale(6), borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.surfaceSecondary },
 
-    label: { fontSize: moderateScale(9), fontWeight: '900', color: '#64748B', textTransform: 'uppercase', marginBottom: verticalScale(6), marginTop: verticalScale(8), letterSpacing: 1 },
+    label: { fontSize: moderateScale(9), fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase', marginBottom: verticalScale(6), marginTop: verticalScale(8), letterSpacing: 1 },
     compactDropdown: {
         height: verticalScale(42),
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderRadius: 10,
         borderWidth: 1.5,
         borderColor: '#3B82F633',
@@ -1100,17 +1100,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: scale(12),
         marginBottom: verticalScale(6),
     },
-    dropdownValue: { fontSize: moderateScale(13), fontWeight: '800', color: '#1E293B', flex: 1, marginRight: scale(6) },
+    dropdownValue: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.textPrimary, flex: 1, marginRight: scale(6) },
     formGrid: { flexDirection: 'row', gap: scale(12), alignItems: 'flex-start' },
     descriptionInput: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         padding: scale(12),
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         fontSize: moderateScale(14),
         fontWeight: '600',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
         textAlignVertical: 'top',
         minHeight: verticalScale(88),
         marginBottom: verticalScale(12),
@@ -1124,7 +1124,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     footerCancel: { justifyContent: 'center', paddingVertical: verticalScale(12), paddingHorizontal: scale(4) },
-    footerCancelText: { fontSize: moderateScale(12), fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
+    footerCancelText: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.textSecondary, textTransform: 'uppercase' },
     footerSaveTpl: {
         flex: 1,
         minWidth: scale(100),
@@ -1133,7 +1133,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: scale(4),
         backgroundColor: '#EFF6FF',
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         paddingVertical: verticalScale(10),
         paddingHorizontal: scale(6),
         borderWidth: 1,
@@ -1143,12 +1143,12 @@ const styles = StyleSheet.create({
     footerCreateWrap: { flex: 1.25, minWidth: scale(120) },
 
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: scale(20) },
-    selBox: { width: '88%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 24, padding: scale(20), elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
-    selTitle: { fontSize: moderateScale(15), fontWeight: '900', color: '#0F172A', marginBottom: verticalScale(14), textAlign: 'center', textTransform: 'uppercase' },
-    selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: verticalScale(14), borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selLabel: { fontSize: moderateScale(14), fontWeight: '700', color: '#334155', flex: 1 },
+    selBox: { width: '88%', maxWidth: 420, backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: scale(20), elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
+    selTitle: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.textPrimary, marginBottom: verticalScale(14), textAlign: 'center', textTransform: 'uppercase' },
+    selItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: verticalScale(14), borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selLabel: { fontSize: moderateScale(14), fontWeight: '700', color: COLORS.textSecondary, flex: 1 },
     selClose: { marginTop: verticalScale(14), paddingVertical: verticalScale(12), alignItems: 'center' },
-    selCloseText: { fontSize: moderateScale(12), fontWeight: '900', color: '#64748B', textTransform: 'uppercase' },
+    selCloseText: { fontSize: moderateScale(12), fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase' },
 });
 
 

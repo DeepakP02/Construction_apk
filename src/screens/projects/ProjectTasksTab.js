@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import TaskCard from '../../components/TaskCard';
 import CustomInput from '../../components/CustomInput';
@@ -147,23 +147,23 @@ export const ProjectTasksTab = ({ project }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F1F5F9' },
+    container: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
     headerPremium: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        backgroundColor: '#fff',
+        paddingHorizontal: SPACING.m,
+        paddingVertical: SPACING.m,
+        backgroundColor: COLORS.card,
         borderBottomWidth: 1,
-        borderColor: '#E2E8F0'
+        borderColor: COLORS.border
     },
     hTitle: { fontSize: 10, fontWeight: '900', color: COLORS.primary, letterSpacing: 1.5 },
-    hSub: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginTop: 4 },
+    hSub: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary, marginTop: 4 },
     addBtnPremium: {
         width: 48,
         height: 48,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
@@ -173,22 +173,22 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4
     },
-    list: { padding: 20, paddingBottom: 100 },
+    list: { padding: SPACING.m, paddingBottom: 100 },
     empty: { alignItems: 'center', marginTop: 80 },
-    emptyIconBox: { width: 80, height: 80, borderRadius: 30, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-    emptyText: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
-    emptySub: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginTop: 8 },
+    emptyIconBox: { width: 80, height: 80, borderRadius: 30, backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    emptyText: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
+    emptySub: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, marginTop: 8 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
-    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: 24, paddingBottom: 40 },
+    modalIndicator: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: SPACING.m },
     mHeader: { marginBottom: 24 },
-    mTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    mTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     mSubTitle: { fontSize: 13, fontWeight: '700', color: COLORS.primary, marginTop: 4 },
     modalButtons: {
         flexDirection: 'row',
         alignItems: 'stretch',
-        gap: 12,
+        gap: SPACING.sm,
         marginTop: 32,
         width: '100%'
     },

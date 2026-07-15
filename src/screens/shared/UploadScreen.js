@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SIZES } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/CustomButton';
 import { useApp } from '../../context/AppContext';
@@ -86,7 +86,7 @@ const UploadScreen = () => {
             <AppHeader title="Field Evidence" />
             <KeyboardAvoidingView
                 style={styles.keyboardWrap}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
             >
             <ScrollView
@@ -197,13 +197,14 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: SPACING.m,
+        paddingBottom: 120,
     },
     syncContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 200, 83, 0.1)',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         marginBottom: SPACING.l,
         borderWidth: 1,
         borderColor: 'rgba(0, 200, 83, 0.2)',
@@ -216,14 +217,14 @@ const styles = StyleSheet.create({
     },
     uploadActions: {
         flexDirection: 'row',
-        gap: 12,
+        gap: SPACING.sm,
         marginBottom: SPACING.xl,
     },
     uploadBox: {
         flex: 1,
         height: 180,
         backgroundColor: COLORS.card,
-        borderRadius: 20,
+        borderRadius: SIZES.radiusCard,
         borderWidth: 2,
         borderColor: COLORS.border,
         borderStyle: 'dashed',
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
     previewContainer: {
         height: 280,
         backgroundColor: COLORS.card,
-        borderRadius: 20,
+        borderRadius: SIZES.radiusCard,
         marginBottom: SPACING.xl,
         overflow: 'hidden',
         borderWidth: 1,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
         top: 12,
         right: 12,
         backgroundColor: COLORS.white,
-        borderRadius: 20,
+        borderRadius: SIZES.radiusCard,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: SPACING.m,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
@@ -292,10 +293,10 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         backgroundColor: COLORS.card,
-        borderRadius: 16,
+        borderRadius: SIZES.radiusCard,
         borderWidth: 1.5,
         borderColor: COLORS.border,
-        padding: 16,
+        padding: SPACING.m,
         height: 120,
         marginBottom: SPACING.m,
     },
@@ -317,8 +318,8 @@ const styles = StyleSheet.create({
     },
     noteCard: {
         backgroundColor: COLORS.card,
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: COLORS.border,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     noteHeaderLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: SPACING.s,
         flex: 1,
     },
     photoTag: {
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     },
     empty: {
         alignItems: 'center',
-        marginTop: 20,
+        marginTop: SPACING.m,
         opacity: 0.5,
     },
     emptyText: {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Alert, Modal, TextInput, StatusBar, ScrollView, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Alert, Modal, TextInput, StatusBar, ScrollView, Platform, useWindowDimensions, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { enrichPhotoWithProject } from '../../utils/enrichPhotoWithProject';
@@ -42,6 +42,7 @@ const ProjectManagerPhotosScreen = () => {
     const [selTitle, setSelTitle] = useState('');
     const [selOptions, setSelOptions] = useState([]);
     const [selOnSelect, setSelOnSelect] = useState(() => () => {});
+    const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
     const selectedProjectLabel =
         selectedProjectId === 'all'
@@ -334,82 +335,113 @@ const ProjectManagerPhotosScreen = () => {
                 />
             )}
 
-            <Modal visible={uploadModal} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalScroll, { borderRadius: moderateScale(24), maxWidth: 600, alignSelf: 'center' }]}>
-                        <View style={[styles.modalHeaderRow, { padding: scale(24) }]}>
-                            <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>Upload Photo</Text>
-                            <TouchableOpacity onPress={() => !uploading && setUploadModal(false)}>
-                                <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBodyScroll}>
-                            <View style={[styles.modalBody, { paddingHorizontal: scale(24), paddingVertical: verticalScale(20) }]}>
-                                <TouchableOpacity style={[styles.dropZone, { height: verticalScale(250), borderRadius: moderateScale(20), marginBottom: verticalScale(20) }]} onPress={pickImage} disabled={uploading}>
-                                    {tempImage ? (
-                                        <Image source={{ uri: tempImage }} style={styles.previewImage} resizeMode="cover" />
-                                    ) : (
-                                        <View style={[styles.dropZoneContent, { padding: scale(20) }]}>
-                                            <MaterialCommunityIcons name="camera" size={moderateScale(40)} color="#94A3B8" />
-                                            <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(15), marginTop: verticalScale(12) }]}>Capture Live Photo</Text>
-                                            <Text style={[styles.dropZoneSubtitle, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>Click to snap progress photo</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-
-                                <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Description</Text>
-                                <TextInput
-                                    style={[styles.inputField, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(16), fontSize: moderateScale(14), marginBottom: verticalScale(20) }]}
-                                    placeholder="e.g. Site Visit Day 1"
-                                    placeholderTextColor="#94A3B8"
-                                    value={description}
-                                    onChangeText={setDescription}
-                                />
-
-                                <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Project</Text>
-                                <View style={[styles.uploadProjectSummary, { borderRadius: moderateScale(12), paddingHorizontal: scale(12), paddingVertical: verticalScale(10), marginBottom: verticalScale(12) }]}>
-                                    <MaterialCommunityIcons name="link-variant" size={moderateScale(16)} color="#2563EB" />
-                                    <Text style={[styles.uploadProjectSummaryText, { fontSize: moderateScale(13) }]} numberOfLines={2}>
-                                        {uploadProjectId === 'none'
-                                            ? 'Not linked — photo is company-wide until you pick a project below.'
-                                            : `Will save under: ${uploadTargetLabel || 'project'}`}
-                                    </Text>
+            <Modal visible={uploadModal} transparent animationType="fade" onRequestClose={() => setUploadModal(false)}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    <TouchableOpacity 
+                        style={styles.modalOverlay} 
+                        activeOpacity={1} 
+                        onPress={() => Keyboard.dismiss()}
+                    >
+                        <TouchableWithoutFeedback>
+                            <View style={[styles.modalScroll, { borderRadius: moderateScale(24), maxWidth: 600, alignSelf: 'center' }]}>
+                                <View style={[styles.modalHeaderRow, { padding: scale(24) }]}>
+                                    <Text style={[styles.modalTitle, { fontSize: moderateScale(20) }]}>Upload Photo</Text>
+                                    <TouchableOpacity onPress={() => !uploading && setUploadModal(false)}>
+                                        <MaterialCommunityIcons name="close" size={moderateScale(24)} color="#64748B" />
+                                    </TouchableOpacity>
                                 </View>
-                                <TouchableOpacity
-                                    style={[styles.customDropdownBtn, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(12), marginBottom: verticalScale(24) }]}
-                                    onPress={() => openDropdown(
-                                        'Select Upload Project',
-                                        [
-                                            { label: 'General / None', value: 'none', icon: 'link-off' },
-                                            ...projects.map((p) => ({
-                                                label: p.name,
-                                                value: projectIdFromDoc(p),
-                                                icon: 'office-building'
-                                            }))
-                                        ],
-                                        (opt) => setUploadProjectId(opt.value === 'none' ? 'none' : idKey(opt.value))
-                                    )}
-                                >
-                                    <View style={styles.dropdownLeft}>
-                                        <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
-                                        <Text style={[styles.dropdownValueText, { fontSize: moderateScale(12) }]} numberOfLines={1}>
-                                            {uploadProjectId === 'none' ? 'General / None' : (uploadTargetLabel || 'Select Project')}
-                                        </Text>
-                                    </View>
-                                    <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
-                                </TouchableOpacity>
+                                <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBodyScroll}>
+                                    <View style={[styles.modalBody, { paddingHorizontal: scale(24), paddingVertical: verticalScale(20) }]}>
+                                        <TouchableOpacity style={[styles.dropZone, { height: verticalScale(250), borderRadius: moderateScale(20), marginBottom: verticalScale(20) }]} onPress={pickImage} disabled={uploading}>
+                                            {tempImage ? (
+                                                <Image source={{ uri: tempImage }} style={styles.previewImage} resizeMode="cover" />
+                                            ) : (
+                                                <View style={[styles.dropZoneContent, { padding: scale(20) }]}>
+                                                    <MaterialCommunityIcons name="camera" size={moderateScale(40)} color="#94A3B8" />
+                                                    <Text style={[styles.dropZoneTitle, { fontSize: moderateScale(15), marginTop: verticalScale(12) }]}>Capture Live Photo</Text>
+                                                    <Text style={[styles.dropZoneSubtitle, { fontSize: moderateScale(13), marginTop: verticalScale(4) }]}>Click to snap progress photo</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
 
-                                <TouchableOpacity 
-                                    style={[styles.submitBtn, uploading && { opacity: 0.7 }, { height: verticalScale(52), borderRadius: moderateScale(14) }]} 
-                                    onPress={uploadImage} 
-                                    disabled={uploading}
-                                >
-                                    {uploading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.submitBtnText, { fontSize: moderateScale(15) }]}>Upload Photo</Text>}
-                                </TouchableOpacity>
+                                        <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Description</Text>
+                                        <TextInput
+                                            style={[styles.inputField, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(16), fontSize: moderateScale(14), marginBottom: verticalScale(20) }]}
+                                            placeholder="e.g. Site Visit Day 1"
+                                            placeholderTextColor="#94A3B8"
+                                            value={description}
+                                            onChangeText={setDescription}
+                                        />
+
+                                        <Text style={[styles.fieldLabel, { fontSize: moderateScale(11), marginBottom: verticalScale(8) }]}>Project</Text>
+                                        <View style={[styles.uploadProjectSummary, { borderRadius: moderateScale(12), paddingHorizontal: scale(12), paddingVertical: verticalScale(10), marginBottom: verticalScale(12) }]}>
+                                            <MaterialCommunityIcons name="link-variant" size={moderateScale(16)} color="#2563EB" />
+                                            <Text style={[styles.uploadProjectSummaryText, { fontSize: moderateScale(13) }]} numberOfLines={2}>
+                                                {uploadProjectId === 'none'
+                                                    ? 'Not linked — photo is company-wide until you pick a project below.'
+                                                    : `Will save under: ${uploadTargetLabel || 'project'}`}
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                             style={[styles.customDropdownBtn, { height: verticalScale(44), borderRadius: moderateScale(12), paddingHorizontal: scale(12), marginBottom: verticalScale(24) }]}
+                                             onPress={() => setProjectPickerOpen(true)}
+                                         >
+                                             <View style={styles.dropdownLeft}>
+                                                 <MaterialCommunityIcons name="office-building" size={moderateScale(14)} color="#64748B" />
+                                                 <Text style={[styles.dropdownValueText, { fontSize: moderateScale(12) }]} numberOfLines={1}>
+                                                     {uploadProjectId === 'none' ? 'General / None' : (uploadTargetLabel || 'Select Project')}
+                                                 </Text>
+                                             </View>
+                                             <MaterialCommunityIcons name="chevron-down" size={moderateScale(14)} color="#64748B" />
+                                         </TouchableOpacity>
+
+                                         <TouchableOpacity 
+                                             style={[styles.submitBtn, uploading && { opacity: 0.7 }, { height: verticalScale(52), borderRadius: moderateScale(14) }]} 
+                                             onPress={uploadImage} 
+                                             disabled={uploading}
+                                         >
+                                             {uploading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.submitBtnText, { fontSize: moderateScale(15) }]}>Upload Photo</Text>}
+                                         </TouchableOpacity>
+                                     </View>
+                                 </ScrollView>
                             </View>
-                        </ScrollView>
-                    </View>
-                </View>
+                        </TouchableWithoutFeedback>
+                    </TouchableOpacity>
+                     {projectPickerOpen && (
+                         <TouchableOpacity 
+                             style={[StyleSheet.absoluteFill, styles.selOverlayModal, { justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}
+                             activeOpacity={1}
+                             onPress={() => setProjectPickerOpen(false)}
+                         >
+                             <View style={[styles.selBox, { width: isTablet ? 420 : '86%', borderRadius: moderateScale(24), padding: scale(20) }]}>
+                                 <Text style={[styles.selTitle, { fontSize: moderateScale(13), marginBottom: verticalScale(12) }]}>Select Upload Project</Text>
+                                 <ScrollView style={{ maxHeight: verticalScale(300) }} keyboardShouldPersistTaps="handled">
+                                     {[{ label: 'General / None', value: 'none', icon: 'link-off' }, ...projects.map(p => ({ label: p.name, value: projectIdFromDoc(p), icon: 'office-building' }))].map((opt, i) => (
+                                         <TouchableOpacity
+                                             key={`upload-proj-${i}`}
+                                             style={[styles.selItem, { paddingVertical: verticalScale(12) }]}
+                                             onPress={() => {
+                                                 setUploadProjectId(opt.value === 'none' ? 'none' : idKey(opt.value));
+                                                 setProjectPickerOpen(false);
+                                             }}
+                                         >
+                                             <MaterialCommunityIcons
+                                                 name={opt.icon || 'circle-small'}
+                                                 size={moderateScale(17)}
+                                                 color="#2563EB"
+                                                 style={{ marginRight: scale(12) }}
+                                             />
+                                             <Text style={[styles.selLabelText, { fontSize: moderateScale(13) }]}>{opt.label}</Text>
+                                         </TouchableOpacity>
+                                     ))}
+                                 </ScrollView>
+                             </View>
+                         </TouchableOpacity>
+                     )}
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* SELECTOR MODAL */}
@@ -460,67 +492,67 @@ const ProjectManagerPhotosScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)' },
     viewerScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
     viewerImage: { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 },
     viewerClose: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
-    pageHeader: { marginBottom: 20 },
-    pageTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-    pageSubtitle: { fontWeight: '600', color: '#64748B', marginTop: 2, marginBottom: 20 },
+    pageHeader: { marginBottom: SPACING.m },
+    pageTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    pageSubtitle: { fontWeight: '600', color: COLORS.textSecondary, marginTop: 2, marginBottom: SPACING.m },
     actionRow: { flexDirection: 'row', alignItems: 'center' },
-    customDropdownBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    dropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    dropdownValueText: { fontWeight: '800', color: '#1E293B' },
+    customDropdownBtn: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    dropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.s },
+    dropdownValueText: { fontWeight: '800', color: COLORS.textPrimary },
     uploadBtnNew: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#2563EB', shadowOpacity: 0.2, shadowRadius: 4 },
-    uploadBtnText: { color: '#fff', fontWeight: '900' },
+    uploadBtnText: { color: COLORS.white, fontWeight: '900' },
     selOverlayModal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: '85%', backgroundColor: '#fff', elevation: 20 },
-    selTitle: { fontWeight: '900', color: '#0F172A', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
-    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    selBox: { width: '85%', backgroundColor: COLORS.card, elevation: 20 },
+    selTitle: { fontWeight: '900', color: COLORS.textPrimary, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
+    selItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     selIconBox: { backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    selLabelText: { fontWeight: '700', color: '#334155' },
+    selLabelText: { fontWeight: '700', color: COLORS.textSecondary },
     selClose: { alignItems: 'center' },
-    selCloseText: { fontWeight: '900', color: '#64748B' },
+    selCloseText: { fontWeight: '900', color: COLORS.textSecondary },
     list: { },
     photoCardWrapper: { },
-    photoCard: { backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
-    imageContainer: { width: '100%', backgroundColor: '#F1F5F9' },
+    photoCard: { backgroundColor: COLORS.card, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+    imageContainer: { width: '100%', backgroundColor: COLORS.surfaceSecondary },
     photoImg: { width: '100%', height: '100%' },
     deleteIconBtn: { padding: 2, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     photoOverlay: { position: 'absolute' },
     photoBadge: { backgroundColor: 'rgba(15, 23, 42, 0.65)', alignSelf: 'flex-start' },
-    photoBadgeText: { color: '#fff', fontWeight: '900', letterSpacing: 0.3 },
+    photoBadgeText: { color: COLORS.white, fontWeight: '900', letterSpacing: 0.3 },
     photoFooter: { },
     photoTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    photoDesc: { flex: 1, fontWeight: '800', color: '#1E293B', minWidth: 0 },
+    photoDesc: { flex: 1, fontWeight: '800', color: COLORS.textPrimary, minWidth: 0 },
     metaRow: { flexDirection: 'row', alignItems: 'center' },
-    metaText: { color: '#94A3B8', fontWeight: '800' },
-    emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 20 },
-    emptyText: { fontWeight: '800', color: '#0F172A', marginTop: 16, textAlign: 'center' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', padding: 20 },
-    modalScroll: { backgroundColor: '#fff', paddingBottom: 24, width: '100%', maxHeight: '90%', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-    modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#F1F5F9' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
+    metaText: { color: COLORS.textMuted, fontWeight: '800' },
+    emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: SPACING.m },
+    emptyText: { fontWeight: '800', color: COLORS.textPrimary, marginTop: SPACING.m, textAlign: 'center' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', padding: SPACING.m },
+    modalScroll: { backgroundColor: COLORS.card, paddingBottom: 24, width: '100%', maxHeight: '90%', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+    modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.border },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
     modalBodyScroll: { maxHeight: '100%' },
     modalBody: { },
-    dropZone: { width: '100%', borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed', backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+    dropZone: { width: '100%', borderWidth: 2, borderColor: COLORS.border, borderStyle: 'dashed', backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
     dropZoneContent: { alignItems: 'center' },
-    dropZoneTitle: { fontWeight: '800', color: '#1E293B' },
-    dropZoneSubtitle: { color: '#64748B', fontWeight: '600' },
-    dropZoneMeta: { color: '#94A3B8', fontWeight: '500' },
+    dropZoneTitle: { fontWeight: '800', color: COLORS.textPrimary },
+    dropZoneSubtitle: { color: COLORS.textSecondary, fontWeight: '600' },
+    dropZoneMeta: { color: COLORS.textMuted, fontWeight: '500' },
     previewImage: { width: '100%', height: '100%' },
-    fieldLabel: { fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1 },
-    uploadProjectSummary: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
+    fieldLabel: { fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+    uploadProjectSummary: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.s, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
     uploadProjectSummaryText: { flex: 1, color: '#1E3A8A', lineHeight: 18, fontWeight: '600' },
-    inputField: { width: '100%', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', color: '#0F172A', fontWeight: '600' },
+    inputField: { width: '100%', backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, color: COLORS.textPrimary, fontWeight: '600' },
     projectScroll: { flexGrow: 0 },
-    projectItem: { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    projectItem: { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border },
     projectItemActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    projectItemText: { fontWeight: '700', color: '#475569' },
+    projectItemText: { fontWeight: '700', color: COLORS.textSecondary },
     projectItemTextActive: { color: '#ffffff' },
     submitBtn: { width: '100%', backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', elevation: 2 },
-    submitBtnText: { color: '#fff', fontWeight: '800' }
+    submitBtnText: { color: COLORS.white, fontWeight: '800' }
 });
 
 export default ProjectManagerPhotosScreen;

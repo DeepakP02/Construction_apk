@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SIZES } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import * as ImagePicker from 'expo-image-picker';
 import IssueCard from '../../components/IssueCard';
@@ -141,7 +141,7 @@ export const IssuesTab = ({ project }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
                     >
                     <View style={styles.modalContent}>
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: SPACING.m,
-        gap: 12,
+        gap: SPACING.sm,
     },
     count: {
         flex: 1,
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: COLORS.card,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: SIZES.radiusModal,
+        borderTopRightRadius: SIZES.radiusModal,
         padding: SPACING.l,
         paddingBottom: 40,
     },
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     priorityBtn: {
         flex: 1,
         paddingVertical: 10,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
         borderColor: COLORS.border,
         alignItems: 'center',
@@ -329,16 +329,16 @@ const styles = StyleSheet.create({
     modalButtons: {
         flexDirection: 'row',
         alignItems: 'stretch',
-        gap: 12,
+        gap: SPACING.sm,
         marginTop: 8,
         width: '100%'
     },
     modalBtnCol: { flex: 1, minWidth: 0, justifyContent: 'center' },
     modalBtnColPrimary: { flex: 1.4 },
     attachmentContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.xl },
-    capturePhotoBtn: { width: 64, height: 64, borderRadius: 12, backgroundColor: COLORS.primary + '12', borderStyle: 'dashed', borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', gap: 2 },
+    capturePhotoBtn: { width: 64, height: 64, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.primary + '12', borderStyle: 'dashed', borderWidth: 1.5, borderColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', gap: 2 },
     capturePhotoText: { fontSize: 9, fontWeight: '800', color: COLORS.primary },
     previewWrapper: { marginRight: 10, position: 'relative' },
-    preview: { width: 50, height: 50, borderRadius: 12 },
-    removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10 }
+    preview: { width: 50, height: 50, borderRadius: SIZES.radiusBtn },
+    removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: COLORS.card, borderRadius: 10 }
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
-import { COLORS, SPACING } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { MOCK_TASKS } from '../../mock/data';
 import TaskCard from '../../components/TaskCard';
 

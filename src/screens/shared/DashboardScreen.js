@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, StatusBar, ActivityIndicator } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import SubcontractorDashboard from '../subcontractor/SubcontractorDashboard';
@@ -74,7 +74,7 @@ const DashboardScreen = ({ navigation }) => {
                 <ScrollView 
                     style={{ flex: 1 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                    contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+                    contentContainerStyle={{ padding: SPACING.m, paddingBottom: 100 }}
                 >
                     <SubcontractorDashboard
                         navigation={navigation}
@@ -98,7 +98,7 @@ const DashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
     },
     center: {
         flex: 1,

@@ -5,7 +5,7 @@ import {
     SafeAreaView, StatusBar 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../../components/shared/CommonUI';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -167,28 +167,28 @@ const WorkerJobTasksScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     headerBar: { 
         flexDirection: 'row', 
         alignItems: 'center', 
-        paddingHorizontal: 16, 
+        paddingHorizontal: SPACING.m, 
         paddingBottom: 14, 
-        backgroundColor: '#FFFFFF', 
+        backgroundColor: COLORS.surface, 
         borderBottomWidth: 1, 
-        borderBottomColor: '#F1F5F9' 
+        borderBottomColor: COLORS.border 
     },
     backBtn: { 
         width: 44, 
         height: 44, 
-        borderRadius: 12, 
-        backgroundColor: '#F8FAFC', 
+        borderRadius: SIZES.radiusBtn, 
+        backgroundColor: COLORS.background, 
         justifyContent: 'center', 
         alignItems: 'center' 
     },
     headerTitle: { 
         fontSize: 18, 
         fontWeight: '900', 
-        color: '#0F172A', 
+        color: COLORS.textPrimary, 
         letterSpacing: -0.3, 
     },
     subtitleRow: {
@@ -200,20 +200,20 @@ const styles = StyleSheet.create({
     subtitleText: {
         fontSize: 8,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 0.5,
     },
     headerInfoSection: {
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingTop: 16,
         paddingBottom: 12,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
     },
     tabsSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
-        gap: 8,
+        marginBottom: SPACING.m,
+        gap: SPACING.s,
     },
     tabItem: {
         flexDirection: 'row',
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: 14,
         fontWeight: '900',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         letterSpacing: 0.5,
     },
     badgeCount: {
@@ -240,19 +240,19 @@ const styles = StyleSheet.create({
     taskSearch: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         height: 48,
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         paddingHorizontal: 15,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     content: { flex: 1 },
     statsRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingTop: 16,
-        gap: 8,
+        gap: SPACING.s,
     },
     statBadge: {
         flexDirection: 'row',
@@ -272,50 +272,50 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     searchSection: {
-        paddingHorizontal: 16,
-        marginTop: 16,
+        paddingHorizontal: SPACING.m,
+        marginTop: SPACING.m,
         marginBottom: 8,
     },
     searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.surface,
         height: 48,
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         paddingHorizontal: 15,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     searchInput: {
         flex: 1,
         marginLeft: 10,
         fontSize: 13,
         fontWeight: '600',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
     listContainer: {
-        padding: 16,
+        padding: SPACING.m,
         paddingBottom: 100,
     },
     taskCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
+        marginBottom: SPACING.m,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
         ...SHADOWS.small,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 16,
+        marginBottom: SPACING.m,
     },
     taskTitle: {
         fontSize: 16,
         fontWeight: '900',
-        color: '#0F172A',
+        color: COLORS.textPrimary,
         marginBottom: 8,
     },
     inlineProgressContainer: {
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     inlineProgressBarBg: {
         width: 100,
         height: 4,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         borderRadius: 2,
         overflow: 'hidden',
     },
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     inlineProgressText: {
         fontSize: 10,
         fontWeight: '800',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
     },
     statusBadge: {
         paddingHorizontal: 10,
@@ -349,10 +349,10 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     cardDetails: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         padding: 12,
-        marginBottom: 16,
+        marginBottom: SPACING.m,
     },
     detailRow: {
         flexDirection: 'row',
@@ -364,20 +364,20 @@ const styles = StyleSheet.create({
     detailLabel: {
         fontSize: 8,
         fontWeight: '900',
-        color: '#94A3B8',
+        color: COLORS.textMuted,
         letterSpacing: 0.5,
         marginBottom: 2,
     },
     detailValue: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#334155',
+        color: COLORS.textSecondary,
     },
     actionBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
+        gap: SPACING.s,
         paddingVertical: 10,
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
@@ -386,11 +386,11 @@ const styles = StyleSheet.create({
     actionBtnText: {
         fontSize: 11,
         fontWeight: '900',
-        color: '#64748B',
+        color: COLORS.textSecondary,
         letterSpacing: 0.5,
     },
     emptyState: { alignItems: 'center', marginTop: 60 },
-    emptyText: { marginTop: 12, color: '#94A3B8', fontSize: 14, fontWeight: '700' },
+    emptyText: { marginTop: 12, color: COLORS.textMuted, fontSize: 14, fontWeight: '700' },
 });
 
 export default WorkerJobTasksScreen;

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
-import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 
 const ROLES = [
@@ -149,7 +149,7 @@ export default function LoginScreen({ navigation }) {
             </LinearGradient>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
                 <ScrollView
@@ -236,47 +236,47 @@ export default function LoginScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#F1F5F9' },
+    root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
     top: {
         alignItems: 'center',
         position: 'relative',
         overflow: 'hidden',
     },
-    bubble: { position: 'absolute', backgroundColor: '#fff', borderRadius: 999 },
+    bubble: { position: 'absolute', backgroundColor: COLORS.card, borderRadius: 999 },
     headerContent: { alignItems: 'center', zIndex: 10 },
     loginLogo: {
         marginBottom: 10,
     },
-    brand: { color: '#fff', fontWeight: '900', letterSpacing: 2 },
+    brand: { color: COLORS.white, fontWeight: '900', letterSpacing: 2 },
     tagline: { color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginTop: 4 },
     curve: {
         position: 'absolute', bottom: -1, width: '100%', height: 40,
-        backgroundColor: '#F1F5F9', borderTopLeftRadius: 40, borderTopRightRadius: 40,
+        backgroundColor: COLORS.surfaceSecondary, borderTopLeftRadius: 40, borderTopRightRadius: 40,
     },
     scroll: { flex: 1, marginTop: -30 },
-    scrollContent: { paddingHorizontal: 20 },
+    scrollContent: { paddingHorizontal: SPACING.m },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 24,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusCard,
         padding: 24,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
-    guideHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+    guideHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: SPACING.m },
     guideTitle: { fontWeight: '900', color: '#3B82F6', letterSpacing: 1 },
-    label: { fontWeight: '900', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    label: { fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
     inputWrap: {
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0',
-        paddingHorizontal: 16, marginBottom: 16,
+        backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1.5, borderColor: COLORS.border,
+        paddingHorizontal: SPACING.m, marginBottom: SPACING.m,
     },
-    inputActive: { borderColor: '#3B82F6', backgroundColor: '#fff' },
-    input: { flex: 1, height: '100%', color: '#0F172A', fontWeight: '700', marginLeft: 12 },
+    inputActive: { borderColor: '#3B82F6', backgroundColor: COLORS.card },
+    input: { flex: 1, height: '100%', color: COLORS.textPrimary, fontWeight: '700', marginLeft: 12 },
     roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 24 },
     chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, borderWidth: 1.2 },
     chipText: { fontWeight: '800' },
-    btn: { borderRadius: 14, overflow: 'hidden', marginTop: 10 },
+    btn: { borderRadius: SIZES.radiusBtn, overflow: 'hidden', marginTop: 10 },
     btnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-    btnText: { color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
-    footerNote: { textAlign: 'center', color: '#94A3B8', fontWeight: '700', marginTop: 20, textTransform: 'uppercase', letterSpacing: 1 },
+    btnText: { color: COLORS.white, fontWeight: '900', letterSpacing: 0.5 },
+    footerNote: { textAlign: 'center', color: COLORS.textMuted, fontWeight: '700', marginTop: SPACING.m, textTransform: 'uppercase', letterSpacing: 1 },
 });

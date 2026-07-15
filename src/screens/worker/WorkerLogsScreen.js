@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { 
     View, Text, StyleSheet, FlatList, TouchableOpacity, 
     ActivityIndicator, StatusBar, ScrollView, TextInput, 
-    Dimensions, SafeAreaView, Modal
+    Dimensions, Modal
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
+import { scale, verticalScale, moderateScale } from '../../utils/responsive';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
 const WorkerLogsScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const { user, isClockedIn } = useApp();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -136,11 +140,11 @@ const WorkerLogsScreen = ({ navigation }) => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             
             {/* COMPACT TOPBAR */}
-            <View style={styles.topbar}>
+            <View style={[styles.topbar, { paddingTop: Math.max(insets.top, 12), height: Math.max(insets.top + 50, 64) }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
                 </TouchableOpacity>
@@ -231,96 +235,94 @@ const WorkerLogsScreen = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 15, fontSize: 13, fontWeight: '700', color: '#64748B' },
-    listContent: { paddingBottom: 60 },
+    loadingText: { marginTop: 15, fontSize: moderateScale(13), fontWeight: '700', color: COLORS.textSecondary },
+    listContent: { paddingBottom: 100 },
 
     topbar: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        height: 100, // Increased height to accommodate more padding
-        backgroundColor: '#FFFFFF', 
-        paddingHorizontal: 16,
-        paddingTop: 45, // Significantly increased padding for status bar/notch clearance
+        backgroundColor: COLORS.surface, 
+        paddingHorizontal: SPACING.m,
+        height: Math.max(verticalScale(64), 60),
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9'
+        borderBottomColor: COLORS.border
     },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-    topbarTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A' },
-    actionBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+    backBtn: { width: 40, height: 40, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
+    topbarTitle: { ...TYPOGRAPHY.subtitle, color: COLORS.textPrimary },
+    actionBtn: { width: 40, height: 40, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
 
-    headerArea: { paddingHorizontal: 20, paddingTop: 20, marginBottom: 10 },
-    titleBox: { marginBottom: 20 },
-    headerTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    headerSub: { fontSize: 13, fontWeight: '600', color: '#64748B', marginTop: 4 },
+    headerArea: { paddingHorizontal: SPACING.m, paddingTop: SPACING.m, marginBottom: SPACING.xs },
+    titleBox: { marginBottom: SPACING.m },
+    headerTitle: { ...TYPOGRAPHY.screenTitle, color: COLORS.textPrimary },
+    headerSub: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, marginTop: 4 },
 
-    statsGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    miniStat: { flex: 1, backgroundColor: '#fff', borderRadius: 18, padding: 14, borderTopWidth: 4, ...SHADOWS.small },
-    miniLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8 },
-    miniValue: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 5 },
-    miniSub: { fontSize: 9, fontWeight: '700', color: '#CBD5E1', marginTop: 3 },
+    statsGrid: { flexDirection: 'row', gap: 10, marginBottom: SPACING.m, paddingHorizontal: SPACING.m },
+    miniStat: { flex: 1, backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderTopWidth: 4, borderTopColor: COLORS.primaryAccent, ...SHADOWS.small },
+    miniLabel: { ...TYPOGRAPHY.label, color: COLORS.textMuted },
+    miniValue: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.textPrimary, marginTop: 5 },
+    miniSub: { ...TYPOGRAPHY.badge, color: COLORS.textMuted, marginTop: 3 },
 
-    searchContainer: { marginBottom: 15 },
-    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', height: 50, borderRadius: 14, paddingHorizontal: 16, borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.small },
-    searchInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#1E293B' },
+    searchContainer: { paddingHorizontal: SPACING.m, marginBottom: SPACING.sm },
+    searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, height: 50, borderRadius: SIZES.radiusInput, paddingHorizontal: SPACING.m, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.small },
+    searchInput: { flex: 1, marginLeft: 12, fontSize: moderateScale(14), fontWeight: '700', color: COLORS.textPrimary },
 
-    logCard: { backgroundColor: '#fff', marginHorizontal: 20, marginBottom: 16, borderRadius: 24, overflow: 'hidden', ...SHADOWS.small },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    logCard: { backgroundColor: COLORS.card, marginHorizontal: SPACING.m, marginBottom: SPACING.m, borderRadius: SIZES.radiusCard, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.card },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: SPACING.m, paddingVertical: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.border },
     siteInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    siteName: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
-    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-    statusText: { fontSize: 10, fontWeight: '900' },
+    siteName: { ...TYPOGRAPHY.body, fontWeight: '800', color: COLORS.textPrimary },
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: SIZES.radiusCard },
+    statusText: { ...TYPOGRAPHY.badge },
 
-    cardBody: { padding: 20 },
-    infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 },
+    cardBody: { padding: SPACING.m },
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.m },
     infoCol: { flex: 1 },
-    infoLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.8 },
-    infoValue: { fontSize: 14, fontWeight: '800', color: '#334155', marginTop: 6 },
+    infoLabel: { ...TYPOGRAPHY.badge, color: COLORS.textMuted },
+    infoValue: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, marginTop: 6 },
 
-    divider: { height: 1.5, backgroundColor: '#F1F5F9', marginVertical: 15 },
+    divider: { height: 1.5, backgroundColor: COLORS.border, marginVertical: SPACING.sm },
 
     cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     durationBox: { flex: 1 },
-    durationLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8' },
-    durationValue: { fontSize: 16, fontWeight: '901', color: '#2563EB', marginTop: 4 },
-    detailsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-    detailsBtnText: { fontSize: 13, fontWeight: '900', color: '#2563EB' },
+    durationLabel: { ...TYPOGRAPHY.badge, color: COLORS.textMuted },
+    durationValue: { ...TYPOGRAPHY.body, fontWeight: '900', color: '#2563EB', marginTop: 4 },
+    detailsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: SIZES.radiusBtn },
+    detailsBtnText: { ...TYPOGRAPHY.caption, color: '#2563EB' },
 
     emptyBox: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
-    emptyMain: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 16 },
+    emptyMain: { ...TYPOGRAPHY.subtitle, color: COLORS.textPrimary, marginTop: SPACING.m },
 
     // MODAL STYLES
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '85%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: SPACING.md, maxHeight: '85%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+    modalTitle: { ...TYPOGRAPHY.cardTitle, color: COLORS.textPrimary },
     
     detailCard: { padding: 4 },
-    detailSectionLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 12 },
-    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    detailValue: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
-    detailSubValue: { fontSize: 11, fontWeight: '700', color: '#64748B', marginLeft: 32, marginTop: 4 },
-    detailDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 24 },
+    detailSectionLabel: { ...TYPOGRAPHY.label, color: COLORS.textMuted, marginBottom: 12 },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+    detailValue: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.textPrimary },
+    detailSubValue: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary, marginLeft: 32, marginTop: 4 },
+    detailDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.md },
 
     timeInfoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    timeInfoBox: { flex: 1, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-    timeLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.5 },
-    timeValue: { fontSize: 17, fontWeight: '900', color: '#1E293B', marginTop: 8 },
-    timeDate: { fontSize: 10, fontWeight: '700', color: '#64748B', marginTop: 4 },
+    timeInfoBox: { flex: 1, alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, padding: SPACING.m, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border },
+    timeLabel: { ...TYPOGRAPHY.badge, color: COLORS.textMuted },
+    timeValue: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.textPrimary, marginTop: 8 },
+    timeDate: { ...TYPOGRAPHY.badge, color: COLORS.textSecondary, marginTop: 4 },
     timeArrow: { paddingHorizontal: 10 },
 
-    verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F0FDF4', padding: 15, borderRadius: 16, marginVertical: 20 },
-    verifiedText: { fontSize: 13, fontWeight: '800', color: '#10B981' },
-
-    closeModalBtn: { backgroundColor: '#0F172A', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 10, marginBottom: 20 },
-    closeModalBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F0FDF4', padding: 15, borderRadius: SIZES.radiusCard, marginVertical: SPACING.m },
+    verifiedText: { ...TYPOGRAPHY.caption, color: '#10B981', fontWeight: '800' },
+    closeModalBtn: { backgroundColor: COLORS.primary, height: 52, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center', marginTop: SPACING.m },
+    closeModalBtnText: { color: COLORS.white, ...TYPOGRAPHY.body, fontWeight: '900' },
 });
 
 export default WorkerLogsScreen;

@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     TextInput, Animated, ActivityIndicator, Dimensions,
-    StatusBar, SafeAreaView
+    StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
+import { scale, verticalScale, moderateScale } from '../../utils/responsive';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -121,7 +123,7 @@ const WorkerJobsScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <WorkerHeader showBranding={true} title="Jobs" />
 
@@ -174,25 +176,23 @@ const WorkerJobsScreen = ({ navigation }) => {
                     }
                 />
             </Animated.View>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
     },
     headerContent: {
-        paddingHorizontal: 20,
-        paddingTop: 15,
-        paddingBottom: 10,
+        paddingHorizontal: SPACING.m,
+        paddingTop: SPACING.s,
+        paddingBottom: SPACING.xs,
     },
     mainTitle: {
-        fontSize: 24,
-        fontWeight: '900',
-        color: '#0F172A',
-        letterSpacing: -0.5,
+        ...TYPOGRAPHY.screenTitle,
+        color: COLORS.textPrimary,
     },
     subtitleRow: {
         flexDirection: 'row',
@@ -201,71 +201,68 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     subtitleText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#64748B',
-        letterSpacing: 0.5,
+        ...TYPOGRAPHY.badge,
+        color: COLORS.textMuted,
     },
     filterContainer: {
-        paddingHorizontal: 16,
-        marginTop: 10,
+        paddingHorizontal: SPACING.m,
+        marginTop: SPACING.s,
     },
     tabWrapper: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusCard,
         padding: 4,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
     },
     statusTab: {
         flex: 1,
         paddingVertical: 10,
         alignItems: 'center',
-        borderRadius: 11,
+        borderRadius: SIZES.radiusBtn,
     },
     statusTabText: {
-        fontSize: 9,
-        fontWeight: '900',
-        color: '#94A3B8',
-        letterSpacing: 0.5,
+        ...TYPOGRAPHY.badge,
+        color: COLORS.textMuted,
     },
     statusTabTextActive: {
-        color: '#FFFFFF',
+        color: COLORS.white,
     },
     searchSection: {
-        paddingHorizontal: 16,
-        marginTop: 15,
-        marginBottom: 10,
+        paddingHorizontal: SPACING.m,
+        marginTop: SPACING.m,
+        marginBottom: SPACING.s,
     },
     searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         height: 50,
-        borderRadius: 16,
-        paddingHorizontal: 15,
+        borderRadius: SIZES.radiusInput,
+        paddingHorizontal: SPACING.m,
         borderWidth: 1.5,
-        borderColor: '#DBEAFE', // Light blue tint as per screenshot border glow
+        borderColor: COLORS.border,
     },
     searchInput: {
         flex: 1,
         marginLeft: 10,
-        fontSize: 14,
+        fontSize: moderateScale(15),
         fontWeight: '600',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
     listContainer: {
-        padding: 16,
+        padding: SPACING.m,
         paddingBottom: 100,
     },
     jobCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 12,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
+        marginBottom: SPACING.sm,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
+        ...SHADOWS.card,
     },
     cardInfo: {
         flexDirection: 'row',
@@ -274,27 +271,25 @@ const styles = StyleSheet.create({
     jobIconBox: {
         width: 40,
         height: 40,
-        borderRadius: 12,
+        borderRadius: SIZES.radiusBtn,
         backgroundColor: '#EFF6FF',
         justifyContent: 'center',
         alignItems: 'center',
     },
     jobName: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#0F172A',
+        ...TYPOGRAPHY.subtitle,
+        color: COLORS.textPrimary,
     },
     projectName: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#64748B',
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
         marginTop: 1,
     },
     cardFooter: {
-        marginTop: 14,
-        paddingTop: 14,
+        marginTop: SPACING.sm,
+        paddingTop: SPACING.sm,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopColor: COLORS.border,
     },
     progressRow: {
         flexDirection: 'row',
@@ -304,7 +299,7 @@ const styles = StyleSheet.create({
     progressBarBg: {
         flex: 1,
         height: 6,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.surfaceSecondary,
         borderRadius: 3,
         overflow: 'hidden',
     },
@@ -314,9 +309,8 @@ const styles = StyleSheet.create({
         borderRadius: 3,
     },
     progressText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#1E293B',
+        ...TYPOGRAPHY.badge,
+        color: COLORS.textPrimary,
         width: 30,
         textAlign: 'right',
     },
@@ -330,17 +324,17 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.surfaceSecondary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: SPACING.m,
     },
     emptyTitle: {
-        fontSize: 14,
-        fontWeight: '900',
-        color: '#94A3B8',
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textMuted,
         letterSpacing: 1,
     },
 });
 
 export default WorkerJobsScreen;
+

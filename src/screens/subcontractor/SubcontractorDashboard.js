@@ -4,7 +4,7 @@ import {
     FlatList, ActivityIndicator, TextInput, Modal, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
 const { width } = Dimensions.get('window');
@@ -113,7 +113,7 @@ const SubcontractorDashboard = ({
                             onPress={() => setClockModal(true)}
                             activeOpacity={0.7}
                         >
-                            <Text style={[styles.selectorTxt, !selectedAssignment && { color: '#94A3B8' }]} numberOfLines={1}>
+                            <Text style={[styles.selectorTxt, !selectedAssignment && { color: COLORS.textMuted }]} numberOfLines={1}>
                                 {selectedAssignment?.displayName || '-- Choose Task / Project --'}
                             </Text>
                             <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
@@ -204,7 +204,7 @@ const SubcontractorDashboard = ({
 
                 <Text style={styles.inputLabel}>Assign To User</Text>
                 <TouchableOpacity style={styles.selectorBtn} onPress={() => setShowUserModal(true)}>
-                    <Text style={[styles.selectorTxt, !selectedUser && { color: '#94A3B8' }]}>
+                    <Text style={[styles.selectorTxt, !selectedUser && { color: COLORS.textMuted }]}>
                         {selectedUser ? selectedUser.fullName : 'Search user...'}
                     </Text>
                     <MaterialCommunityIcons name="account-search" size={20} color="#64748B" />
@@ -304,7 +304,7 @@ const SubcontractorDashboard = ({
             </View>
 
             {/* ── Recent Activity ──────────────────────────────── */}
-            <View style={[styles.card, { padding: 20 }, SHADOWS.small]}>
+            <View style={[styles.card, { padding: SPACING.m }, SHADOWS.small]}>
                 <View style={styles.sectionHeadRow}>
                     <Text style={styles.cardTitle}>My Recent Activity</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('RFI')}>
@@ -312,7 +312,7 @@ const SubcontractorDashboard = ({
                     </TouchableOpacity>
                 </View>
                 {(!activities || activities.length === 0) ? (
-                    <Text style={[styles.emptyNote, { textAlign: 'center', paddingVertical: 20 }]}>No recent activity</Text>
+                    <Text style={[styles.emptyNote, { textAlign: 'center', paddingVertical: SPACING.m }]}>No recent activity</Text>
                 ) : activities.slice(0, 4).map((act, i) => {
                     const row = normalizeActivityRow(act, i);
                     return (
@@ -392,7 +392,7 @@ const SubcontractorDashboard = ({
                                     )}
                                 </TouchableOpacity>
                             )}
-                            ListEmptyComponent={<Text style={[styles.emptyNote, { textAlign: 'center', padding: 20 }]}>No users found</Text>}
+                            ListEmptyComponent={<Text style={[styles.emptyNote, { textAlign: 'center', padding: SPACING.m }]}>No users found</Text>}
                         />
                     </View>
                 </View>
@@ -405,112 +405,112 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
 
     // Header
-    pageHeader: { marginBottom: 20 },
-    pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -0.8 },
+    pageHeader: { marginBottom: SPACING.m },
+    pageTitle: { fontSize: 28, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.8 },
     pageSubtitle: { fontSize: 9, fontWeight: '800', color: '#2563EB', letterSpacing: 1.5, marginTop: 3 },
 
     // Clock card
-    clockCard: { backgroundColor: '#fff', borderRadius: 28, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 20 },
-    clockTop: { alignItems: 'center', marginBottom: 16 },
-    statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 8 },
+    clockCard: { backgroundColor: COLORS.card, borderRadius: 28, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.m },
+    clockTop: { alignItems: 'center', marginBottom: SPACING.m },
+    statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: SIZES.radiusCard, marginBottom: 8 },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
-    statusText: { fontSize: 8, fontWeight: '900', color: '#64748B', letterSpacing: 1 },
-    timerLarge: { fontSize: 44, fontWeight: '900', color: '#0F172A', letterSpacing: -1.5 },
-    timerSub: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginTop: 2 },
-    clockBtn: { width: '100%', height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    clockBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
+    statusText: { fontSize: 8, fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1 },
+    timerLarge: { fontSize: 44, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1.5 },
+    timerSub: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginTop: 2 },
+    clockBtn: { width: '100%', height: 48, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
+    clockBtnTxt: { color: COLORS.white, fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
 
     // Metrics
-    metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
-    metricBox: { width: '31.5%', minWidth: 100, backgroundColor: '#fff', padding: 12, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', alignItems: 'center' },
+    metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.s, marginBottom: 28 },
+    metricBox: { width: '31.5%', minWidth: 100, backgroundColor: COLORS.card, padding: 12, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
     metricIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-    metricVal: { fontSize: 13, fontWeight: '900', color: '#0F172A', textAlign: 'center' },
-    metricLab: { fontSize: 8, fontWeight: '700', color: '#94A3B8', textAlign: 'center', marginTop: 2 },
+    metricVal: { fontSize: 13, fontWeight: '900', color: COLORS.textPrimary, textAlign: 'center' },
+    metricLab: { fontSize: 8, fontWeight: '700', color: COLORS.textMuted, textAlign: 'center', marginTop: 2 },
 
     // Actions
-    sectionTitle: { fontSize: 12, fontWeight: '900', color: '#0F172A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    sectionTitle: { fontSize: 12, fontWeight: '900', color: COLORS.textPrimary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
     actionsRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
-    actionPrimary: { flex: 1.2, height: 52, backgroundColor: '#FF6B00', borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    actionPrimaryTxt: { color: '#fff', fontSize: 13, fontWeight: '900' },
-    actionSecondary: { flex: 1, height: 52, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    actionSecondaryTxt: { color: '#0F172A', fontSize: 13, fontWeight: '900' },
+    actionPrimary: { flex: 1.2, height: 52, backgroundColor: '#FF6B00', borderRadius: SIZES.radiusBtn, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s },
+    actionPrimaryTxt: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
+    actionSecondary: { flex: 1, height: 52, backgroundColor: COLORS.card, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.s },
+    actionSecondaryTxt: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '900' },
 
     // Standard card
-    card: { backgroundColor: '#fff', borderRadius: 22, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-    cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-    cardTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-    sectionHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    card: { backgroundColor: COLORS.card, borderRadius: 22, padding: 18, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.m },
+    cardTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
+    sectionHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
     linkTxt: { fontSize: 11, fontWeight: '900', color: '#2563EB', letterSpacing: 0.5 },
 
     // Inputs/To-do form
-    inputLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', marginBottom: 6 },
-    textInput: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', fontSize: 13, fontWeight: '600', color: '#0F172A', marginBottom: 12 },
-    selectorBtn: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    selectorTxt: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
-    submitBtn: { backgroundColor: '#0F172A', padding: 14, borderRadius: 14, alignItems: 'center', marginBottom: 4 },
-    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900' },
+    inputLabel: { fontSize: 11, fontWeight: '800', color: COLORS.textSecondary, marginBottom: 6 },
+    textInput: { backgroundColor: COLORS.background, padding: 12, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, fontSize: 13, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 12 },
+    selectorBtn: { backgroundColor: COLORS.background, padding: 12, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    selectorTxt: { fontSize: 13, fontWeight: '600', color: COLORS.textPrimary },
+    submitBtn: { backgroundColor: '#0F172A', padding: 14, borderRadius: SIZES.radiusBtn, alignItems: 'center', marginBottom: 4 },
+    submitBtnTxt: { color: COLORS.white, fontSize: 14, fontWeight: '900' },
 
     // Todo lists
-    todoSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+    todoSection: { marginTop: SPACING.m, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
     todoSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    todoSectionTitle: { fontSize: 13, fontWeight: '800', color: '#64748B' },
+    todoSectionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary },
     countBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     countBadgeTxt: { fontSize: 11, fontWeight: '900', color: '#2563EB' },
-    todoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', padding: 10, borderRadius: 10, marginBottom: 6 },
-    todoTxt: { fontSize: 13, fontWeight: '700', color: '#334155' },
+    todoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.background, padding: 10, borderRadius: 10, marginBottom: 6 },
+    todoTxt: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
     strikethrough: { textDecorationLine: 'line-through', opacity: 0.5 },
-    todoDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
-    emptyNote: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
+    todoDivider: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginVertical: 14 },
+    emptyNote: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' },
 
     // Tasks card
-    tasksCard: { backgroundColor: '#fff', borderRadius: 28, padding: 22, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-    tasksHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-    tasksCardTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
-    tasksCardSub: { fontSize: 10, fontWeight: '800', color: '#94A3B8', marginTop: 2, textTransform: 'uppercase' },
-    taskRow: { flexDirection: 'row', gap: 14, marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    taskIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center' },
+    tasksCard: { backgroundColor: COLORS.card, borderRadius: 28, padding: 22, marginBottom: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    tasksHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: SPACING.m },
+    tasksCardTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary },
+    tasksCardSub: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted, marginTop: 2, textTransform: 'uppercase' },
+    taskRow: { flexDirection: 'row', gap: 14, marginBottom: SPACING.m, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    taskIconBox: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center' },
     taskContent: { flex: 1, gap: 3 },
     taskTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    taskName: { fontSize: 14, fontWeight: '800', color: '#1E293B', flex: 1 },
+    taskName: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary, flex: 1 },
     priorityTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7 },
     priorityTagTxt: { fontSize: 9, fontWeight: '900' },
-    taskProject: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+    taskProject: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
     taskBottomRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 2 },
-    taskDate: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+    taskDate: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted },
     overdueLabel: { fontSize: 10, fontWeight: '900', color: '#EF4444' },
-    emptyBlock: { alignItems: 'center', paddingVertical: 30, gap: 8 },
-    emptyBlockTxt: { fontSize: 13, color: '#94A3B8', fontWeight: '700' },
+    emptyBlock: { alignItems: 'center', paddingVertical: 30, gap: SPACING.s },
+    emptyBlockTxt: { fontSize: 13, color: COLORS.textMuted, fontWeight: '700' },
 
     // Activity
-    actRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    actRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     actIcon: { width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     actMid: { flex: 1 },
-    actTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-    actSub: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+    actTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+    actSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
     actRight: { alignItems: 'flex-end' },
-    actTime: { fontSize: 12, fontWeight: '900', color: '#0F172A' },
-    actDate: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+    actTime: { fontSize: 12, fontWeight: '900', color: COLORS.textPrimary },
+    actDate: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
 
     // Alerts
-    alertsCard: { backgroundColor: '#fff', borderRadius: 22, padding: 22, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9' },
-    alertsTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 16 },
+    alertsCard: { backgroundColor: COLORS.card, borderRadius: 22, padding: 22, marginBottom: 24, borderWidth: 1, borderColor: COLORS.border },
+    alertsTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, marginBottom: SPACING.m },
     alertStack: { gap: 10 },
-    alertBar: { height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 },
+    alertBar: { height: 56, borderRadius: SIZES.radiusCard, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.m, gap: SPACING.sm },
     alertNumBox: { width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
-    alertNum: { color: '#fff', fontSize: 14, fontWeight: '900' },
-    alertLbl: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
+    alertNum: { color: COLORS.white, fontSize: 14, fontWeight: '900' },
+    alertLbl: { flex: 1, color: COLORS.white, fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
 
     // Modal
     modalBg: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
-    modalBox: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '70%' },
-    modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    modalHeadTxt: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
-    modalSearch: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12, fontSize: 14, fontWeight: '600' },
-    userPickRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 12 },
+    modalBox: { backgroundColor: COLORS.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '70%' },
+    modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    modalHeadTxt: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary },
+    modalSearch: { backgroundColor: COLORS.background, padding: 12, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12, fontSize: 14, fontWeight: '600' },
+    userPickRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: SPACING.sm },
     userPickAvatar: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
     userPickAvatarTxt: { fontWeight: '900', color: '#2563EB', fontSize: 15 },
-    userPickName: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-    userPickRole: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+    userPickName: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
+    userPickRole: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
 });
 
 export default SubcontractorDashboard;

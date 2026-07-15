@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Animated, Image, Dimensions, Alert, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
@@ -83,10 +83,10 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
         const statusConfig = {
             'planning': { label: 'PLAN', color: '#F97316', bg: '#FFF7ED' },
             'active': { label: 'LIVE', color: '#10B981', bg: '#ECFDF5' },
-            'completed': { label: 'DONE', color: '#64748B', bg: '#F8FAFC' },
+            'completed': { label: 'DONE', color: COLORS.textSecondary, bg: '#F8FAFC' },
             'on-hold': { label: 'HOLD', color: '#FACC15', bg: '#FEFCE8' }
         };
-        const config = statusConfig[item.status] || { label: '???', color: '#64748B', bg: '#F8FAFC' };
+        const config = statusConfig[item.status] || { label: '???', color: COLORS.textSecondary, bg: '#F8FAFC' };
 
         return (
             <TouchableOpacity
@@ -238,14 +238,14 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     stickyHeader: {
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         paddingTop: 8,
         paddingBottom: 8,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: COLORS.border,
         zIndex: 10
     },
     headerTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
@@ -253,37 +253,37 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderRadius: 10,
         height: 38,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: '#E2E8F0'
+        borderColor: COLORS.border
     },
-    tinySearchInput: { flex: 1, marginLeft: 6, fontSize: 12, fontWeight: '600', color: '#1E293B' },
+    tinySearchInput: { flex: 1, marginLeft: 6, fontSize: 12, fontWeight: '600', color: COLORS.textPrimary },
 
     compactToolbar: { marginTop: 2 },
     tinyFilterList: { gap: 6 },
-    tinyFilterChip: { paddingHorizontal: 12, height: 26, borderRadius: 13, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
+    tinyFilterChip: { paddingHorizontal: 12, height: 26, borderRadius: 13, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
     tinyFilterChipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    tinyFilterChipText: { fontSize: 9, fontWeight: '900', color: '#64748B' },
-    tinyFilterChipTextActive: { color: '#fff' },
+    tinyFilterChipText: { fontSize: 9, fontWeight: '900', color: COLORS.textSecondary },
+    tinyFilterChipTextActive: { color: COLORS.white },
 
-    scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
+    scroll: { paddingHorizontal: SPACING.m, paddingTop: 12, paddingBottom: 100 },
 
     ultraCompactRow: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: COLORS.card,
+        borderRadius: SIZES.radiusBtn,
         padding: 10,
         marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: COLORS.border,
     },
     topSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    mainInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
+    mainInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: SPACING.s },
     indicatorLine: { width: 3, height: 20, borderRadius: 2 },
-    tinyName: { fontSize: 13, fontWeight: '900', color: '#1E293B' },
-    tinyLoc: { fontSize: 10, fontWeight: '700', color: '#94A3B8' },
+    tinyName: { fontSize: 13, fontWeight: '900', color: COLORS.textPrimary },
+    tinyLoc: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
 
     metricInfo: { alignItems: 'flex-end', gap: 2 },
     tinyBudget: { fontSize: 11, fontWeight: '900', color: '#10B981' },
@@ -292,25 +292,25 @@ const styles = StyleSheet.create({
 
     bottomSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 6 },
     clientProgress: { flex: 1 },
-    tinyClient: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+    tinyClient: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
     tinyProgress: { fontSize: 10, fontWeight: '900', color: '#3B82F6' },
 
     miniActionStrip: { flexDirection: 'row', gap: 6 },
-    miniBtn: { width: 28, height: 28, borderRadius: 6, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 0.5, borderColor: '#E2E8F0' },
+    miniBtn: { width: 28, height: 28, borderRadius: 6, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', borderWidth: 0.5, borderColor: COLORS.border },
 
     emptyWrap: { alignItems: 'center', marginTop: 80, gap: 16 },
-    emptyText: { color: '#94A3B8', fontSize: 14, fontWeight: '700' },
+    emptyText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '700' },
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '80%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: SIZES.radiusModal, borderTopRightRadius: SIZES.radiusModal, padding: 24, maxHeight: '80%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.m },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary },
     modalForm: { gap: 16 },
-    inputLabel: { fontSize: 12, fontWeight: '900', color: '#64748B', marginBottom: 6, textTransform: 'uppercase' },
-    modalInput: { backgroundColor: '#F8FAFC', borderRadius: 12, height: 48, paddingHorizontal: 16, fontSize: 14, fontWeight: '600', color: '#1E293B', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 },
-    saveBtn: { backgroundColor: '#2563EB', height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
-    saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+    inputLabel: { fontSize: 12, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 6, textTransform: 'uppercase' },
+    modalInput: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, height: 48, paddingHorizontal: SPACING.m, fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.m },
+    saveBtn: { backgroundColor: '#2563EB', height: 50, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+    saveBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '900' },
 });
 
 export default ProjectManagerJobsScreen;

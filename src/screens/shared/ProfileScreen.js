@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, SIZES, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -147,7 +147,7 @@ const ProfileScreen = ({ navigation }) => {
                             colors={COLORS.headerGradient}
                             style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}
                         >
-                            <Text style={{ fontSize: 48, fontWeight: '900', color: '#fff' }}>
+                            <Text style={{ fontSize: 48, fontWeight: '900', color: COLORS.white }}>
                                 {(user?.name || user?.fullName || 'U').charAt(0).toUpperCase()}
                             </Text>
                         </LinearGradient>
@@ -230,7 +230,7 @@ const ProfileScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                         <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 20 }]}>
@@ -306,7 +306,7 @@ const ProfileScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                         <View style={[styles.modalContent, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 16 : 20 }]}>
@@ -362,23 +362,23 @@ const ProfileScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    scrollContent: { padding: SPACING.m },
+    scrollContent: { padding: SPACING.m, paddingBottom: 120 },
     userHeader: { alignItems: 'center', paddingVertical: SPACING.xl },
-    avatarWrapper: { position: 'relative', marginBottom: 16 },
+    avatarWrapper: { position: 'relative', marginBottom: SPACING.m },
     avatar: { width: 128, height: 128, borderRadius: 42, borderWidth: 4, borderColor: COLORS.card },
     editAvatar: {
         position: 'absolute', bottom: -4, right: -4,
         backgroundColor: COLORS.primaryAccent, width: 40, height: 40,
-        borderRadius: 14, justifyContent: 'center', alignItems: 'center',
+        borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center',
         borderWidth: 3, borderColor: COLORS.card,
     },
     userName: { fontSize: 26, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
-    roleBadge: { backgroundColor: COLORS.primaryAccent + '15', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 8 },
+    roleBadge: { backgroundColor: COLORS.primaryAccent + '15', paddingHorizontal: 12, paddingVertical: 5, borderRadius: SIZES.radiusCard, marginTop: 8 },
     userRole: { fontSize: 11, color: COLORS.primaryAccent, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
     section: { marginBottom: SPACING.l },
     sectionTitle: { fontSize: 12, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 12, marginLeft: 4, letterSpacing: 1 },
     companyCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
-    companyLogo: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    companyLogo: { width: 50, height: 50, borderRadius: SIZES.radiusBtn, justifyContent: 'center', alignItems: 'center' },
     companyInfo: { marginLeft: 14 },
     companyName: { fontSize: 17, fontWeight: '800', color: COLORS.textPrimary },
     planBadge: { backgroundColor: COLORS.success + '15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginTop: 4, alignSelf: 'flex-start' },
@@ -392,17 +392,17 @@ const styles = StyleSheet.create({
     versionText: { textAlign: 'center', fontSize: 12, color: COLORS.textMuted, fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
+    modalContent: { backgroundColor: COLORS.card, borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalScrollContent: { paddingBottom: 12, flexGrow: 1 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 12, letterSpacing: -0.4 },
-    inputLabel: { fontSize: 13, fontWeight: '800', color: '#334155', marginBottom: 6, marginTop: 6 },
-    input: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', color: '#000' },
-    readOnlyInput: { backgroundColor: '#E2E8F0', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#CBD5E1' },
-    readOnlyText: { fontSize: 16, fontWeight: '700', color: '#475569', textTransform: 'uppercase' },
-    modalButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 12, letterSpacing: -0.4 },
+    inputLabel: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary, marginBottom: 6, marginTop: 6 },
+    input: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusBtn, padding: 14, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: COLORS.border, color: '#000' },
+    readOnlyInput: { backgroundColor: '#E2E8F0', borderRadius: SIZES.radiusBtn, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#CBD5E1' },
+    readOnlyText: { fontSize: 16, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase' },
+    modalButtons: { flexDirection: 'row', gap: 10, marginTop: SPACING.m },
     modalButtonsStacked: { flexDirection: 'column' },
-    modalBtn: { flex: 1, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-    btnText: { color: '#fff', fontWeight: '900', textTransform: 'uppercase', fontSize: 14 }
+    modalBtn: { flex: 1, height: 56, borderRadius: SIZES.radiusCard, alignItems: 'center', justifyContent: 'center' },
+    btnText: { color: COLORS.white, fontWeight: '900', textTransform: 'uppercase', fontSize: 14 }
 });
 
 export default ProfileScreen;

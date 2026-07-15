@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, ScrollView, StatusBar, SafeAreaView, Image, Platform, KeyboardAvoidingView, useWindowDimensions, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
@@ -13,7 +13,7 @@ const EquipmentScreen = ({ navigation }) => {
     const { user } = useApp();
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
-    const isCompact = width < 390;
+    const isCompact = width < 600;
     const modalMaxWidth = Math.min(width - 16, 900);
     const modalMaxHeight = Math.min(height * 0.9, 780);
     const [data, setData] = useState([]);
@@ -98,6 +98,7 @@ const EquipmentScreen = ({ navigation }) => {
             });
             setImageUri('');
         }
+        setDatePickerVisible(false);
         setModalVisible(true);
     };
 
@@ -139,7 +140,7 @@ const EquipmentScreen = ({ navigation }) => {
             });
             return;
         }
-        setDatePickerVisible(true);
+        setDatePickerVisible(prev => !prev);
     };
 
     const handleSave = async () => {
@@ -229,7 +230,7 @@ const EquipmentScreen = ({ navigation }) => {
                 contentContainerStyle={[
                     styles.scroll,
                     {
-                        paddingBottom: Math.max(insets.bottom + 30, 40),
+                        paddingBottom: Math.max(insets.bottom + 100, 110),
                         maxWidth: width >= 900 ? 980 : undefined,
                         alignSelf: 'center',
                         width: '100%'
@@ -353,7 +354,7 @@ const EquipmentScreen = ({ navigation }) => {
                                             <Text
                                                 style={[
                                                     styles.infoValue,
-                                                    item.assignedJob ? { color: '#2563EB' } : { color: '#94A3B8' },
+                                                    item.assignedJob ? { color: '#2563EB' } : { color: COLORS.textMuted },
                                                 ]}
                                                 numberOfLines={1}
                                                 ellipsizeMode="tail"
@@ -378,258 +379,258 @@ const EquipmentScreen = ({ navigation }) => {
             </ScrollView>
 
             {/* NEW/EDIT MODAL */}
-            <Modal visible={modalVisible} animationType="fade" transparent statusBarTranslucent presentationStyle="overFullScreen">
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.modalOverlay}>
-                    <KeyboardAvoidingView
-                        style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
+            <Modal visible={modalVisible} animationType="fade" transparent statusBarTranslucent presentationStyle="overFullScreen" onRequestClose={() => setModalVisible(false)}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    <TouchableOpacity 
+                        style={styles.modalOverlay} 
+                        activeOpacity={1} 
+                        onPress={() => !submitting && !isUploadingImage && setModalVisible(false)}
                     >
-                    <View style={[styles.modalCard, SHADOWS.large, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{editingItem ? 'Edit Equipment' : 'Add New Item'}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            keyboardDismissMode="on-drag"
-                            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-                            contentContainerStyle={styles.modalScroll}
-                        >
-                            <Text style={styles.inputLabel}>Equipment Photo</Text>
-                            <TouchableOpacity style={styles.imageDropzone} onPress={openPicker}>
-                                {imageUri ? (
-                                    <Image source={{ uri: imageUri }} style={styles.previewImage} />
-                                ) : (
-                                    <View style={styles.imagePlaceholder}>
-                                        <MaterialCommunityIcons name="image-outline" size={36} color="#3B82F6" />
-                                        <Text style={styles.imagePlaceholderTitle}>Click to Upload Photo</Text>
-                                        <Text style={styles.imagePlaceholderSub}>JPG, PNG up to 5MB</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-
-                            <Text style={styles.inputLabel}>Asset Name</Text>
-                            <TextInput 
-                                style={styles.input} 
-                                placeholder="e.g. Caterpillar D9" 
-                                value={form.name} 
-                                onChangeText={t => setForm({...form, name: t})} 
-                            />
-
-                            <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.inputLabel}>Category</Text>
-                                    <View style={styles.selectorRow}>
-                                        {['Heavy Equipment', 'Small Tools'].map(c => (
-                                            <TouchableOpacity
-                                                key={c}
-                                                style={[styles.miniBtn, form.category === c && styles.miniBtnActive]}
-                                                onPress={() => setForm(prev => ({ ...prev, category: c, type: c === 'Heavy Equipment' ? 'Excavator' : 'Power Drill' }))}
-                                            >
-                                                <Text style={[styles.miniBtnText, form.category === c && styles.miniBtnTextActive]}>{c}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                                <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
-                                    <Text style={styles.inputLabel}>Type</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                                        {categoryTypes.map(type => (
-                                            <TouchableOpacity
-                                                key={type}
-                                                style={[styles.miniBtn, form.type === type && styles.miniBtnActive, { minWidth: 120 }]}
-                                                onPress={() => setForm(prev => ({ ...prev, type }))}
-                                            >
-                                                <Text style={[styles.miniBtnText, form.type === type && styles.miniBtnTextActive]}>{type}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
-                                </View>
-                            </View>
-
-                            <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.inputLabel}>Serial Number</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="#SN-XXXXX"
-                                        value={form.serialNumber}
-                                        onChangeText={t => setForm({ ...form, serialNumber: t })}
-                                    />
-                                </View>
-                                <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
-                                    <Text style={styles.inputLabel}>Location</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="e.g. Warehouse"
-                                        value={form.location}
-                                        onChangeText={t => setForm({ ...form, location: t })}
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.inputLabel}>Last Maint. Date</Text>
-                                    <TouchableOpacity style={[styles.input, styles.dateField]} onPress={openLastServiceDatePicker}>
-                                        <Text style={[styles.dateText, !form.lastServiceDate && { color: '#94A3B8' }]}>
-                                            {form.lastServiceDate || 'dd/mm/yyyy'}
-                                        </Text>
-                                        <MaterialCommunityIcons name="calendar" size={20} color="#0F172A" />
+                        <TouchableWithoutFeedback>
+                            <View style={[styles.modalCard, SHADOWS.large, { width: modalMaxWidth, flex: 1, maxHeight: modalMaxHeight, padding: isCompact ? 16 : 20 }]}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>{editingItem ? 'Edit Equipment' : 'Add New Item'}</Text>
+                                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                        <MaterialCommunityIcons name="close" size={24} color="#64748B" />
                                     </TouchableOpacity>
                                 </View>
-                                <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
-                                    <Text style={styles.inputLabel}>Hourly Cost ($)</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="0"
-                                        keyboardType="numeric"
-                                        value={form.costPerHour}
-                                        onChangeText={t => setForm({ ...form, costPerHour: t })}
-                                    />
-                                </View>
-                            </View>
 
-                            <Text style={styles.inputLabel}>Initial Status</Text>
-                            <View style={styles.selectorRow}>
-                                {[
-                                    { value: 'operational', label: 'Operational' },
-                                    { value: 'maintenance', label: 'Maintenance' },
-                                    { value: 'idle', label: 'Idle' },
-                                    { value: 'out_of_service', label: 'Out of Service' }
-                                ].map(s => (
-                                    <TouchableOpacity
-                                        key={s.value}
-                                        style={[styles.miniBtn, form.status === s.value && styles.miniBtnActive]}
-                                        onPress={() => setForm({ ...form, status: s.value })}
-                                    >
-                                        <Text style={[styles.miniBtnText, form.status === s.value && styles.miniBtnTextActive]}>{s.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)} disabled={submitting || isUploadingImage}>
-                                    <Text style={styles.cancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.saveBtn, (submitting || isUploadingImage) && { opacity: 0.7 }]}
-                                    onPress={handleSave}
-                                    disabled={submitting || isUploadingImage}
+                                <ScrollView
+                                    showsVerticalScrollIndicator={false}
+                                    keyboardShouldPersistTaps="handled"
+                                    keyboardDismissMode="on-drag"
+                                    automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+                                    contentContainerStyle={styles.modalScroll}
                                 >
-                                    {submitting || isUploadingImage ? <ActivityIndicator color="#fff" /> : (
-                                        <Text style={styles.saveBtnText}>{editingItem ? 'Save Changes' : 'Add Item'}</Text>
-                                    )}
-                                </TouchableOpacity>
+                                    <Text style={styles.inputLabel}>Equipment Photo</Text>
+                                    <TouchableOpacity style={styles.imageDropzone} onPress={openPicker}>
+                                        {imageUri ? (
+                                            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                                        ) : (
+                                            <View style={styles.imagePlaceholder}>
+                                                <MaterialCommunityIcons name="image-outline" size={36} color="#3B82F6" />
+                                                <Text style={styles.imagePlaceholderTitle}>Click to Upload Photo</Text>
+                                                <Text style={styles.imagePlaceholderSub}>JPG, PNG up to 5MB</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+
+                                    <Text style={styles.inputLabel}>Asset Name</Text>
+                                    <TextInput 
+                                        style={styles.input} 
+                                        placeholder="e.g. Caterpillar D9" 
+                                        value={form.name} 
+                                        onChangeText={t => setForm({...form, name: t})} 
+                                    />
+
+                                    <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.inputLabel}>Category</Text>
+                                            <View style={styles.selectorRow}>
+                                                {['Heavy Equipment', 'Small Tools'].map(c => (
+                                                    <TouchableOpacity
+                                                        key={c}
+                                                        style={[styles.miniBtn, form.category === c && styles.miniBtnActive]}
+                                                        onPress={() => setForm(prev => ({ ...prev, category: c, type: c === 'Heavy Equipment' ? 'Excavator' : 'Power Drill' }))}
+                                                    >
+                                                        <Text style={[styles.miniBtnText, form.category === c && styles.miniBtnTextActive]}>{c}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
+                                            <Text style={styles.inputLabel}>Type</Text>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: SPACING.s }}>
+                                                {categoryTypes.map(type => (
+                                                    <TouchableOpacity
+                                                        key={type}
+                                                        style={[styles.miniBtn, form.type === type && styles.miniBtnActive, { minWidth: 120 }]}
+                                                        onPress={() => setForm(prev => ({ ...prev, type }))}
+                                                    >
+                                                        <Text style={[styles.miniBtnText, form.type === type && styles.miniBtnTextActive]}>{type}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.inputLabel}>Serial Number</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="#SN-XXXXX"
+                                                value={form.serialNumber}
+                                                onChangeText={t => setForm({ ...form, serialNumber: t })}
+                                            />
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
+                                            <Text style={styles.inputLabel}>Location</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="e.g. Warehouse"
+                                                value={form.location}
+                                                onChangeText={t => setForm({ ...form, location: t })}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.inputRow, isCompact && styles.inputRowStack]}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.inputLabel}>Last Maint. Date</Text>
+                                            {Platform.OS === 'ios' ? (
+                                                <View style={[styles.input, { justifyContent: 'center', alignItems: 'flex-start' }]}>
+                                                    <DateTimePicker
+                                                        value={form.lastServiceDate ? new Date(form.lastServiceDate) : new Date()}
+                                                        mode="date"
+                                                        display="default"
+                                                        onChange={(event, selectedDate) => {
+                                                            if (!selectedDate) return;
+                                                            const y = selectedDate.getFullYear();
+                                                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                                            const d = String(selectedDate.getDate()).padStart(2, '0');
+                                                            setForm(prev => ({ ...prev, lastServiceDate: `${y}-${m}-${d}` }));
+                                                        }}
+                                                    />
+                                                </View>
+                                            ) : (
+                                                <TouchableOpacity style={[styles.input, styles.dateField]} onPress={openLastServiceDatePicker}>
+                                                    <Text style={styles.dateText}>{form.lastServiceDate ? new Date(form.lastServiceDate).toLocaleDateString() : 'dd/mm/yyyy'}</Text>
+                                                    <MaterialCommunityIcons name="calendar" size={20} color="#64748B" />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: isCompact ? 0 : 12 }}>
+                                            <Text style={styles.inputLabel}>Hourly Cost ($)</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="0"
+                                                keyboardType="numeric"
+                                                value={form.costPerHour}
+                                                onChangeText={t => setForm({ ...form, costPerHour: t })}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    <Text style={styles.inputLabel}>Initial Status</Text>
+                                    <View style={styles.selectorRow}>
+                                        {[
+                                            { value: 'operational', label: 'Operational' },
+                                            { value: 'maintenance', label: 'Maintenance' },
+                                            { value: 'idle', label: 'Idle' },
+                                            { value: 'out_of_service', label: 'Out of Service' }
+                                        ].map(s => (
+                                            <TouchableOpacity
+                                                key={s.value}
+                                                style={[styles.miniBtn, form.status === s.value && styles.miniBtnActive]}
+                                                onPress={() => setForm({ ...form, status: s.value })}
+                                            >
+                                                <Text style={[styles.miniBtnText, form.status === s.value && styles.miniBtnTextActive]}>{s.label}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                    <View style={styles.modalActions}>
+                                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)} disabled={submitting || isUploadingImage}>
+                                            <Text style={styles.cancelText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.saveBtn, (submitting || isUploadingImage) && { opacity: 0.7 }]}
+                                            onPress={handleSave}
+                                            disabled={submitting || isUploadingImage}
+                                        >
+                                            {submitting || isUploadingImage ? <ActivityIndicator color="#fff" /> : (
+                                                <Text style={styles.saveBtnText}>{editingItem ? 'Save Changes' : 'Add Item'}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                </ScrollView>
                             </View>
-                        </ScrollView>
-                    </View>
-                    </KeyboardAvoidingView>
-                </View>
-                </TouchableWithoutFeedback>
-            </Modal>
-            {Platform.OS === 'ios' && datePickerVisible ? (
-                <View style={styles.iosDatePickerWrap}>
-                    <DateTimePicker
-                        value={form.lastServiceDate ? new Date(form.lastServiceDate) : new Date()}
-                        mode="date"
-                        display="spinner"
-                        onChange={(event, selectedDate) => {
-                            if (!selectedDate) return;
-                            const y = selectedDate.getFullYear();
-                            const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                            const d = String(selectedDate.getDate()).padStart(2, '0');
-                            setForm(prev => ({ ...prev, lastServiceDate: `${y}-${m}-${d}` }));
-                        }}
-                    />
-                    <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setDatePickerVisible(false)}>
-                        <Text style={styles.iosDateDoneText}>Done</Text>
+                        </TouchableWithoutFeedback>
                     </TouchableOpacity>
-                </View>
-            ) : null}
+                </KeyboardAvoidingView>
+            </Modal>
+            {/* DatePicker is rendered inline for iOS */}
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     scroll: { paddingTop: 20 },
-    pageHeader: { paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingTop: 4 },
+    pageHeader: { paddingHorizontal: SPACING.m, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingTop: 4 },
     headerTextContainer: { flex: 1, marginRight: 12 },
-    mainTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    mainSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '800', marginTop: 4 },
-    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4 },
-    addBtnText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    mainTitle: { fontSize: 26, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    mainSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '800', marginTop: 4 },
+    addBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: SIZES.radiusBtn, gap: 4 },
+    addBtnText: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
 
-    filterSection: { paddingHorizontal: 20, marginBottom: 24 },
-    searchBar: { height: 52, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-    searchInput: { flex: 1, fontSize: 14, fontWeight: '800', color: '#1E293B' },
+    filterSection: { paddingHorizontal: SPACING.m, marginBottom: 24 },
+    searchBar: { height: 52, backgroundColor: COLORS.background, borderRadius: SIZES.radiusCard, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.m },
+    searchInput: { flex: 1, fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
     categoryRow: { gap: 10 },
-    catBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+    catBtn: { paddingHorizontal: SPACING.m, paddingVertical: 10, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border },
     catBtnActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
-    catBtnText: { fontSize: 12, fontWeight: '900', color: '#64748B' },
-    catBtnTextActive: { color: '#fff' },
+    catBtnText: { fontSize: 12, fontWeight: '900', color: COLORS.textSecondary },
+    catBtnTextActive: { color: COLORS.white },
 
-    listContainer: { paddingHorizontal: 20 },
-    assetCard: { backgroundColor: '#fff', borderRadius: 24, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#F1F5F9' },
-    assetImageWrap: { width: '100%', height: 140, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F8FAFC', marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+    listContainer: { paddingHorizontal: SPACING.m },
+    assetCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, marginBottom: 14, borderWidth: 1, borderColor: COLORS.border },
+    assetImageWrap: { width: '100%', height: 140, borderRadius: SIZES.radiusCard, overflow: 'hidden', backgroundColor: COLORS.background, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border },
     assetImage: { width: '100%', height: '100%' },
-    assetImagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+    assetImagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
     assetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 10 },
     assetMain: { flex: 1, minWidth: 0, paddingRight: 6 },
     headerActions: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, flexShrink: 0, paddingTop: 1 },
     deleteBtn: { padding: 4, justifyContent: 'center', alignItems: 'center' },
-    assetName: { fontSize: 15, fontWeight: '900', color: '#0F172A', lineHeight: 19 },
+    assetName: { fontSize: 15, fontWeight: '900', color: COLORS.textPrimary, lineHeight: 19 },
     assetTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
     assetTypeWrap: { flex: 1, minWidth: 0 },
     assetType: { fontSize: 10, fontWeight: '900', color: '#2563EB', textTransform: 'uppercase' },
     assetDivider: { color: '#CBD5E1', flexShrink: 0 },
-    assetId: { fontSize: 10, fontWeight: '800', color: '#94A3B8', flexShrink: 0 },
+    assetId: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted, flexShrink: 0 },
     statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
     statusDot: { width: 5, height: 5, borderRadius: 2.5 },
     statusLabel: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', flexShrink: 1 },
-    assetDividerLine: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
-    assetInfoGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+    assetDividerLine: { height: 1, backgroundColor: COLORS.surfaceSecondary, marginBottom: 12 },
+    assetInfoGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: SPACING.s },
     infoBox: { flex: 1, minWidth: 0 },
-    infoLabel: { fontSize: 8, fontWeight: '900', color: '#94A3B8', letterSpacing: 0.4, marginBottom: 3 },
-    infoValue: { fontSize: 11, fontWeight: '800', color: '#1E293B', lineHeight: 14 },
+    infoLabel: { fontSize: 8, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.4, marginBottom: 3 },
+    infoValue: { fontSize: 11, fontWeight: '800', color: COLORS.textPrimary, lineHeight: 14 },
 
     emptyView: { alignItems: 'center', paddingVertical: 60 },
-    emptyText: { fontSize: 14, fontWeight: '800', color: '#94A3B8', marginTop: 16, textAlign: 'center' },
+    emptyText: { fontSize: 14, fontWeight: '800', color: COLORS.textMuted, marginTop: SPACING.m, textAlign: 'center' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
+    modalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.4 },
     modalScroll: { paddingBottom: 26 },
-    imageDropzone: { height: 150, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: '#93C5FD', backgroundColor: '#F8FAFC', overflow: 'hidden', marginTop: 6 },
+    imageDropzone: { height: 150, borderRadius: SIZES.radiusCard, borderWidth: 2, borderStyle: 'dashed', borderColor: '#93C5FD', backgroundColor: COLORS.background, overflow: 'hidden', marginTop: 6 },
     imagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     imagePlaceholderTitle: { fontSize: 12, fontWeight: '900', color: '#3B82F6', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8 },
-    imagePlaceholderSub: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginTop: 4 },
+    imagePlaceholderSub: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginTop: 4 },
     previewImage: { width: '100%', height: '100%' },
-    inputLabel: { fontSize: 9, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, marginTop: 16 },
-    input: { height: 50, backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    inputLabel: { fontSize: 9, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, marginTop: SPACING.m },
+    input: { height: 50, backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
     inputRow: { flexDirection: 'row' },
     inputRowStack: { flexDirection: 'column', gap: 10 },
     dateField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    dateText: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    selectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-    miniBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+    dateText: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+    selectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.s, marginTop: 4 },
+    miniBtn: { height: 44, paddingHorizontal: 12, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, flexGrow: 1, minWidth: '45%' },
     miniBtnActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    miniBtnText: { fontSize: 11, fontWeight: '900', color: '#64748B' },
-    miniBtnTextActive: { color: '#fff' },
+    miniBtnText: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary },
+    miniBtnTextActive: { color: COLORS.white },
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 26 },
-    cancelBtn: { flex: 1, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1F5F9' },
-    cancelText: { color: '#475569', fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
-    saveBtn: { flex: 1.25, height: 56, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
-    saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
-    iosDatePickerWrap: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    cancelBtn: { flex: 1, height: 56, borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary },
+    cancelText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
+    saveBtn: { flex: 1.25, height: 56, backgroundColor: '#2563EB', borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+    saveBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
+    iosDatePickerWrap: { backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
     iosDateDoneBtn: { paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
     iosDateDoneText: { color: '#2563EB', fontWeight: '800', fontSize: 14 }
 });

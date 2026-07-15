@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SHADOWS, SIZES, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 
 export const Card = ({ children, style, onPress }) => {
@@ -25,19 +25,19 @@ export const Badge = ({ label, color, bg }) => (
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.card,
-        borderRadius: moderateScale(SIZES.radius || 12),
-        padding: moderateScale(SPACING.m || 16),
-        marginBottom: verticalScale(SPACING.s || 8),
+        borderRadius: SIZES.radiusCard,
+        padding: SPACING.m,
+        marginBottom: SPACING.sm,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
     badge: {
         paddingHorizontal: scale(10),
         paddingVertical: verticalScale(4),
-        borderRadius: moderateScale(20),
+        borderRadius: SIZES.radiusCard,
     },
     badgeText: {
-        fontSize: moderateScale(10),
-        fontWeight: '900',
+        ...TYPOGRAPHY.badge,
     },
 });
+

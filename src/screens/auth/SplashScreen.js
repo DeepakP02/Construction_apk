@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -69,14 +69,14 @@ const SplashScreen = ({ onFinish }) => {
 
 const styles = StyleSheet.create({
     root: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2E3647' },
-    circle: { position: 'absolute', backgroundColor: '#fff', borderRadius: 999 },
+    circle: { position: 'absolute', backgroundColor: COLORS.card, borderRadius: 999 },
     content: { alignItems: 'center' },
     splashLogo: {
         width: 120,
         height: 120,
-        marginBottom: 20,
+        marginBottom: SPACING.m,
     },
-    brand: { color: '#fff', fontSize: 36, fontWeight: '900', letterSpacing: 4 },
+    brand: { color: COLORS.white, fontSize: 36, fontWeight: '900', letterSpacing: 4 },
     line: { width: 50, height: 4, backgroundColor: '#93C5FD', marginVertical: 15, borderRadius: 2 },
     tagline: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
     footer: { position: 'absolute', bottom: 50 },

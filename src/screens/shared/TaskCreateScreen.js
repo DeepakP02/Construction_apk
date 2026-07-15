@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Platform, useWindowDimensions, KeyboardAvoidingView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import api from '../../utils/api';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -289,7 +290,7 @@ const TaskCreateScreen = ({ route, navigation }) => {
 
             <KeyboardAvoidingView
                 style={styles.formWrap}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
             >
             <ScrollView
@@ -489,7 +490,7 @@ const TaskCreateScreen = ({ route, navigation }) => {
             </Modal>
 
             {Platform.OS === 'ios' && datePickerField ? (
-                <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                <View style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
                     <DateTimePicker
                         value={parsePickerDate(form[datePickerField])}
                         mode="date"
@@ -511,28 +512,28 @@ const TaskCreateScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.m, paddingBottom: 12, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
     formWrap: { flex: 1 },
-    headerTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-    content: { padding: 16, paddingBottom: 24 },
-    formCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginTop: 10 },
-    infoCard: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 12, padding: 12, marginBottom: 14 },
-    infoLabel: { fontSize: 10, color: '#64748B', fontWeight: '800' },
+    headerTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
+    content: { padding: SPACING.m, paddingBottom: 24 },
+    formCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, padding: 12, marginTop: 10 },
+    infoCard: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: SIZES.radiusBtn, padding: 12, marginBottom: 14 },
+    infoLabel: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '800' },
     infoValue: { fontSize: 13, color: '#1E3A8A', fontWeight: '800', marginTop: 2 },
-    label: { fontSize: 10, color: '#64748B', fontWeight: '900', marginBottom: 6, marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
-    input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#3B82F633', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: '#1E293B' },
+    label: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '900', marginBottom: 6, marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
+    input: { backgroundColor: COLORS.card, borderWidth: 1.5, borderColor: '#3B82F633', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: COLORS.textPrimary },
     textArea: { minHeight: 90, textAlignVertical: 'top' },
-    priorityRow: { flexDirection: 'row', gap: 8 },
-    priorityPill: { flex: 1, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+    priorityRow: { flexDirection: 'row', gap: SPACING.s },
+    priorityPill: { flex: 1, backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
     priorityPillActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-    priorityText: { color: '#475569', fontWeight: '800', fontSize: 12 },
-    priorityTextActive: { color: '#fff' },
+    priorityText: { color: COLORS.textSecondary, fontWeight: '800', fontSize: 12 },
+    priorityTextActive: { color: COLORS.white },
     dateGrid: { flexDirection: 'row', gap: 10 },
-    dateGridStack: { flexDirection: 'column', gap: 8 },
+    dateGridStack: { flexDirection: 'column', gap: SPACING.s },
     dropdownField: {
         height: 42,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         borderRadius: 10,
         borderWidth: 1.5,
         borderColor: '#3B82F633',
@@ -541,19 +542,19 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 12
     },
-    dropdownValue: { fontSize: 13, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 8 },
-    footer: { flexDirection: 'row', padding: 16, gap: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-    cancelBtn: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+    dropdownValue: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary, flex: 1, marginRight: 8 },
+    footer: { flexDirection: 'row', padding: SPACING.m, gap: 10, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    cancelBtn: { flex: 1, backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     saveBtn: { flex: 1.5, backgroundColor: '#2563EB', borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-    cancelText: { color: '#475569', fontWeight: '800' },
-    saveText: { color: '#fff', fontWeight: '800' },
+    cancelText: { color: COLORS.textSecondary, fontWeight: '800' },
+    saveText: { color: COLORS.white, fontWeight: '800' },
     selOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
-    selBox: { width: '84%', backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    selTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A', textAlign: 'center', marginBottom: 10, textTransform: 'uppercase' },
-    selItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    selLabel: { color: '#334155', fontSize: 13, fontWeight: '700' },
+    selBox: { width: '84%', backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    selTitle: { fontSize: 14, fontWeight: '900', color: COLORS.textPrimary, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase' },
+    selItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    selLabel: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
     selClose: { marginTop: 10, paddingVertical: 10, alignItems: 'center' },
-    selCloseText: { color: '#64748B', fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+    selCloseText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
     pickerDoneBtn: { paddingVertical: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
     pickerDoneText: { color: '#2563EB', fontWeight: '800', fontSize: 14 }
 });

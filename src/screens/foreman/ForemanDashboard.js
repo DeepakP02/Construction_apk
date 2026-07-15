@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, ActivityIndicator, StatusBar, RefreshControl, useWindowDimensions, Alert, Modal } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
@@ -255,7 +255,7 @@ const ForemanDashboard = ({ navigation }) => {
                             </TouchableOpacity>
                         ))
                     ) : (
-                        <Text style={[styles.emptyTasksSub, { textAlign: 'center', padding: 20 }]}>No todos for today.</Text>
+                        <Text style={[styles.emptyTasksSub, { textAlign: 'center', padding: SPACING.m }]}>No todos for today.</Text>
                     )}
                 </View>
 
@@ -318,7 +318,7 @@ const ForemanDashboard = ({ navigation }) => {
                             {!hasAssignments ? (
                                 <View style={{ padding: scale(40), alignItems: 'center' }}>
                                     <MaterialCommunityIcons name="briefcase-off-outline" size={moderateScale(48)} color="#E2E8F0" />
-                                    <Text style={{ marginTop: verticalScale(12), color: '#94A3B8', fontWeight: '700', fontSize: moderateScale(13) }}>
+                                    <Text style={{ marginTop: verticalScale(12), color: COLORS.textMuted, fontWeight: '700', fontSize: moderateScale(13) }}>
                                         No assignments available
                                     </Text>
                                 </View>
@@ -392,15 +392,15 @@ const ForemanDashboard = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     scrollContent: { paddingBottom: 60 },
     headerSubtitleWrap: { paddingLeft: 2 },
-    headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    headerSubtitle: { fontWeight: '700', color: '#64748B' },
-    sectionTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: 1.5, paddingLeft: 2 },
+    headerTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    headerSubtitle: { fontWeight: '700', color: COLORS.textSecondary },
+    sectionTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: 1.5, paddingLeft: 2 },
     actionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     actionCard: { 
-        backgroundColor: '#fff', 
+        backgroundColor: COLORS.card, 
         marginBottom: 8, 
         borderLeftWidth: 3, 
         flexDirection: 'row', 
@@ -411,55 +411,55 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05, 
         shadowRadius: 2
     },
-    actionIconWrap: { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    actionLabel: { fontWeight: '800', color: '#1E293B', flex: 1 },
+    actionIconWrap: { backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    actionLabel: { fontWeight: '800', color: COLORS.textPrimary, flex: 1 },
     sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     pendingBadge: { backgroundColor: '#FEE2E2' },
     pendingBadgeText: { fontWeight: '900', color: '#EF4444' },
-    tasksPremiumCard: { backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+    tasksPremiumCard: { backgroundColor: COLORS.card, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
     taskItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F8FAFC' },
     taskLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     taskStatusDot: { },
-    taskTitle: { fontWeight: '800', color: '#1E293B' },
-    taskProject: { fontWeight: '600', color: '#94A3B8' },
+    taskTitle: { fontWeight: '800', color: COLORS.textPrimary },
+    taskProject: { fontWeight: '600', color: COLORS.textMuted },
     emptyTasksView: { alignItems: 'center' },
-    emptyTasksTitle: { fontWeight: '900', color: '#0F172A' },
-    emptyTasksSub: { fontWeight: '600', color: '#94A3B8', textAlign: 'center' },
+    emptyTasksTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    emptyTasksSub: { fontWeight: '600', color: COLORS.textMuted, textAlign: 'center' },
     viewMoreBtn: { alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', backgroundColor: '#FBFDFF' },
     viewMoreText: { fontWeight: '900', color: '#2563EB' },
-    todoRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    todoCheckbox: { borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+    todoRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    todoCheckbox: { borderWidth: 2, borderColor: COLORS.border, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
     todoChecked: { backgroundColor: '#6366F1', borderColor: '#6366F1' },
-    todoItemText: { fontWeight: '700', color: '#334155' },
-    todoItemDone: { textDecorationLine: 'line-through', color: '#94A3B8' },
+    todoItemText: { fontWeight: '700', color: COLORS.textSecondary },
+    todoItemDone: { textDecorationLine: 'line-through', color: COLORS.textMuted },
     todoAssignedBy: { marginTop: 2, textTransform: 'uppercase' },
-    clockCard: { backgroundColor: '#FFFFFF', marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+    clockCard: { backgroundColor: COLORS.surface, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
     clockStatusRow: { alignItems: 'flex-start', marginBottom: 4 },
-    clockStatusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, gap: 5 },
+    clockStatusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: SIZES.radiusBtn, gap: 5 },
     clockStatusDot: { borderRadius: 3 },
     clockStatusText: { fontWeight: '900', letterSpacing: 0.8 },
     timerSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-    timerText: { fontWeight: '900', color: '#0F172A', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+    timerText: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1, fontVariant: ['tabular-nums'] },
     clockIconFloat: { opacity: 0.4 },
-    siteLabel: { fontWeight: '800', color: '#94A3B8', letterSpacing: 1, marginBottom: 4 },
-    siteSelector: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    siteSelectorText: { fontWeight: '700', color: '#475569', flex: 1 },
+    siteLabel: { fontWeight: '800', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 4 },
+    siteSelector: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    siteSelectorText: { fontWeight: '700', color: COLORS.textSecondary, flex: 1 },
     notActiveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
     notActiveDot: { borderRadius: 4 },
-    notActiveText: { fontWeight: '700', color: '#94A3B8' },
+    notActiveText: { fontWeight: '700', color: COLORS.textMuted },
     clockBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    clockBtnText: { color: '#FFFFFF', fontWeight: '900', letterSpacing: 0.5 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#FFFFFF', padding: 20, maxHeight: '70%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    projectItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    clockBtnText: { color: COLORS.white, fontWeight: '900', letterSpacing: 0.5 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.m },
+    modalContent: { backgroundColor: COLORS.surface, padding: SPACING.m, maxHeight: '70%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    projectItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
     projectItemSelected: { backgroundColor: '#EFF6FF', borderRadius: 10 },
     projectDot: { },
-    projectName: { fontWeight: '800', color: '#1E293B' },
-    projectLocation: { fontWeight: '600', color: '#94A3B8', marginTop: 2 },
-    modalSectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', marginTop: 8 },
-    modalSectionText: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.2, textTransform: 'uppercase' },
+    projectName: { fontWeight: '800', color: COLORS.textPrimary },
+    projectLocation: { fontWeight: '600', color: COLORS.textMuted, marginTop: 2 },
+    modalSectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary, marginTop: 8 },
+    modalSectionText: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' },
 });
 
 export default ForemanDashboard;

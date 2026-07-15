@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, ScrollView, Animated, Modal, TouchableOpacity, Text, StyleSheet, Alert, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, contentBottomForTabBar } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY, contentBottomForTabBar } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import ProjectManagerDashboard from './ProjectManagerDashboard';
@@ -91,7 +91,7 @@ const ProjectManagerDashboardScreen = ({ navigation }) => {
                                         <MaterialCommunityIcons name="office-building" size={20} color={selectedProject?._id === (p._id || p.id) ? '#fff' : COLORS.primary} />
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>
-                                        <Text style={[styles.projectName, selectedProject?._id === (p._id || p.id) && { color: '#fff' }]}>{p.name}</Text>
+                                        <Text style={[styles.projectName, selectedProject?._id === (p._id || p.id) && { color: COLORS.white }]}>{p.name}</Text>
                                         <Text style={[styles.projectLoc, selectedProject?._id === (p._id || p.id) && { color: 'rgba(255,255,255,0.7)' }]}>{(typeof p.location === 'object' ? p.location?.address : p.location) || 'Site Location'}</Text>
                                     </View>
                                     {selectedProject?._id === (p._id || p.id) && <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />}
@@ -114,21 +114,21 @@ const ProjectManagerDashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     scroll: { padding: 14 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 32, padding: 24, maxHeight: '80%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', padding: SPACING.m },
+    modalContent: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: 24, maxHeight: '80%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    modalTitle: { fontSize: 22, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 },
-    modalSub: { fontSize: 13, color: '#64748B', fontWeight: '700', marginBottom: 20 },
-    projectList: { marginBottom: 20 },
-    projectItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, marginBottom: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    modalTitle: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    modalSub: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '700', marginBottom: SPACING.m },
+    projectList: { marginBottom: SPACING.m },
+    projectItem: { flexDirection: 'row', alignItems: 'center', padding: SPACING.m, borderRadius: 18, marginBottom: 10, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
     projectItemActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    projectIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    projectName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    projectLoc: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-    confirmBtn: { width: '100%', padding: 20, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: 'center' },
-    confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    projectIcon: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+    projectName: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+    projectLoc: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+    confirmBtn: { width: '100%', padding: SPACING.m, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.primary, alignItems: 'center' },
+    confirmBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
     floatingActionRow: {
         position: 'absolute',
         bottom: 24,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 24,
+        borderRadius: SIZES.radiusCard,
         elevation: 10,
     },
     floatingIconCircle: {
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     },
     chatTextWrap: { marginLeft: 10, marginRight: 4 },
     chatTopText: { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5 },
-    chatBottomText: { fontSize: 13, fontWeight: '900', color: '#fff', marginTop: -2 }
+    chatBottomText: { fontSize: 13, fontWeight: '900', color: COLORS.white, marginTop: -2 }
 });
 
 export default ProjectManagerDashboardScreen;

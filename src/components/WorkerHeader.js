@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, Modal, ScrollView, Dimensions, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,7 +60,7 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
     };
 
     return (
-        <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, verticalScale(20)) }]}>
+        <View style={[styles.headerContainer, { paddingTop: insets.top + verticalScale(6) }]}>
             <View style={styles.topRow}>
                 <View style={[styles.leftSection, { width: scale(44) }]}>
                     {showBack ? (
@@ -332,63 +332,64 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
 
 const styles = StyleSheet.create({
     headerContainer: {
-        backgroundColor: '#FFFFFF',
-        paddingBottom: verticalScale(14),
+        backgroundColor: COLORS.surface,
+        paddingBottom: verticalScale(12),
         paddingHorizontal: scale(16),
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: COLORS.separator,
         zIndex: 100,
     },
     topRow: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        marginBottom: 8,
-        paddingHorizontal: 4
+        marginBottom: SPACING.s,
+        paddingHorizontal: SPACING.xs
     },
     leftSection: { justifyContent: 'center' },
     centerBranding: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    brandTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+    brandTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
     orgLabel: { fontWeight: '900', color: '#2563EB', textTransform: 'uppercase', letterSpacing: 1.5 },
-    menuBtn: { backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', marginRight: 6, elevation: 4 },
+    menuBtn: { backgroundColor: COLORS.textPrimary, justifyContent: 'center', alignItems: 'center', marginRight: 6, elevation: 4 },
     backWrapper: { flexDirection: 'row', alignItems: 'center' },
-    avatarContainer: { backgroundColor: '#F1F5F9', padding: 2 },
+    avatarContainer: { backgroundColor: COLORS.separator, padding: 2 },
     avatarInner: { flex: 1, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#BFDBFE' },
     avatarText: { fontWeight: '900', color: '#2563EB' },
-    iconSection: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'flex-end' },
+    iconSection: { flexDirection: 'row', gap: SPACING.s, alignItems: 'center', justifyContent: 'flex-end' },
     customRightSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', minWidth: 80 },
-    iconBtn: { padding: 4 },
+    iconBtn: { padding: SPACING.xs },
     notificationWrapper: { position: 'relative' },
-    badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
-    badgeText: { color: '#fff', fontWeight: '900' },
+    badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.white },
+    badgeText: { color: COLORS.white, fontWeight: '900' },
     bottomRow: { width: '100%' },
-    searchBar: { backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
-    searchPlaceholder: { flex: 1, marginLeft: 10, color: '#475569' },
+    searchBar: { backgroundColor: COLORS.surfaceSecondary, borderRadius: SIZES.radiusInput, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.sm },
+    searchPlaceholder: { flex: 1, marginLeft: 10, color: COLORS.textSecondary },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start' },
-    modalContent: { backgroundColor: '#fff', marginHorizontal: 16, borderRadius: 20, padding: 20, maxHeight: '70%', elevation: 8 },
-    modalSearchHeader: { flexDirection: 'row', alignItems: 'center', paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    notifModalContainer: { flex: 1, backgroundColor: '#fff' },
-    notifModalContent: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 20 },
-    modalInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#0F172A' },
-    resultsList: { marginTop: 15 },
-    resultItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    resultTitle: { fontWeight: '800', color: '#1E293B' },
-    resultSubtitle: { color: '#94A3B8', fontWeight: '600', marginTop: 2 },
-    modalTitle: { fontWeight: '900', color: '#1E293B' },
-    notifIcon: { borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    notifTime: { color: '#94A3B8', fontWeight: '700', marginTop: 4 },
+    modalContent: { backgroundColor: COLORS.card, marginHorizontal: SPACING.m, borderRadius: SIZES.radiusModal, padding: SPACING.md, maxHeight: '70%', elevation: 8 },
+    modalSearchHeader: { flexDirection: 'row', alignItems: 'center', paddingBottom: SPACING.m, borderBottomWidth: 1, borderBottomColor: COLORS.separator },
+    notifModalContainer: { flex: 1, backgroundColor: COLORS.card },
+    notifModalContent: { flex: 1, backgroundColor: COLORS.card, paddingHorizontal: SPACING.md },
+    modalInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: COLORS.textPrimary },
+    resultsList: { marginTop: SPACING.m },
+    resultItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    resultTitle: { fontWeight: '800', color: COLORS.textPrimary },
+    resultSubtitle: { color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    notifIcon: { borderRadius: SPACING.sm, justifyContent: 'center', alignItems: 'center' },
+    notifTime: { color: COLORS.textMuted, fontWeight: '700', marginTop: SPACING.xs },
     unreadDot: { backgroundColor: '#3B82F6', marginLeft: 10 },
-    sectionLabel: { paddingHorizontal: 4, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', marginBottom: 4 },
-    sectionLabelText: { fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, textTransform: 'uppercase' },
-    projectItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    projectItemSelected: { backgroundColor: '#EFF6FF', borderRadius: 12, paddingHorizontal: 10 },
+    sectionLabel: { paddingHorizontal: SPACING.xs, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary, marginBottom: SPACING.xs },
+    sectionLabelText: { fontWeight: '900', color: COLORS.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' },
+    projectItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm + 2, paddingHorizontal: SPACING.xs, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceSecondary },
+    projectItemSelected: { backgroundColor: '#EFF6FF', borderRadius: SPACING.sm, paddingHorizontal: 10 },
     statusDot: { flexShrink: 0 },
-    projectName: { fontWeight: '800', color: '#1E293B' },
-    projectLocation: { color: '#94A3B8', fontWeight: '600', marginTop: 2 },
-    statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1, marginLeft: 8, flexShrink: 0 },
+    projectName: { fontWeight: '800', color: COLORS.textPrimary },
+    projectLocation: { color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+    statusBadge: { paddingHorizontal: SPACING.s, paddingVertical: 3, borderRadius: 20, borderWidth: 1, marginLeft: SPACING.s, flexShrink: 0 },
     statusBadgeText: { fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-    viewAllBtn: { marginTop: 12, width: '100%', backgroundColor: '#F8FAFC', borderRadius: 12, alignItems: 'center' },
-    viewAllBtnText: { fontWeight: '900', color: '#64748B', letterSpacing: 1, textTransform: 'uppercase' },
+    viewAllBtn: { marginTop: SPACING.sm, width: '100%', backgroundColor: COLORS.surfaceSecondary, borderRadius: SPACING.sm, alignItems: 'center' },
+    viewAllBtnText: { fontWeight: '900', color: COLORS.textSecondary, letterSpacing: 1, textTransform: 'uppercase' },
 });
 
 export default WorkerHeader;
+

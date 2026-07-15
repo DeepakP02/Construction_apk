@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, ScrollView, Animated, Modal, TouchableOpacity, Text, StyleSheet, Alert, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import WorkerHeader from '../../components/WorkerHeader';
 import ForemanDashboard from './ForemanDashboard';
@@ -72,7 +72,7 @@ const ForemanDashboardScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
                         
-                        <ScrollView style={{ marginBottom: 20 }}>
+                        <ScrollView style={{ marginBottom: SPACING.m }}>
                             <Text style={styles.modalSub}>1. Select working site (Required)</Text>
                             <View style={styles.projectList}>
                                 {projects.map(p => (
@@ -88,7 +88,7 @@ const ForemanDashboardScreen = ({ navigation }) => {
                                             <MaterialCommunityIcons name="office-building" size={20} color={(selectedProject?._id || selectedProject?.id) === (p._id || p.id) ? '#fff' : COLORS.primary} />
                                         </View>
                                         <View style={{ flex: 1, marginLeft: 12 }}>
-                                            <Text style={[styles.projectName, (selectedProject?._id || selectedProject?.id) === (p._id || p.id) && { color: '#fff' }]}>{p.name}</Text>
+                                            <Text style={[styles.projectName, (selectedProject?._id || selectedProject?.id) === (p._id || p.id) && { color: COLORS.white }]}>{p.name}</Text>
                                         </View>
                                         {(selectedProject?._id || selectedProject?.id) === (p._id || p.id) && <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />}
                                     </TouchableOpacity>
@@ -103,7 +103,7 @@ const ForemanDashboardScreen = ({ navigation }) => {
                                             style={[styles.projectItem, !selectedTask && styles.projectItemActive, { height: 50, padding: 10 }]}
                                             onPress={() => setSelectedTask(null)}
                                         >
-                                            <Text style={[styles.projectName, { fontSize: 13 }, !selectedTask && { color: '#fff' }]}>General Attendance</Text>
+                                            <Text style={[styles.projectName, { fontSize: 13 }, !selectedTask && { color: COLORS.white }]}>General Attendance</Text>
                                             {!selectedTask && <MaterialCommunityIcons name="check-circle" size={18} color="#fff" />}
                                         </TouchableOpacity>
                                         
@@ -113,7 +113,7 @@ const ForemanDashboardScreen = ({ navigation }) => {
                                                 style={[styles.projectItem, (selectedTask?._id || selectedTask?.id) === (t._id || t.id) && styles.projectItemActive, { height: 50, padding: 10 }]}
                                                 onPress={() => setSelectedTask(t)}
                                             >
-                                                <Text style={[styles.projectName, { fontSize: 13 }, (selectedTask?._id || selectedTask?.id) === (t._id || t.id) && { color: '#fff' }]}>{t.title}</Text>
+                                                <Text style={[styles.projectName, { fontSize: 13 }, (selectedTask?._id || selectedTask?.id) === (t._id || t.id) && { color: COLORS.white }]}>{t.title}</Text>
                                                 {(selectedTask?._id || selectedTask?.id) === (t._id || t.id) && <MaterialCommunityIcons name="check-circle" size={18} color="#fff" />}
                                             </TouchableOpacity>
                                         ))}
@@ -139,25 +139,25 @@ const ForemanDashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
-    scroll: { padding: 16, paddingBottom: 100 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 32, padding: 24, maxHeight: '80%' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    scroll: { padding: SPACING.m, paddingBottom: 100 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', padding: SPACING.m },
+    modalContent: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusModal, padding: 24, maxHeight: '80%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    modalTitle: { fontSize: 22, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 },
-    modalSub: { fontSize: 13, color: '#64748B', fontWeight: '700', marginBottom: 20 },
-    projectList: { marginBottom: 20 },
-    projectItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, marginBottom: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+    modalTitle: { fontSize: 22, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 },
+    modalSub: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '700', marginBottom: SPACING.m },
+    projectList: { marginBottom: SPACING.m },
+    projectItem: { flexDirection: 'row', alignItems: 'center', padding: SPACING.m, borderRadius: 18, marginBottom: 10, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
     projectItemActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    projectIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-    projectName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    projectLoc: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-    confirmBtn: { width: '100%', padding: 20, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: 'center' },
-    confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
-    confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    projectIcon: { width: 40, height: 40, borderRadius: SIZES.radiusBtn, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+    projectName: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+    projectLoc: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+    confirmBtn: { width: '100%', padding: SPACING.m, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.primary, alignItems: 'center' },
+    confirmBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    confirmBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-    emptyTitle: { fontSize: 24, fontWeight: '900', color: '#1E293B', marginTop: 16 },
-    emptySubtitle: { fontSize: 14, fontWeight: '600', color: '#94A3B8', textAlign: 'center', marginTop: 8 }
+    emptyTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, marginTop: SPACING.m },
+    emptySubtitle: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, textAlign: 'center', marginTop: 8 }
 });
 
 export default ForemanDashboardScreen;

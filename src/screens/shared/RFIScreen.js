@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import WorkerHeader from '../../components/WorkerHeader';
 import { useApp } from '../../context/AppContext';
 import api, { uploadMultipart } from '../../utils/api';
@@ -349,7 +349,7 @@ const RFIScreen = ({ navigation }) => {
                     <View style={styles.recentView}>
                         {recentRFIs.length === 0 ? (
                             <View style={[styles.rfiCard, { alignItems: 'center', padding: 30 }]}>
-                                <Text style={{ color: '#94A3B8', fontWeight: '700' }}>No RFIs found.</Text>
+                                <Text style={{ color: COLORS.textMuted, fontWeight: '700' }}>No RFIs found.</Text>
                             </View>
                         ) : (
                             recentRFIs.map((item, idx) => <RFICard key={`recent-${item._id || idx}`} item={item} />)
@@ -373,7 +373,7 @@ const RFIScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <KeyboardAvoidingView
                         style={styles.modalKeyboardWrap}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 24}
                     >
                     <View style={[styles.modalCard, { width: modalMaxWidth, maxHeight: modalMaxHeight, padding: isSmallScreen ? 14 : 20 }]}>
@@ -453,7 +453,7 @@ const RFIScreen = ({ navigation }) => {
                                                 style={[styles.priorityBtn, form.priority === p && { backgroundColor: color, borderColor: color }]}
                                                 onPress={() => setForm({ ...form, priority: p })}
                                             >
-                                                <Text style={[styles.priorityBtnTxt, form.priority === p && { color: '#fff' }]}>
+                                                <Text style={[styles.priorityBtnTxt, form.priority === p && { color: COLORS.white }]}>
                                                     {p.charAt(0).toUpperCase() + p.slice(1)}
                                                 </Text>
                                             </TouchableOpacity>
@@ -473,12 +473,26 @@ const RFIScreen = ({ navigation }) => {
                                 </View>
                                 <View style={styles.rowCol}>
                                     <Text style={styles.inputLabel}>Due Date</Text>
-                                    <TouchableOpacity style={styles.dropdownField} onPress={openDueDatePicker}>
-                                        <Text style={[styles.dropdownFieldText, !form.dueDate && styles.dropdownPlaceholder]}>
-                                            {formatDueDate(form.dueDate)}
-                                        </Text>
-                                        <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#64748B" />
-                                    </TouchableOpacity>
+                                    {Platform.OS === 'ios' ? (
+                                        <View style={[styles.dropdownField, { justifyContent: 'center', alignItems: 'flex-start' }]}>
+                                            <DateTimePicker
+                                                value={dueDateValue || new Date()}
+                                                mode="date"
+                                                display="default"
+                                                minimumDate={new Date()}
+                                                onChange={(_, selectedDate) => {
+                                                    if (selectedDate) applyDueDate(selectedDate);
+                                                }}
+                                            />
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity style={styles.dropdownField} onPress={openDueDatePicker}>
+                                            <Text style={[styles.dropdownFieldText, !form.dueDate && styles.dropdownPlaceholder]}>
+                                                {formatDueDate(form.dueDate)}
+                                            </Text>
+                                            <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#64748B" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </View>
 
@@ -489,7 +503,7 @@ const RFIScreen = ({ navigation }) => {
                                 <Text style={styles.attachSub}>PDF, DWG, Images, etc.</Text>
                             </TouchableOpacity>
                             {files.length > 0 ? (
-                                <View style={{ marginTop: 10, gap: 8 }}>
+                                <View style={{ marginTop: 10, gap: SPACING.s }}>
                                     {files.map((file, idx) => (
                                         <View key={`${file.uri}-${idx}`} style={styles.fileRow}>
                                             <Text style={styles.fileName} numberOfLines={1}>{file.name || `Attachment ${idx + 1}`}</Text>
@@ -523,207 +537,191 @@ const RFIScreen = ({ navigation }) => {
                         </ScrollView>
                     </View>
                     </KeyboardAvoidingView>
+                    {isSelectingProject && (
+                        <View style={[StyleSheet.absoluteFill, styles.selectModalBack, { zIndex: 9999 }]}>
+                            <View style={styles.selectModalCard}>
+                                <Text style={styles.selectModalTitle}>Select Project</Text>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {(projects || []).map((project, idx) => (
+                                        <TouchableOpacity
+                                            key={project._id ? `rfi-project-${project._id}` : `rfi-project-${idx}`}
+                                            style={[styles.selectOption, form.projectId === (project._id || project.id) && styles.selectOptionActive]}
+                                            onPress={() => {
+                                                setForm(prev => ({ ...prev, projectId: project._id || project.id }));
+                                                setIsSelectingProject(false);
+                                            }}
+                                        >
+                                            <Text style={styles.selectOptionText}>{project.name}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingProject(false)}>
+                                    <Text style={styles.selectCloseText}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {isSelectingCategory && (
+                        <View style={[StyleSheet.absoluteFill, styles.selectModalBack, { zIndex: 9999 }]}>
+                            <View style={styles.selectModalCard}>
+                                <Text style={styles.selectModalTitle}>Select Category</Text>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {RFI_CATEGORIES.map((category) => (
+                                        <TouchableOpacity
+                                            key={category}
+                                            style={[styles.selectOption, form.category === category && styles.selectOptionActive]}
+                                            onPress={() => {
+                                                setForm(prev => ({ ...prev, category }));
+                                                setIsSelectingCategory(false);
+                                            }}
+                                        >
+                                            <Text style={styles.selectOptionText}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingCategory(false)}>
+                                    <Text style={styles.selectCloseText}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {isSelectingAssignee && (
+                        <View style={[StyleSheet.absoluteFill, styles.selectModalBack, { zIndex: 9999 }]}>
+                            <View style={styles.selectModalCard}>
+                                <Text style={styles.selectModalTitle}>Assign To</Text>
+                                <TouchableOpacity
+                                    style={[styles.selectOption, !form.assignedTo && styles.selectOptionActive]}
+                                    onPress={() => {
+                                        setForm(prev => ({ ...prev, assignedTo: '' }));
+                                        setIsSelectingAssignee(false);
+                                    }}
+                                >
+                                    <Text style={styles.selectOptionText}>Unassigned</Text>
+                                </TouchableOpacity>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {assignableUsers.map((member) => (
+                                        <TouchableOpacity
+                                            key={member._id || member.id}
+                                            style={[styles.selectOption, normalizeId(form.assignedTo) === normalizeId(member) && styles.selectOptionActive]}
+                                            onPress={() => {
+                                                setForm(prev => ({ ...prev, assignedTo: normalizeId(member) }));
+                                                setIsSelectingAssignee(false);
+                                            }}
+                                        >
+                                            <Text style={styles.selectOptionText}>{member.fullName} ({member.role})</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingAssignee(false)}>
+                                    <Text style={styles.selectCloseText}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
                 </View>
                 </TouchableWithoutFeedback>
             </Modal>
 
-            <Modal visible={isSelectingProject} transparent animationType="fade" onRequestClose={() => setIsSelectingProject(false)}>
-                <View style={styles.selectModalBack}>
-                    <View style={styles.selectModalCard}>
-                        <Text style={styles.selectModalTitle}>Select Project</Text>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {(projects || []).map((project, idx) => (
-                                <TouchableOpacity
-                                    key={project._id ? `rfi-project-${project._id}` : `rfi-project-${idx}`}
-                                    style={[styles.selectOption, form.projectId === (project._id || project.id) && styles.selectOptionActive]}
-                                    onPress={() => {
-                                        setForm(prev => ({ ...prev, projectId: project._id || project.id }));
-                                        setIsSelectingProject(false);
-                                    }}
-                                >
-                                    <Text style={styles.selectOptionText}>{project.name}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingProject(false)}>
-                            <Text style={styles.selectCloseText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal visible={isSelectingCategory} transparent animationType="fade" onRequestClose={() => setIsSelectingCategory(false)}>
-                <View style={styles.selectModalBack}>
-                    <View style={styles.selectModalCard}>
-                        <Text style={styles.selectModalTitle}>Select Category</Text>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {RFI_CATEGORIES.map((category) => (
-                                <TouchableOpacity
-                                    key={category}
-                                    style={[styles.selectOption, form.category === category && styles.selectOptionActive]}
-                                    onPress={() => {
-                                        setForm(prev => ({ ...prev, category }));
-                                        setIsSelectingCategory(false);
-                                    }}
-                                >
-                                    <Text style={styles.selectOptionText}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingCategory(false)}>
-                            <Text style={styles.selectCloseText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal visible={isSelectingAssignee} transparent animationType="fade" onRequestClose={() => setIsSelectingAssignee(false)}>
-                <View style={styles.selectModalBack}>
-                    <View style={styles.selectModalCard}>
-                        <Text style={styles.selectModalTitle}>Assign To</Text>
-                        <TouchableOpacity
-                            style={[styles.selectOption, !form.assignedTo && styles.selectOptionActive]}
-                            onPress={() => {
-                                setForm(prev => ({ ...prev, assignedTo: '' }));
-                                setIsSelectingAssignee(false);
-                            }}
-                        >
-                            <Text style={styles.selectOptionText}>Unassigned</Text>
-                        </TouchableOpacity>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {assignableUsers.map((member) => (
-                                <TouchableOpacity
-                                    key={member._id || member.id}
-                                    style={[styles.selectOption, normalizeId(form.assignedTo) === normalizeId(member) && styles.selectOptionActive]}
-                                    onPress={() => {
-                                        setForm(prev => ({ ...prev, assignedTo: normalizeId(member) }));
-                                        setIsSelectingAssignee(false);
-                                    }}
-                                >
-                                    <Text style={styles.selectOptionText}>{member.fullName} ({member.role})</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                        <TouchableOpacity style={styles.selectCloseBtn} onPress={() => setIsSelectingAssignee(false)}>
-                            <Text style={styles.selectCloseText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {Platform.OS === 'ios' && showIOSDatePicker ? (
-                <View style={styles.iosDateWrap}>
-                    <DateTimePicker
-                        value={dueDateValue || new Date()}
-                        mode="date"
-                        display="spinner"
-                        minimumDate={new Date()}
-                        onChange={(_, selectedDate) => {
-                            if (selectedDate) applyDueDate(selectedDate);
-                        }}
-                    />
-                    <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowIOSDatePicker(false)}>
-                        <Text style={styles.iosDateDoneTxt}>Done</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
+            {/* DatePicker is rendered inline for iOS */}
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    dashboardHeader: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
+    dashboardHeader: { paddingHorizontal: SPACING.m, paddingTop: 24, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTextContainer: { flex: 1, marginRight: 12 },
-    mainTitle: { fontSize: 26, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    mainSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '800', marginTop: 4 },
-    newBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4 },
-    newBtnText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    mainTitle: { fontSize: 26, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    mainSubtitle: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '800', marginTop: 4 },
+    newBtn: { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: SIZES.radiusBtn, gap: 4 },
+    newBtnText: { color: COLORS.white, fontSize: 12, fontWeight: '900' },
 
-    statsGrid: { paddingHorizontal: 20, marginBottom: 24 },
+    statsGrid: { paddingHorizontal: SPACING.m, marginBottom: 24 },
     statsRow: { flexDirection: 'row', gap: 10 },
-    statBox: { flex: 1, padding: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-    statValue: { fontSize: 24, fontWeight: '900', color: '#0F172A' },
-    statLabel: { fontSize: 10, fontWeight: '900', color: '#64748B', marginTop: 4, textTransform: 'uppercase' },
+    statBox: { flex: 1, padding: SPACING.m, borderRadius: SIZES.radiusCard, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
+    statValue: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary },
+    statLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase' },
 
-    sectionHeader: { paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
+    sectionHeader: { paddingHorizontal: SPACING.m, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { fontSize: 16, fontWeight: '900', color: COLORS.textPrimary },
     viewAllText: { fontSize: 13, fontWeight: '800', color: '#2563EB' },
-    recentView: { paddingHorizontal: 20 },
+    recentView: { paddingHorizontal: SPACING.m },
 
-    rfiCard: { backgroundColor: '#fff', padding: 16, borderRadius: 18, marginBottom: 10, borderWidth: 1, borderColor: '#F1F5F9' },
+    rfiCard: { backgroundColor: COLORS.card, padding: SPACING.m, borderRadius: 18, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
     rfiHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     rfiNumber: { fontSize: 11, fontWeight: '900', color: '#2563EB' },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     statusText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
-    rfiSubject: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+    rfiSubject: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
     rfiFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-    rfiProject: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
+    rfiProject: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
 
-    alertSection: { paddingHorizontal: 20, marginTop: 16 },
-    alertCard: { backgroundColor: '#F8FAFC', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-    alertHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-    alertHeaderTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A', marginLeft: 8, flex: 1 },
+    alertSection: { paddingHorizontal: SPACING.m, marginTop: SPACING.m },
+    alertCard: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusCard, padding: SPACING.m, borderWidth: 1, borderColor: COLORS.border },
+    alertHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.m },
+    alertHeaderTitle: { fontSize: 15, fontWeight: '900', color: COLORS.textPrimary, marginLeft: 8, flex: 1 },
     alertBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     alertBadgeText: { fontSize: 11, fontWeight: '900', color: '#EF4444' },
-    emptyAlertText: { fontSize: 13, color: '#94A3B8', fontWeight: '800', textAlign: 'center', paddingVertical: 10 },
-    alertItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', padding: 12, borderRadius: 14, marginBottom: 8 },
-    alertItemTitle: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-    alertItemMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontWeight: '700' },
+    emptyAlertText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '800', textAlign: 'center', paddingVertical: 10 },
+    alertItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.card, padding: 12, borderRadius: SIZES.radiusBtn, marginBottom: 8 },
+    alertItemTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+    alertItemMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, fontWeight: '700' },
     alertItemDate: { fontSize: 11, color: '#EF4444', marginTop: 2, fontWeight: '800' },
 
-    footerLink: { margin: 20, backgroundColor: '#0F172A', padding: 20, borderRadius: 24, alignItems: 'center' },
-    footerLinkText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+    footerLink: { margin: 20, backgroundColor: '#0F172A', padding: SPACING.m, borderRadius: SIZES.radiusCard, alignItems: 'center' },
+    footerLinkText: { color: COLORS.white, fontSize: 15, fontWeight: '900' },
     footerLinkSub: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '800', marginTop: 4 },
 
     // Create Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 24, paddingBottom: 8 },
     modalKeyboardWrap: { width: '100%', flex: 1, justifyContent: 'flex-end' },
-    modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
+    modalCard: { backgroundColor: COLORS.card, borderTopLeftRadius: 30, borderTopRightRadius: 30, alignSelf: 'center' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-    modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', letterSpacing: -0.4 },
-    modalSubtitle: { fontSize: 13, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
-    inputLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 16, marginBottom: 8 },
-    modalInput: { backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontWeight: '700', color: '#1E293B' },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.4 },
+    modalSubtitle: { fontSize: 13, color: COLORS.textMuted, fontWeight: '700', marginTop: 4 },
+    inputLabel: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: SPACING.m, marginBottom: 8 },
+    modalInput: { backgroundColor: COLORS.background, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.m, paddingVertical: 14, fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
     dropdownField: {
         minHeight: 50,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 14,
+        backgroundColor: COLORS.background,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        paddingHorizontal: 16,
+        borderColor: COLORS.border,
+        paddingHorizontal: SPACING.m,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center'
     },
-    dropdownFieldText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B', marginRight: 8 },
-    dropdownPlaceholder: { color: '#94A3B8', fontWeight: '600' },
+    dropdownFieldText: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginRight: 8 },
+    dropdownPlaceholder: { color: COLORS.textMuted, fontWeight: '600' },
     rowTwoCols: { flexDirection: 'row', gap: 10 },
     rowThreeCols: { flexDirection: 'row', gap: 10 },
     stackCols: { flexDirection: 'column' },
     rowCol: { flex: 1, minWidth: 0 },
     priorityRow: { flexDirection: 'row', gap: 10 },
-    priorityBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    priorityBtnTxt: { fontSize: 12, fontWeight: '900', color: '#64748B', textTransform: 'uppercase' },
+    priorityBtn: { flex: 1, height: 44, borderRadius: SIZES.radiusBtn, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+    priorityBtnTxt: { fontSize: 12, fontWeight: '900', color: COLORS.textSecondary, textTransform: 'uppercase' },
     attachDropzone: {
         borderWidth: 1.5,
         borderStyle: 'dashed',
         borderColor: '#CBD5E1',
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         minHeight: 110,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         paddingHorizontal: 14,
         marginTop: 2
     },
-    attachTitle: { fontSize: 13, fontWeight: '800', color: '#475569', marginTop: 8 },
-    attachSub: { fontSize: 11, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
+    attachTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary, marginTop: 8 },
+    attachSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700', marginTop: 4 },
     fileRow: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         paddingHorizontal: 12,
         paddingVertical: 10,
         flexDirection: 'row',
@@ -731,26 +729,26 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 10
     },
-    fileName: { flex: 1, fontSize: 12, color: '#334155', fontWeight: '700' },
+    fileName: { flex: 1, fontSize: 12, color: COLORS.textSecondary, fontWeight: '700' },
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 24, alignItems: 'center' },
-    modalCancelBtn: { flex: 1, height: 56, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    modalCancelTxt: { color: '#475569', fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
-    submitBtn: { flex: 1.25, height: 56, backgroundColor: '#2563EB', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-    submitBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
+    modalCancelBtn: { flex: 1, height: 56, borderRadius: SIZES.radiusCard, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    modalCancelTxt: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
+    submitBtn: { flex: 1.25, height: 56, backgroundColor: '#2563EB', borderRadius: SIZES.radiusCard, justifyContent: 'center', alignItems: 'center' },
+    submitBtnTxt: { color: COLORS.white, fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
     selectModalBack: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', padding: 24 },
-    selectModalCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, maxHeight: '70%' },
-    selectModalTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
-    selectOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    selectModalCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radiusCard, padding: SPACING.m, maxHeight: '70%' },
+    selectModalTitle: { fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, marginBottom: 12 },
+    selectOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
     selectOptionActive: { backgroundColor: '#EFF6FF' },
-    selectOptionText: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-    selectCloseBtn: { marginTop: 16, height: 48, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
-    selectCloseText: { color: '#475569', fontWeight: '900', fontSize: 12, textTransform: 'uppercase' },
-    iosDateWrap: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 10 },
+    selectOptionText: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+    selectCloseBtn: { marginTop: SPACING.m, height: 48, borderRadius: SIZES.radiusBtn, backgroundColor: COLORS.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+    selectCloseText: { color: COLORS.textSecondary, fontWeight: '900', fontSize: 12, textTransform: 'uppercase' },
+    iosDateWrap: { backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+    iosDateDoneBtn: { alignSelf: 'flex-end', paddingHorizontal: SPACING.m, paddingVertical: 10 },
     iosDateDoneTxt: { color: '#2563EB', fontSize: 16, fontWeight: '800' },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 100 },
-    emptyTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', marginTop: 16 },
-    emptySubtitle: { fontSize: 14, fontWeight: '600', color: '#64748B', textAlign: 'center', marginTop: 8 },
+    emptyTitle: { fontSize: 24, fontWeight: '900', color: COLORS.textPrimary, marginTop: SPACING.m },
+    emptySubtitle: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary, textAlign: 'center', marginTop: 8 },
 });
 
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, SafeAreaView, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../constants/theme';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { scale, verticalScale, moderateScale, isTablet } from '../../utils/responsive';
 import { isTodoVisibleToUser } from '../../utils/todoVisibility';
@@ -254,14 +254,14 @@ const ProjectManagerDashboard = ({ navigation }) => {
                                 onPress={() => setIsUserSelectorVisible(true)}
                             >
                                 <View style={styles.selectorLeft}>
-                                    <View style={[styles.tinyAvatar, !assignedTo && { backgroundColor: '#F1F5F9' }, { width: scale(26), height: scale(26), borderRadius: scale(13) }]}>
+                                    <View style={[styles.tinyAvatar, !assignedTo && { backgroundColor: COLORS.surfaceSecondary }, { width: scale(26), height: scale(26), borderRadius: scale(13) }]}>
                                         {assignedTo ? (
                                             <Text style={[styles.tinyAvatarTxt, { fontSize: moderateScale(11) }]}>{(assignedTo.fullName || assignedTo.name || 'U')[0]}</Text>
                                         ) : (
                                             <MaterialCommunityIcons name="account-plus" size={moderateScale(14)} color="#94A3B8" />
                                         )}
                                     </View>
-                                    <Text style={[styles.selectorValue, !assignedTo && { color: '#94A3B8' }, { fontSize: moderateScale(13) }]}>
+                                    <Text style={[styles.selectorValue, !assignedTo && { color: COLORS.textMuted }, { fontSize: moderateScale(13) }]}>
                                         {assignedTo ? assignedTo.fullName : 'Search user...'}
                                     </Text>
                                 </View>
@@ -566,17 +566,17 @@ const ProjectManagerDashboard = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { width: '100%', backgroundColor: '#F8FAFC' },
+    container: { width: '100%', backgroundColor: COLORS.background },
     scrollContent: { width: '100%', paddingBottom: 10, paddingTop: 10 },
     header: { marginBottom: 6, paddingLeft: 2 },
-    headerTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-    headerSubtitle: { fontWeight: '700', color: '#64748B', marginTop: 1 },
-    sectionTitle: { fontWeight: '900', color: '#0F172A', letterSpacing: 1.5, marginBottom: 10, marginTop: 4, paddingLeft: 2 },
+    headerTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -1 },
+    headerSubtitle: { fontWeight: '700', color: COLORS.textSecondary, marginTop: 1 },
+    sectionTitle: { fontWeight: '900', color: COLORS.textPrimary, letterSpacing: 1.5, marginBottom: 10, marginTop: 4, paddingLeft: 2 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 10 },
     card: { 
         width: '48.5%', 
-        backgroundColor: '#FFFFFF', 
-        borderRadius: 12, 
+        backgroundColor: COLORS.surface, 
+        borderRadius: SIZES.radiusBtn, 
         paddingVertical: 8, 
         paddingHorizontal: 10, 
         marginBottom: 8, 
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
         shadowRadius: 2
     },
     cardIconBox: { 
-        backgroundColor: '#F8FAFC', 
+        backgroundColor: COLORS.background, 
         justifyContent: 'center', 
         alignItems: 'center', 
         marginRight: 8 
@@ -598,12 +598,12 @@ const styles = StyleSheet.create({
     cardLabel: { 
         flex: 1,
         fontWeight: '900', 
-        color: '#1E293B', 
+        color: COLORS.textPrimary, 
         letterSpacing: -0.2 
     },
     premiumWidget: { 
-        backgroundColor: '#FFFFFF', 
-        marginBottom: 16, 
+        backgroundColor: COLORS.surface, 
+        marginBottom: SPACING.m, 
         borderLeftWidth: 4, 
         borderLeftColor: '#4F46E5',
         elevation: 4, 
@@ -615,47 +615,47 @@ const styles = StyleSheet.create({
     widgetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
     widgetTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     iconCircle: { backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
-    widgetTitle: { fontWeight: '900', color: '#1E293B' },
+    widgetTitle: { fontWeight: '900', color: COLORS.textPrimary },
     widgetContent: { gap: 10 },
     inputFieldWrap: { gap: 4 },
-    fieldLabel: { fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
-    textInputBox: { minHeight: 80, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 10 },
-    mainInput: { fontWeight: '700', color: '#1E293B', flex: 1 },
-    selectorBox: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    fieldLabel: { fontWeight: '900', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+    textInputBox: { minHeight: 80, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10 },
+    mainInput: { fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
+    selectorBox: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     selectorBoxActive: { borderColor: '#4F46E5', backgroundColor: '#F5F7FF' },
     selectorLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     tinyAvatar: { backgroundColor: '#E0E7FF', justifyContent: 'center', alignItems: 'center' },
     tinyAvatarTxt: { fontWeight: '900', color: '#4F46E5' },
-    selectorValue: { fontWeight: '700', color: '#1E293B', flex: 1, marginLeft: 10 },
+    selectorValue: { fontWeight: '700', color: COLORS.textPrimary, flex: 1, marginLeft: 10 },
     launchBtn: { backgroundColor: '#0F172A', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-    launchBtnText: { color: '#fff', fontWeight: '900' },
+    launchBtnText: { color: COLORS.white, fontWeight: '900' },
     launchBtnDisabled: { opacity: 0.4 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.7)' },
-    modalContent: { backgroundColor: '#FFFFFF', padding: 20, flex: 1 },
+    modalContent: { backgroundColor: COLORS.surface, padding: SPACING.m, flex: 1 },
     modalList: { flex: 1, marginTop: 10 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalTitle: { fontWeight: '900', color: '#0F172A' },
-    modalSearchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 15 },
-    modalSearchInput: { flex: 1, marginLeft: 10, fontWeight: '700', color: '#1E293B' },
-    modalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    modalTitle: { fontWeight: '900', color: COLORS.textPrimary },
+    modalSearchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 15 },
+    modalSearchInput: { flex: 1, marginLeft: 10, fontWeight: '700', color: COLORS.textPrimary },
+    modalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.border },
     modalItemLeft: { flexDirection: 'row', alignItems: 'center' },
     modalAvatar: { backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
     modalAvatarTxt: { fontWeight: '900', color: '#4F46E5' },
-    modalUserTxt: { fontWeight: '800', color: '#1E293B' },
-    modalRoleTxt: { fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', marginTop: 2 },
+    modalUserTxt: { fontWeight: '800', color: COLORS.textPrimary },
+    modalRoleTxt: { fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
     emptyModalView: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 50 },
-    emptyModalTxt: { fontWeight: '800', color: '#94A3B8', marginTop: 10 },
+    emptyModalTxt: { fontWeight: '800', color: COLORS.textMuted, marginTop: 10 },
     listHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingLeft: 2 },
-    listTitleText: { fontWeight: '900', color: '#0F172A' },
-    countBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 1 },
-    countText: { fontWeight: '900', color: '#64748B' },
-    emptyState: { padding: 15, backgroundColor: '#F8FAFC', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1', width: '100%' },
-    emptyText: { color: '#94A3B8', fontWeight: '700' },
+    listTitleText: { fontWeight: '900', color: COLORS.textPrimary },
+    countBadge: { backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 8, paddingVertical: 1 },
+    countText: { fontWeight: '900', color: COLORS.textSecondary },
+    emptyState: { padding: 15, backgroundColor: COLORS.background, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1', width: '100%' },
+    emptyText: { color: COLORS.textMuted, fontWeight: '700' },
     todoListShell: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         overflow: 'hidden',
         marginBottom: 4,
     },
@@ -680,20 +680,20 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingTop: 2,
     },
-    todoLineText: { flex: 1, fontWeight: '600', color: '#334155', lineHeight: 20, paddingRight: 4 },
-    todoLineDone: { textDecorationLine: 'line-through', color: '#94A3B8' },
+    todoLineText: { flex: 1, fontWeight: '600', color: COLORS.textSecondary, lineHeight: 20, paddingRight: 4 },
+    todoLineDone: { textDecorationLine: 'line-through', color: COLORS.textMuted },
     todoLineAssignee: { fontWeight: '800', color: '#4F46E5' },
     editModalRoot: { flex: 1 },
     editModalInner: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.65)' },
     editModalBackdrop: { ...StyleSheet.absoluteFillObject },
     editModalSheet: {
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.card,
         maxHeight: '88%',
         width: '100%',
         alignSelf: 'center',
         maxWidth: 600,
         borderTopWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: COLORS.border,
         zIndex: 2,
         elevation: 12,
     },
@@ -705,32 +705,32 @@ const styles = StyleSheet.create({
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#E2E8F0',
     },
-    editModalTitle: { fontWeight: '900', color: '#0F172A' },
+    editModalTitle: { fontWeight: '900', color: COLORS.textPrimary },
     editModalInput: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 12,
+        borderColor: COLORS.border,
+        borderRadius: SIZES.radiusBtn,
         paddingHorizontal: 14,
         paddingVertical: 10,
         fontWeight: '600',
-        color: '#1E293B',
+        color: COLORS.textPrimary,
     },
     editModalSaveBtn: {
-        marginTop: 20,
+        marginTop: SPACING.m,
         backgroundColor: '#0F172A',
-        borderRadius: 14,
-        paddingVertical: 16,
+        borderRadius: SIZES.radiusBtn,
+        paddingVertical: SPACING.m,
         alignItems: 'center',
     },
-    editModalSaveText: { color: '#fff', fontWeight: '900' },
+    editModalSaveText: { color: COLORS.white, fontWeight: '900' },
     editModalDeleteBtn: {
         marginTop: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 14,
-        borderRadius: 14,
+        borderRadius: SIZES.radiusBtn,
         borderWidth: 1,
         borderColor: '#FECACA',
         backgroundColor: '#FEF2F2',
