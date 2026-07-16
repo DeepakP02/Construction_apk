@@ -1,15 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import AppHeader from '../../components/AppHeader';
-import { getServerUrl } from '../../utils/api';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 
 const ProjectChatScreen = ({ route }) => {
     const { project } = route.params;
-    const { messages, sendMessage, fetchMessages, ensureDirectChatRoom, user, uploadFile } = useApp();
+    const { messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, user, uploadFile } = useApp();
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
@@ -27,7 +27,6 @@ const ProjectChatScreen = ({ route }) => {
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
-            setLoading(true);
             try {
                 let fetchId = targetId;
                 if (isPrivate) {
@@ -39,6 +38,12 @@ const ProjectChatScreen = ({ route }) => {
                 } else {
                     setDmRoomId(null);
                 }
+
+                const hasCache = messagesByRoom[fetchId] && messagesByRoom[fetchId].length > 0;
+                if (!hasCache && !cancelled) {
+                    setLoading(true);
+                }
+
                 if (!cancelled) await fetchMessages(fetchId);
             } finally {
                 if (!cancelled) {
@@ -58,21 +63,18 @@ const ProjectChatScreen = ({ route }) => {
         return () => showSubscription.remove();
     }, []);
 
-    const chatMessages = (messages || []).filter(m => {
-        const mRoomId = m.roomId != null ? String(m.roomId) : '';
-        const mProjId = m.projectId != null ? String(m.projectId) : '';
-        const mSenderId = (m.sender?._id || m.sender || m.senderId)?.toString();
-
-        if (isGeneral) return !mProjId && !m.receiverId;
-        if (isPrivate) {
-            const resolved = dmRoomId?.toString();
-            return resolved ? mRoomId === resolved : false;
-        }
-        return mProjId === targetId;
-    }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const chatMessages = useMemo(() => {
+        const activeKey = isPrivate ? dmRoomId : targetId;
+        if (!activeKey) return [];
+        
+        const rawList = messagesByRoom[activeKey] || [];
+        return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    }, [messagesByRoom, dmRoomId, targetId, isPrivate]);
 
     const handleSend = async () => {
         if (!text.trim()) return;
+        const textToSend = text;
+        setText(''); // Clear input textbox immediately
         setSending(true);
         try {
             let resolvedDmRoomId = dmRoomId;
@@ -83,14 +85,21 @@ const ProjectChatScreen = ({ route }) => {
                     setDmRoomId(rid);
                 }
             }
-            const success = isPrivate
-                ? await sendMessage(text, null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId)
-                : await sendMessage(text, targetId);
+            const sendPromise = isPrivate
+                ? sendMessage(textToSend, null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId)
+                : sendMessage(textToSend, targetId);
 
-            if (success) {
-                setText('');
-                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
+            setSending(false);
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+            const success = await sendPromise;
+            if (!success) {
+                setText(textToSend); // Restore input text if sending failed
+                Alert.alert('Error', 'Message failed to send. Please check your connection.');
             }
+        } catch (err) {
+            setText(textToSend);
+            Alert.alert('Error', 'An error occurred while sending message.');
         } finally {
             setSending(false);
         }
@@ -108,10 +117,7 @@ const ProjectChatScreen = ({ route }) => {
 
         if (!result.canceled) {
             const asset = result.assets[0];
-            Alert.alert('Send Photo', 'Send this photo to the channel?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Send', onPress: () => sendImageMessage(asset.uri) }
-            ]);
+            sendImageMessage(asset.uri);
         }
     };
 
@@ -127,10 +133,7 @@ const ProjectChatScreen = ({ route }) => {
 
             if (!result.canceled) {
                 const asset = result.assets[0];
-                Alert.alert('Send Photo', 'Send this photo to the channel?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Send', onPress: () => sendImageMessage(asset.uri) }
-                ]);
+                sendImageMessage(asset.uri);
             }
         } catch (e) {
             Alert.alert('Error', 'Could not open camera');
@@ -138,7 +141,6 @@ const ProjectChatScreen = ({ route }) => {
     };
 
     const sendImageMessage = async (uri) => {
-        setSending(true);
         try {
             let resolvedDmRoomId = dmRoomId;
             if (isPrivate && !dmRoomId) {
@@ -148,22 +150,134 @@ const ProjectChatScreen = ({ route }) => {
                     setDmRoomId(rid);
                 }
             }
-            const fileName = uri.split('/').pop();
-            const attachment = await uploadFile(uri, fileName, 'image/jpeg');
+            const targetKey = isPrivate ? (resolvedDmRoomId || peerId) : targetId;
 
-            await (isPrivate
-                ? sendMessage("[Photo Attachment]", null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId, [attachment])
-                : sendMessage("[Photo Attachment]", targetId, null, targetId, [attachment])
-            );
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
+            // Immediately send the message with a placeholder attachment containing isPending: true
+            const placeholderAttachment = {
+                url: uri,
+                name: uri.split('/').pop(),
+                fileType: 'image/jpeg',
+                isPending: true
+            };
+
+            const placeholderMsg = isPrivate
+                ? await sendMessage("[Photo Attachment]", null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId, [placeholderAttachment])
+                : await sendMessage("[Photo Attachment]", targetId, null, targetId, [placeholderAttachment]);
+
+            if (!placeholderMsg) {
+                Alert.alert('Error', 'Could not send the photo placeholder.');
+                return;
+            }
+
+            // Scroll to end immediately
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+            // Upload the file in the background (non-blocking for UI)
+            const uploadAndResolve = async () => {
+                try {
+                    // Use the dedicated chat upload endpoint (/chat/upload)
+                    // which stores to ImageKit and returns [{ name, url, fileType }]
+                    const rawName = uri.split('/').pop() || '';
+                    // Detect mime type from uri - camera on Android often returns content:// or raw paths with no extension
+                    const isGif = uri.toLowerCase().includes('.gif');
+                    const isPng = uri.toLowerCase().includes('.png');
+                    const ext = isGif ? '.gif' : isPng ? '.png' : '.jpg';
+                    const mimeType = isGif ? 'image/gif' : isPng ? 'image/png' : 'image/jpeg';
+                    // Ensure filename always has a proper extension (camera URIs often have no extension)
+                    const hasExt = /\.(jpg|jpeg|png|gif|webp)$/i.test(rawName);
+                    const fileName = hasExt ? rawName : `photo_${Date.now()}${ext}`;
+
+                    const formData = new FormData();
+                    formData.append('files', {
+                        uri: uri,
+                        name: fileName,
+                        type: mimeType
+                    });
+
+                    const uploadRes = await uploadMultipart('/chat/upload', formData).catch(e => {
+                        console.error('[UPLOAD STEP] /chat/upload failed:', e?.response?.status, e?.response?.data || e?.message);
+                        throw e;
+                    });
+
+                    const uploadedFile = Array.isArray(uploadRes.data) ? uploadRes.data[0] : uploadRes.data;
+                    const cloudUrl = uploadedFile?.url;
+
+                    if (!cloudUrl) throw new Error('No URL returned from upload');
+
+                    const attachment = {
+                        url: cloudUrl,
+                        name: uploadedFile?.name || fileName,
+                        fileType: uploadedFile?.fileType || 'image/jpeg',
+                        isPending: false
+                    };
+
+                    // Patch the message attachments on the backend
+                    const msgId = placeholderMsg._id || placeholderMsg.id;
+                    console.log('[PATCH STEP] Patching msgId:', msgId, 'attachment url:', cloudUrl);
+                    await api.patch(`/chat/${msgId}/attachments`, {
+                        attachments: [attachment]
+                    }).catch(e => {
+                        console.error('[PATCH STEP] /chat/:id/attachments failed:', e?.response?.status, e?.response?.data || e?.message, 'msgId:', msgId);
+                        throw e;
+                    });
+
+                    // Update the local messages in this room to replace placeholder with final image URL
+                    setMessagesByRoom(prev => {
+                        const roomMsgs = prev[targetKey] || [];
+                        return {
+                            ...prev,
+                            [targetKey]: roomMsgs.map(m => {
+                                if (String(m._id || m.id) === String(msgId)) {
+                                    return {
+                                        ...m,
+                                        attachments: [attachment]
+                                    };
+                                }
+                                return m;
+                            })
+                        };
+                    });
+                } catch (err) {
+                    console.error('Background upload/resolve failed:', err);
+                    const msgId = placeholderMsg._id || placeholderMsg.id;
+                    // Update local state
+                    setMessagesByRoom(prev => {
+                        const roomMsgs = prev[targetKey] || [];
+                        return {
+                            ...prev,
+                            [targetKey]: roomMsgs.map(m => {
+                                if (String(m._id || m.id) === String(msgId)) {
+                                    return {
+                                        ...m,
+                                        attachments: m.attachments.map(a => ({ ...a, isPending: false, failed: true }))
+                                    };
+                                }
+                                return m;
+                            })
+                        };
+                    });
+                    // PATCH backend so web stops spinning and shows "Upload Failed"
+                    try {
+                        const failedAttachments = (placeholderMsg.attachments || []).map(a => ({
+                            ...a,
+                            isPending: false,
+                            failed: true
+                        }));
+                        await api.patch(`/chat/${msgId}/attachments`, { attachments: failedAttachments });
+                    } catch (patchErr) {
+                        console.warn('Could not update failed status on backend:', patchErr.message);
+                    }
+                }
+            };
+
+            // Execute upload in the background
+            uploadAndResolve();
         } catch (err) {
             Alert.alert("Upload Error", "Failed to upload image.");
-        } finally {
-            setSending(false);
         }
     };
 
-    const renderMessage = ({ item }) => {
+    const renderMessage = useCallback(({ item }) => {
         const itemSenderId = (item.sender?._id || item.sender || item.senderId)?.toString();
         const isMe = itemSenderId === user?._id?.toString() || item.isMe;
         const senderName = item.sender?.fullName || (typeof item.sender === 'string' ? item.sender : '') || 'User';
@@ -190,12 +304,19 @@ const ProjectChatScreen = ({ route }) => {
                                     }
                                     return (
                                         <TouchableOpacity key={i} activeOpacity={0.85} onPress={() => setViewerUri(resolvedUri)}>
-                                            <Image
-                                                source={{ uri: resolvedUri }}
-                                                style={styles.attachmentImage}
-                                                resizeMode="cover"
-                                                onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
-                                            />
+                                            <View style={{ position: 'relative' }}>
+                                                <Image
+                                                    source={{ uri: resolvedUri }}
+                                                    style={styles.attachmentImage}
+                                                    resizeMode="cover"
+                                                    onError={(e) => console.warn('Image load error:', resolvedUri, e.nativeEvent.error)}
+                                                />
+                                                {att.isPending && (
+                                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', borderRadius: 8 }]}>
+                                                        <ActivityIndicator size="small" color="#ffffff" />
+                                                    </View>
+                                                )}
+                                            </View>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -211,7 +332,9 @@ const ProjectChatScreen = ({ route }) => {
                 </View>
             </View>
         );
-    };
+    }, [user?._id]);
+
+    const keyExtractor = useCallback((item, index) => item._id || item.id || index.toString(), []);
 
     return (
         <View style={styles.container}>
@@ -225,10 +348,14 @@ const ProjectChatScreen = ({ route }) => {
                 <FlatList
                     ref={flatListRef}
                     data={chatMessages}
-                    keyExtractor={(item, index) => item._id || item.id || index.toString()}
+                    keyExtractor={keyExtractor}
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
                     renderItem={renderMessage}
+                    initialNumToRender={20}
+                    maxToRenderPerBatch={10}
+                    windowSize={10}
+                    removeClippedSubviews={Platform.OS === 'android'}
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"

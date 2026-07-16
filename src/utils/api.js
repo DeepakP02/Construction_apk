@@ -8,19 +8,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Local backend - your Mac's LAN IP, backend runs on port 4000
-    'http://192.168.1.32:4000',  // ✅ This Mac (LAN IP) - primary local backend
-    'http://10.0.2.2:4000',      // Android Emulator loopback to host
+    // 'http://192.168.1.7:4000',   // ✅ This Mac (LAN IP) - primary local backend
+    // 'http://10.0.2.2:4000',      // Android Emulator loopback to host
     // Production fallback (Railway) - used if local is unreachable
     'https://construction-production-b18f.up.railway.app',
 ].filter(url => typeof url === 'string' && url.startsWith('http'));
 
 let currentBaseIndex = 0;
-const getActiveBaseUrl = () => {
+export const getActiveBaseUrl = () => {
     // Clamp index within bounds to prevent undefined access after failover exhaustion
     if (currentBaseIndex >= BASE_URL_CANDIDATES.length) {
         currentBaseIndex = BASE_URL_CANDIDATES.length - 1;
     }
     return BASE_URL_CANDIDATES[currentBaseIndex] || BASE_URL_CANDIDATES[0] || '';
+};
+export const setActiveBaseUrlIndex = (index) => {
+    const idx = parseInt(index);
+    if (!isNaN(idx) && idx >= 0 && idx < BASE_URL_CANDIDATES.length) {
+        currentBaseIndex = idx;
+        console.log(`[api] Restored active host index: ${idx} (${BASE_URL_CANDIDATES[idx]})`);
+    }
 };
 const getApiBaseUrl = () => {
     const base = getActiveBaseUrl();
@@ -107,6 +114,7 @@ api.interceptors.response.use(
         // If this request succeeded via failover, update the global currentBaseIndex
         if (response.config && response.config.__hostFailoverAttempt !== undefined) {
             currentBaseIndex = response.config.__hostFailoverAttempt;
+            AsyncStorage.setItem('activeBaseUrlIndex', String(currentBaseIndex)).catch(() => { });
         }
         return response;
     },
@@ -147,7 +155,7 @@ api.interceptors.response.use(
 
 export const getServerUrl = (path) => {
     if (!path) return '';
-    if (path.startsWith('http') || path.startsWith('https') || path.startsWith('file://')) return path;
+    if (path.startsWith('http') || path.startsWith('https') || path.startsWith('file://') || path.startsWith('content://') || path.startsWith('data:')) return path;
     if (path.startsWith('//')) return `https:${path}`;
     const baseUrl = getActiveBaseUrl();
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;

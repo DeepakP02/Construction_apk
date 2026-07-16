@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 
 export const ChatTab = ({ project }) => {
-    const { messages, sendMessage, fetchMessages, user } = useApp();
+    const { messagesByRoom, sendMessage, fetchMessages, user } = useApp();
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [unauthorized, setUnauthorized] = useState(false);
@@ -14,25 +14,33 @@ export const ChatTab = ({ project }) => {
     const targetId = (project._id || project.id)?.toString();
 
     React.useEffect(() => {
+        let cancelled = false;
         const load = async () => {
             if (!targetId) return;
-            setLoading(true);
+            const hasCache = messagesByRoom[targetId] && messagesByRoom[targetId].length > 0;
+            if (!hasCache && !cancelled) {
+                setLoading(true);
+            }
             const res = await fetchMessages(targetId, 'project');
-            setLoading(false);
-            if (res?.unauthorized) {
-                setUnauthorized(true);
-            } else {
-                setUnauthorized(false);
-                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300);
+            if (!cancelled) {
+                setLoading(false);
+                if (res?.unauthorized) {
+                    setUnauthorized(true);
+                } else {
+                    setUnauthorized(false);
+                    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300);
+                }
             }
         };
         load();
+        return () => { cancelled = true; };
     }, [targetId]);
 
-    const projectMessages = (messages || []).filter(m => {
-        const mProjId = m.projectId?.toString();
-        return mProjId === targetId;
-    }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const projectMessages = useMemo(() => {
+        if (!targetId) return [];
+        const rawList = messagesByRoom[targetId] || [];
+        return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    }, [messagesByRoom, targetId]);
 
     if (unauthorized) {
         return (
@@ -51,6 +59,26 @@ export const ChatTab = ({ project }) => {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
     };
 
+    const renderMessage = useCallback(({ item }) => {
+        const itemSenderId = (item.sender?._id || item.sender || item.senderId)?.toString();
+        const isMe = itemSenderId === user?._id?.toString() || item.isMe;
+        const senderName = item.sender?.fullName || item.senderName || item.sender || 'User';
+
+        return (
+            <View style={[styles.messageWrapper, isMe ? styles.myMessage : styles.theirMessage]}>
+                {!isMe && <Text style={styles.sender}>{senderName}</Text>}
+                <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
+                    <Text style={[styles.messageText, isMe ? styles.myText : styles.theirText]}>
+                        {item.message || item.text}
+                    </Text>
+                </View>
+                <Text style={styles.time}>{item.time || new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            </View>
+        );
+    }, [user?._id]);
+
+    const keyExtractor = useCallback((item, index) => item._id || item.id || index.toString(), []);
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
@@ -60,25 +88,13 @@ export const ChatTab = ({ project }) => {
             <FlatList
                 ref={flatListRef}
                 data={projectMessages}
-                keyExtractor={(item, index) => item._id || item.id || index.toString()}
+                keyExtractor={keyExtractor}
                 contentContainerStyle={styles.list}
-                renderItem={({ item }) => {
-                    const itemSenderId = (item.sender?._id || item.sender || item.senderId)?.toString();
-                    const isMe = itemSenderId === user?._id?.toString() || item.isMe;
-                    const senderName = item.sender?.fullName || item.senderName || item.sender || 'User';
-
-                    return (
-                        <View style={[styles.messageWrapper, isMe ? styles.myMessage : styles.theirMessage]}>
-                            {!isMe && <Text style={styles.sender}>{senderName}</Text>}
-                            <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
-                                <Text style={[styles.messageText, isMe ? styles.myText : styles.theirText]}>
-                                    {item.message || item.text}
-                                </Text>
-                            </View>
-                            <Text style={styles.time}>{item.time || new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                        </View>
-                    );
-                }}
+                renderItem={renderMessage}
+                initialNumToRender={20}
+                maxToRenderPerBatch={10}
+                windowSize={10}
+                removeClippedSubviews={Platform.OS === 'android'}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                 onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             />

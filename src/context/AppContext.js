@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useRef, useCallb
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Platform, Alert, AppState } from 'react-native';
-import api, { setAuthToken, uploadMultipart, getServerUrl } from '../utils/api';
+import api, { setAuthToken, uploadMultipart, getServerUrl, getActiveBaseUrl } from '../utils/api';
 
 // Helper to resolve possibly relative image URLs
 const resolveImageUrl = (url) => {
@@ -68,7 +68,8 @@ export const AppProvider = ({ children }) => {
     const [tasks, setTasks] = useState([]);
     const [jobs, setJobs] = useState([]);
     const [issues, setIssues] = useState([]);
-    const [messages, setMessages] = useState([]);
+    const [messagesByRoom, setMessagesByRoom] = useState({}); // { [roomId]: Message[] }
+    const directRoomCache = useRef({}); // { peerUserId: directRoomId }
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [clockInTime, setClockInTime] = useState(null);
     const [clockOutTime, setClockOutTime] = useState(null);
@@ -92,6 +93,24 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         chatRoomsRef.current = Array.isArray(chatRooms) ? chatRooms : [];
     }, [chatRooms]);
+
+    useEffect(() => {
+        const saveCachedMessages = async () => {
+            if (!messagesByRoom || Object.keys(messagesByRoom).length === 0) return;
+            try {
+                // Keep only the latest 30 messages per room to prevent local storage bloat
+                const pruned = {};
+                Object.keys(messagesByRoom).forEach((key) => {
+                    const msgs = messagesByRoom[key] || [];
+                    pruned[key] = msgs.slice(-30);
+                });
+                await AsyncStorage.setItem('cachedMessagesByRoom', JSON.stringify(pruned));
+            } catch (err) {
+                console.warn('Failed to save cached messages to storage', err);
+            }
+        };
+        saveCachedMessages();
+    }, [messagesByRoom]);
 
     const emitJoinRoom = (roomId) => {
         const rid = String(roomId || '').trim();
@@ -200,10 +219,26 @@ export const AppProvider = ({ children }) => {
         try {
             const token = await AsyncStorage.getItem('token');
             const savedUser = await AsyncStorage.getItem('user');
+            const savedHostIndex = await AsyncStorage.getItem('activeBaseUrlIndex');
+
+            if (savedHostIndex) {
+                const { setActiveBaseUrlIndex } = require('../utils/api');
+                setActiveBaseUrlIndex(savedHostIndex);
+            }
 
             if (token && savedUser) {
                 const parsedUser = JSON.parse(savedUser);
                 setAuthToken(token);
+
+                // Restore cached messages from local storage
+                try {
+                    const cachedMessages = await AsyncStorage.getItem('cachedMessagesByRoom');
+                    if (cachedMessages) {
+                        setMessagesByRoom(JSON.parse(cachedMessages));
+                    }
+                } catch (cacheErr) {
+                    console.warn('Failed to load cached messages:', cacheErr.message);
+                }
 
                 // Validate token against the live backend before restoring session.
                 // This handles DB migrations where the stored user no longer exists.
@@ -462,129 +497,168 @@ export const AppProvider = ({ children }) => {
         return () => clearInterval(interval);
     }, [user]);
 
-    useEffect(() => {
-        let mounted = true;
-        const connectSocket = async () => {
-            if (!user?._id) return;
+    const addIncomingMessage = useCallback((incoming) => {
+        if (!incoming) return;
+        const incomingId = String(incoming._id || incoming.id || '');
+        const normalizedRoomId = String(incoming.roomId?._id || incoming.roomId || '');
+        const normalizedProjectId = incoming.projectId
+            ? String(incoming.projectId?._id || incoming.projectId)
+            : null;
+        const normalizedIncoming = {
+            ...incoming,
+            id: incomingId,
+            roomId: normalizedRoomId || undefined,
+            projectId: normalizedProjectId || undefined
+        };
 
-            const token = await AsyncStorage.getItem('token');
-            const base = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
-            if (!token || !base) return;
+        const keys = [];
+        if (normalizedRoomId) keys.push(normalizedRoomId);
+        if (normalizedProjectId) keys.push(normalizedProjectId);
+        if (!normalizedRoomId && !normalizedProjectId) keys.push('GENERAL_COMPANY');
 
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-                socketRef.current = null;
-            }
-
-            const socket = io(base, {
-                transports: ['websocket', 'polling'],
-                auth: { token },
-                reconnection: true,
-                reconnectionAttempts: Infinity,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
-                timeout: 20000,
+        setMessagesByRoom((prev) => {
+            const next = { ...prev };
+            keys.forEach(key => {
+                const roomMsgs = prev[key] || [];
+                if (!roomMsgs.some((m) => String(m._id || m.id) === incomingId)) {
+                    next[key] = [...roomMsgs, normalizedIncoming];
+                }
             });
+            return next;
+        });
+    }, []);
 
-            const joinKnownRooms = () => {
-                (chatRoomsRef.current || []).forEach((room) => {
-                    const rid = room?.id || room?._id;
-                    if (rid) socket.emit('join_room', String(rid));
-                });
-            };
+    const connectSocket = useCallback(async () => {
+        if (!user?._id) return;
 
-            socket.on('connect', () => {
-                socket.emit('register_user', {
-                    _id: user._id,
-                    fullName: user.fullName || user.name || 'User',
-                    role: user.role,
-                    companyId: user.companyId
-                });
+        const token = await AsyncStorage.getItem('token');
+        const base = getActiveBaseUrl();
+        if (!token || !base) return;
+
+        if (socketRef.current) {
+            if (socketRef.current.connected) return;
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
+
+        console.log(`[AppContext] Connecting Socket to active host: ${base}`);
+        const socket = io(base, {
+            transports: ['websocket', 'polling'],
+            auth: { token },
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+        });
+
+        const joinKnownRooms = () => {
+            (chatRoomsRef.current || []).forEach((room) => {
+                const rid = room?.id || room?._id;
+                if (rid) socket.emit('join_room', String(rid));
+            });
+        };
+
+        socket.on('connect', () => {
+            socket.emit('register_user', {
+                _id: user._id,
+                fullName: user.fullName || user.name || 'User',
+                role: user.role,
+                companyId: user.companyId
+            });
+            joinKnownRooms();
+        });
+
+        socket.on('connect_error', () => {});
+
+        if (socket.io && typeof socket.io.on === 'function') {
+            socket.io.on('reconnect', () => {
                 joinKnownRooms();
             });
+        }
 
-            socket.on('connect_error', () => {
-                // Keep silent fallback; background refresh handles temporary socket instability.
-            });
-            if (socket.io && typeof socket.io.on === 'function') {
-                socket.io.on('reconnect', () => {
-                    joinKnownRooms();
-                });
-            }
+        socket.on('new_message', (incoming) => {
+            if (!incoming) return;
+            addIncomingMessage(incoming);
 
-            socket.on('new_message', (incoming) => {
-                if (!mounted || !incoming) return;
-                const incomingId = String(incoming._id || incoming.id || '');
-                const normalizedRoomId = String(incoming.roomId?._id || incoming.roomId || '');
-                const normalizedProjectId = incoming.projectId
-                    ? String(incoming.projectId?._id || incoming.projectId)
-                    : null;
-                const normalizedIncoming = {
-                    ...incoming,
-                    id: incoming._id || incoming.id,
-                    roomId: normalizedRoomId || undefined,
-                    projectId: normalizedProjectId || undefined
+            const normalizedRoomId = String(incoming.roomId?._id || incoming.roomId || '');
+            setChatRooms((prev) => {
+                const current = Array.isArray(prev) ? [...prev] : [];
+                const roomId = normalizedRoomId;
+                if (!roomId) return current;
+                const idx = current.findIndex((r) => String(r.id || r._id) === roomId);
+                if (idx === -1) return current;
+
+                const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
+                const isMine = senderId && senderId === String(user._id);
+                const room = { ...current[idx] };
+                room.lastMessage = {
+                    text: incoming.message,
+                    sender: incoming.sender?.fullName || room.lastMessage?.sender || 'User',
+                    time: incoming.createdAt || new Date().toISOString()
                 };
-                setMessages((prev) => {
-                    if (!incomingId) return prev;
-                    if ((prev || []).some((m) => String(m._id || m.id) === incomingId)) return prev;
-                    return [...(prev || []), normalizedIncoming];
-                });
-                setChatRooms((prev) => {
-                    const current = Array.isArray(prev) ? [...prev] : [];
-                    const roomId = normalizedRoomId;
-                    if (!roomId) return current;
-                    const idx = current.findIndex((r) => String(r.id || r._id) === roomId);
-                    if (idx === -1) return current;
-
-                    const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
-                    const isMine = senderId && senderId === String(user._id);
-                    const room = { ...current[idx] };
-                    room.lastMessage = {
-                        text: incoming.message,
-                        sender: incoming.sender?.fullName || room.lastMessage?.sender || 'User',
-                        time: incoming.createdAt || new Date().toISOString()
-                    };
-                    room.unreadCount = isMine ? (room.unreadCount || 0) : ((room.unreadCount || 0) + 1);
-                    current.splice(idx, 1);
-                    current.unshift(room);
-                    return current;
-                });
-
-                const senderForSound = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
-                const isOwnEcho = senderForSound && senderForSound === String(user._id);
-                if (!isOwnEcho && lastPopupMessageIdRef.current !== incomingId) {
-                    lastPopupMessageIdRef.current = incomingId;
-                    playIncomingChatSound();
-                }
+                room.unreadCount = isMine ? (room.unreadCount || 0) : ((room.unreadCount || 0) + 1);
+                current.splice(idx, 1);
+                current.unshift(room);
+                return current;
             });
 
-            socket.on('new_notification', (payload) => {
-                if (!mounted || !payload) return;
-                if (payload?._id || payload?.id) {
-                    setNotifications((prev) => normalizeNotifications([payload, ...(prev || [])]));
-                }
-                if (payload.roomId && socket.connected) {
-                    socket.emit('join_room', String(payload.roomId));
-                }
-                if (payload.type === 'chat') {
-                    refreshBackgroundData();
-                }
-            });
+            const incomingId = String(incoming._id || incoming.id || '');
+            const senderForSound = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
+            const isOwnEcho = senderForSound && senderForSound === String(user._id);
+            if (!isOwnEcho && lastPopupMessageIdRef.current !== incomingId) {
+                lastPopupMessageIdRef.current = incomingId;
+                playIncomingChatSound();
+            }
+        });
 
-            socketRef.current = socket;
-        };
+        socket.on('new_notification', (payload) => {
+            if (!payload) return;
+            if (payload?._id || payload?.id) {
+                setNotifications((prev) => normalizeNotifications([payload, ...(prev || [])]));
+            }
+            if (payload.roomId && socket.connected) {
+                socket.emit('join_room', String(payload.roomId));
+            }
+            if (payload.type === 'chat') {
+                refreshBackgroundData();
+            }
+        });
 
+        socketRef.current = socket;
+    }, [user?._id, addIncomingMessage]);
+
+    useEffect(() => {
         connectSocket();
-
         return () => {
-            mounted = false;
             if (socketRef.current) {
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
         };
-    }, [user?._id]);
+    }, [user?._id, connectSocket]);
+
+    // Active foreground monitoring for socket stability
+    useEffect(() => {
+        const handleAppStateChange = (nextState) => {
+            if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+                console.log('[Socket] App returned to active. Re-checking socket status...');
+                const socket = socketRef.current;
+                if (!socket || !socket.connected) {
+                    connectSocket();
+                } else {
+                    (chatRoomsRef.current || []).forEach((room) => {
+                        const rid = room?.id || room?._id;
+                        if (rid) socket.emit('join_room', String(rid));
+                    });
+                }
+            }
+            appStateRef.current = nextState;
+        };
+
+        const sub = AppState.addEventListener('change', handleAppStateChange);
+        return () => sub?.remove?.();
+    }, [connectSocket]);
 
     useEffect(() => {
         const socket = socketRef.current;
@@ -1292,13 +1366,32 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const messages = React.useMemo(() => {
+        return Object.values(messagesByRoom).flat();
+    }, [messagesByRoom]);
+
+    const setMessages = React.useCallback(() => {
+        console.warn('setMessages is deprecated. Use setMessagesByRoom instead.');
+    }, []);
+
     /** Resolve peer user id → DIRECT ChatRoom id (GET/POST /chat/direct). Required for DM list + send. */
     const ensureDirectChatRoom = async (peerUserId) => {
         try {
             if (!peerUserId) return null;
+            
+            // Fast client-side cache check
+            if (directRoomCache.current[peerUserId]) {
+                return directRoomCache.current[peerUserId];
+            }
+
             const res = await api.post('/chat/direct', { targetUserId: peerUserId });
             const id = res.data?.id || res.data?._id;
-            return id ? id.toString() : null;
+            if (id) {
+                const strId = id.toString();
+                directRoomCache.current[peerUserId] = strId;
+                return strId;
+            }
+            return null;
         } catch (e) {
             const data = e.response?.data;
             const msg =
@@ -1342,21 +1435,57 @@ export const AppProvider = ({ children }) => {
             }
             emitJoinRoom(finalRoomId);
 
-            console.log(`[Fetching Messages] Room ID: ${finalRoomId}`);
+            // Find the last known cached message timestamp for incremental synchronization
+            const roomCache = messagesByRoom[finalRoomId] || [];
+            const lastKnownMessage = roomCache.length > 0
+                ? [...roomCache].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).pop()
+                : null;
 
-            const res = await api.get(`/chat/${finalRoomId}`);
-            const newMsgs = res.data;
+            const afterParam = lastKnownMessage?.createdAt ? `?after=${encodeURIComponent(lastKnownMessage.createdAt)}` : '';
+            console.log(`[Incremental Sync] Fetching room: ${finalRoomId} after: ${lastKnownMessage?.createdAt || 'epoch'}`);
+
+            const res = await api.get(`/chat/${finalRoomId}${afterParam}`);
+            const deltaMsgs = res.data;
+
+            // No new messages — skip state update entirely to prevent unnecessary re-renders
+            if (!deltaMsgs || deltaMsgs.length === 0) {
+                return { success: true, data: [] };
+            }
             
-            setMessages(prev => {
-                const combined = [...prev, ...newMsgs];
-                const uniqueMap = new Map();
-                combined.forEach(m => {
-                    const id = m._id || m.id;
-                    if (id) uniqueMap.set(id.toString(), m);
-                });
-                return Array.from(uniqueMap.values());
+            // Normalize them
+            const normalizedMsgs = deltaMsgs.map(m => {
+                const normalizedRoomId = String(m.roomId?._id || m.roomId || '');
+                const normalizedProjectId = m.projectId
+                    ? String(m.projectId?._id || m.projectId)
+                    : null;
+                return {
+                    ...m,
+                    id: m._id || m.id,
+                    roomId: normalizedRoomId || undefined,
+                    projectId: normalizedProjectId || undefined
+                };
             });
-            return { success: true, data: newMsgs };
+
+            setMessagesByRoom(prev => {
+                const keys = [finalRoomId];
+                if (roomId && roomId !== finalRoomId) keys.push(roomId);
+                
+                const next = { ...prev };
+                let anyNew = false;
+                keys.forEach(key => {
+                    const existing = prev[key] || [];
+                    const existingIds = new Set(existing.map(m => String(m._id || m.id)));
+                    const newOnes = normalizedMsgs.filter(m => !existingIds.has(String(m._id || m.id)));
+                    if (newOnes.length > 0) {
+                        anyNew = true;
+                        next[key] = [...existing, ...newOnes];
+                    }
+                });
+                // If nothing actually new, return prev reference unchanged (no re-render)
+                return anyNew ? next : prev;
+            });
+
+            return { success: true, data: deltaMsgs };
         } catch (e) {
             const isAuthError = e.response?.status === 403 || e.response?.data?.message?.includes('authorized');
             if (isAuthError) {
@@ -1368,100 +1497,118 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-
     const sendMessage = async (text, projectId = null, receiverId = null, roomId = null, attachments = []) => {
-        try {
-            const pStr = projectId?.toString();
-            const rStr = roomId?.toString();
+        const pStr = projectId?.toString();
+        const rStr = roomId?.toString();
 
-            let finalRoomId = rStr || pStr || receiverId?.toString();
+        let finalRoomId = rStr || pStr || receiverId?.toString();
 
-            // For direct messages, always resolve to the canonical ChatRoom id early.
-            // This avoids backend-side room resolution on each send (which adds latency).
-            if (receiverId && (!rStr || rStr === receiverId?.toString())) {
-                const directRoomId = await ensureDirectChatRoom(receiverId);
-                if (directRoomId) {
-                    finalRoomId = String(directRoomId);
-                }
+        // For direct messages, always resolve to the canonical ChatRoom id early.
+        // This avoids backend-side room resolution on each send (which adds latency).
+        if (receiverId && (!rStr || rStr === receiverId?.toString())) {
+            const directRoomId = await ensureDirectChatRoom(receiverId);
+            if (directRoomId) {
+                finalRoomId = String(directRoomId);
             }
+        }
 
-            if (pStr && (finalRoomId === pStr || !finalRoomId)) {
-                const existingRoom = (chatRooms || []).find((r) => {
-                    const p1 = (r.projectId?._id || r.projectId)?.toString();
-                    const p2 = (r.project?._id || r.project)?.toString();
-                    const p3 = (r.relatedId?._id || r.relatedId)?.toString();
-                    const p4 = (r.projectId?.$oid || r.project?.$oid)?.toString();
-                    return p1 === pStr || p2 === pStr || p3 === pStr || p4 === pStr;
-                });
-
-                if (existingRoom) {
-                    finalRoomId = (existingRoom._id || existingRoom.id)?.toString();
-                }
-            }
-
-            const payload = {
-                message: text,
-                attachments: attachments,
-                roomId: finalRoomId
-            };
-
-            if (projectId) payload.projectId = pStr;
-            const shouldSendReceiverId = !!receiverId && (!finalRoomId || String(finalRoomId) === String(receiverId));
-            if (shouldSendReceiverId) payload.receiverId = receiverId?.toString();
-            if (finalRoomId) emitJoinRoom(finalRoomId);
-
-            const tempId = `optimistic-${Date.now()}`;
-            const optimisticMsg = {
-                _id: tempId,
-                id: tempId,
-                message: text,
-                attachments: attachments || [],
-                roomId: finalRoomId,
-                projectId: pStr || undefined,
-                sender: user
-                    ? { _id: user._id, fullName: user.fullName || user.name, role: user.role }
-                    : undefined,
-                createdAt: new Date().toISOString(),
-                pending: true
-            };
-
-            setMessages((prev) => [...(prev || []), optimisticMsg]);
-
-            setChatRooms((prev) => {
-                const list = Array.isArray(prev) ? [...prev] : [];
-                const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
-                if (idx === -1) return list;
-                const room = { ...list[idx] };
-                room.lastMessage = {
-                    text,
-                    sender: user?.fullName || 'You',
-                    time: new Date().toISOString()
-                };
-                list.splice(idx, 1);
-                list.unshift(room);
-                return list;
+        if (pStr && (finalRoomId === pStr || !finalRoomId)) {
+            const existingRoom = (chatRooms || []).find((r) => {
+                const p1 = (r.projectId?._id || r.projectId)?.toString();
+                const p2 = (r.project?._id || r.project)?.toString();
+                const p3 = (r.relatedId?._id || r.relatedId)?.toString();
+                const p4 = (r.projectId?.$oid || r.project?.$oid)?.toString();
+                return p1 === pStr || p2 === pStr || p3 === pStr || p4 === pStr;
             });
 
-            void playSentChatSound();
+            if (existingRoom) {
+                finalRoomId = (existingRoom._id || existingRoom.id)?.toString();
+            }
+        }
 
+        const payload = {
+            message: text,
+            attachments: attachments,
+            roomId: finalRoomId
+        };
+
+        if (projectId) payload.projectId = pStr;
+        const shouldSendReceiverId = !!receiverId && (!finalRoomId || String(finalRoomId) === String(receiverId));
+        if (shouldSendReceiverId) payload.receiverId = receiverId?.toString();
+        if (finalRoomId) emitJoinRoom(finalRoomId);
+
+        const tempId = `optimistic-${Date.now()}`;
+        const optimisticMsg = {
+            _id: tempId,
+            id: tempId,
+            message: text,
+            attachments: attachments || [],
+            roomId: finalRoomId,
+            projectId: pStr || undefined,
+            sender: user
+                ? { _id: user._id, fullName: user.fullName || user.name, role: user.role }
+                : undefined,
+            createdAt: new Date().toISOString(),
+            pending: true
+        };
+
+        // Target key resolve & optimistic state update
+        const targetKey = finalRoomId || pStr || receiverId?.toString() || 'GENERAL_COMPANY';
+        
+        setMessagesByRoom((prev) => {
+            const roomMsgs = prev[targetKey] || [];
+            return {
+                ...prev,
+                [targetKey]: [...roomMsgs, optimisticMsg]
+            };
+        });
+
+        setChatRooms((prev) => {
+            const list = Array.isArray(prev) ? [...prev] : [];
+            const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
+            if (idx === -1) return list;
+            const room = { ...list[idx] };
+            room.lastMessage = {
+                text,
+                sender: user?.fullName || 'You',
+                time: new Date().toISOString()
+            };
+            list.splice(idx, 1);
+            list.unshift(room);
+            return list;
+        });
+
+        void playSentChatSound();
+
+        try {
             const res = await api.post('/chat', payload);
             const savedMsg = res.data;
             const savedRoom = savedMsg?.roomId?._id || savedMsg?.roomId || finalRoomId;
             if (savedRoom) emitJoinRoom(savedRoom);
 
-            setMessages((prev) => {
-                const rawRoom = savedMsg.roomId ?? payload.roomId;
-                const rawProj = savedMsg.projectId ?? payload.projectId;
-                const normalizedMsg = {
-                    ...savedMsg,
-                    id: savedMsg._id || savedMsg.id,
-                    roomId: rawRoom != null ? String(rawRoom) : undefined,
-                    projectId: rawProj != null ? String(rawProj) : undefined,
-                    receiverId: savedMsg.receiverId || payload.receiverId
+            const rawRoom = savedMsg.roomId ?? payload.roomId;
+            const rawProj = savedMsg.projectId ?? payload.projectId;
+            const normalizedMsg = {
+                ...savedMsg,
+                id: savedMsg._id || savedMsg.id,
+                roomId: rawRoom != null ? String(rawRoom) : undefined,
+                projectId: rawProj != null ? String(rawProj) : undefined,
+                receiverId: savedMsg.receiverId || payload.receiverId
+            };
+
+            setMessagesByRoom((prev) => {
+                const roomMsgs = prev[targetKey] || [];
+                const withoutTemp = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
+                if (withoutTemp.some((m) => String(m._id || m.id) === String(normalizedMsg.id))) {
+                    return {
+                        ...prev,
+                        [targetKey]: withoutTemp
+                    };
+                }
+                return {
+                    ...prev,
+                    [targetKey]: [...withoutTemp, normalizedMsg]
                 };
-                const withoutTemp = (prev || []).filter((m) => String(m._id || m.id) !== tempId);
-                if (withoutTemp.find((m) => String(m._id || m.id) === String(normalizedMsg.id))) return withoutTemp;
-                return [...withoutTemp, normalizedMsg];
             });
 
             setChatRooms((prev) => {
@@ -1479,15 +1626,20 @@ export const AppProvider = ({ children }) => {
                 return list;
             });
 
-            // If socket echo is delayed/missed, quick background sync keeps room previews + unreads fresh.
             if (!socketRef.current?.connected) {
                 refreshBackgroundData();
             }
 
-            return true;
+            return normalizedMsg;
         } catch (e) {
             console.error('Send message error', e.response?.data || e);
-            setMessages((prev) => (prev || []).filter((m) => !String(m._id || m.id).startsWith('optimistic-')));
+            setMessagesByRoom((prev) => {
+                const roomMsgs = prev[targetKey] || [];
+                return {
+                    ...prev,
+                    [targetKey]: roomMsgs.filter((m) => String(m._id || m.id) !== tempId)
+                };
+            });
             return false;
         }
     };
@@ -1718,7 +1870,7 @@ export const AppProvider = ({ children }) => {
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
-            messages, setMessages, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile,
+            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile,
             socketRef,
             rfis, rfiStats, addRFI,
             isClockedIn, isClocking, toggleClock,

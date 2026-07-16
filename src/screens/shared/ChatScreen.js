@@ -10,44 +10,36 @@ import { useFocusEffect } from '@react-navigation/native';
 const ChatScreen = ({ navigation }) => {
     const { width } = useWindowDimensions();
     const isCompact = width < 360;
-    const { user, loading, chatRooms } = useApp();
+    const { user, loading, chatRooms, refreshData } = useApp();
     const [search, setSearch] = useState('');
-    const [roomList, setRoomList] = useState([]);
     const [chatUsers, setChatUsers] = useState([]);
     const [activeTab, setActiveTab] = useState('INTERNAL'); // INTERNAL, CLIENT, SUB
 
-    const loadCommunications = useCallback(async () => {
-        try {
-            const roomsRes = await api.get('/chat/rooms');
-            setRoomList(Array.isArray(roomsRes.data) ? roomsRes.data : []);
-        } catch (e) {
-            console.warn('[ChatScreen] Error fetching rooms:', e.message);
-            setRoomList([]);
-        }
-        try {
-            const usersRes = await api.get('/chat/users');
-            setChatUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
-        } catch (e) {
-            console.warn('[ChatScreen] Error fetching users:', e.message);
-            setChatUsers([]);
-        }
-    }, []);
-
+    // Fetch user directory in the background (runs once on mount / user change)
     useEffect(() => {
-        if (!user?._id) return undefined;
-        loadCommunications();
-    }, [user?._id, loadCommunications]);
+        const loadUsers = async () => {
+            try {
+                const usersRes = await api.get('/chat/users');
+                setChatUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+            } catch (e) {
+                console.warn('[ChatScreen] Error fetching users in background:', e.message);
+            }
+        };
+        if (user?._id) {
+            loadUsers();
+        }
+    }, [user?._id]);
 
-    useEffect(() => {
-        if (!Array.isArray(chatRooms) || chatRooms.length === 0) return;
-        setRoomList(chatRooms);
-    }, [chatRooms]);
-
+    // Background refresh on focus (syncs rooms, but does not block rendering)
     useFocusEffect(
         useCallback(() => {
-            if (user?._id) loadCommunications();
-        }, [user?._id, loadCommunications])
+            if (user?._id && refreshData) {
+                refreshData().catch((err) => console.warn('[ChatScreen] Background refresh error:', err));
+            }
+        }, [user?._id, refreshData])
     );
+
+    const roomList = chatRooms || [];
 
     const showTabs = ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
     const tabs = [
