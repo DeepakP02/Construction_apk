@@ -83,10 +83,13 @@ const PMProjectDetailScreen = ({ route, navigation }) => {
 
     const handleBack = () => {
         if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-            return;
+            const state = navigation.getState?.();
+            if (state && state.routes && state.routes.length > 1) {
+                navigation.goBack();
+                return;
+            }
         }
-        navigation.navigate('Main');
+        navigation.navigate('MainTabs');
     };
     const focusCurrentProject = () => {
         if (!projectId) return;

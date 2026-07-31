@@ -49,13 +49,15 @@ const WorkerHeader = ({ title, hideSearch = false, showBack = false, showBrandin
     const safeGoBack = () => {
         try {
             if (navigation?.canGoBack?.()) {
-                navigation.goBack();
-                return;
+                const state = navigation.getState?.();
+                if (state && state.routes && state.routes.length > 1) {
+                    navigation.goBack();
+                    return;
+                }
             }
-            // Root screens in drawer/tab stacks usually have no back history.
-            navigation.navigate('Main');
+            navigation.navigate('MainTabs');
         } catch (e) {
-            try { navigation.navigate('Main'); } catch (_) {}
+            try { navigation.navigate('MainTabs'); } catch (_) {}
         }
     };
 

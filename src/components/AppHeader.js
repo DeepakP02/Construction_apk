@@ -23,12 +23,15 @@ const AppHeader = ({ title, showBack = false, showRight = true, showLogo = false
     const safeGoBack = () => {
         try {
             if (navigation?.canGoBack?.()) {
-                navigation.goBack();
-                return;
+                const state = navigation.getState?.();
+                if (state && state.routes && state.routes.length > 1) {
+                    navigation.goBack();
+                    return;
+                }
             }
-            navigation.navigate('Main');
+            navigation.navigate('MainTabs');
         } catch (e) {
-            try { navigation.navigate('Main'); } catch (_) {}
+            try { navigation.navigate('MainTabs'); } catch (_) {}
         }
     };
 

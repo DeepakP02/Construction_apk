@@ -543,26 +543,6 @@ const ForemanTasksScreen = ({ navigation }) => {
                                     ) : null}
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                    {item.hasChildren ? (
-                                        <TouchableOpacity
-                                            style={{ padding: 4 }}
-                                            onPress={() => {
-                                                const id = String(item._id || item.id);
-                                                setCollapsedNodes((prev) => {
-                                                    const next = new Set(prev);
-                                                    if (next.has(id)) next.delete(id);
-                                                    else next.add(id);
-                                                    return next;
-                                                });
-                                            }}
-                                        >
-                                            <MaterialCommunityIcons
-                                                name={item.isCollapsed ? 'chevron-right' : 'chevron-down'}
-                                                size={18}
-                                                color="#64748B"
-                                            />
-                                        </TouchableOpacity>
-                                    ) : null}
                                     <Text
                                         style={[
                                             styles.taskTitlePm,

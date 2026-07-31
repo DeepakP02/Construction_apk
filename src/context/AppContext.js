@@ -319,7 +319,19 @@ export const AppProvider = ({ children }) => {
                     const res = await api.get(url);
                     console.log(`[Fetch Success] ${label} (${url})`);
                     if (setter) {
-                        const data = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || res.data.tasks || res.data);
+                        let data = Array.isArray(res.data) ? res.data : (res.data.data || res.data.projects || res.data.tasks || res.data.jobs || res.data);
+                        if (Array.isArray(data)) {
+                            const seen = new Set();
+                            data = data.filter(item => {
+                                if (!item) return false;
+                                const id = String(item._id || item.id || '');
+                                if (id) {
+                                    if (seen.has(id)) return false;
+                                    seen.add(id);
+                                }
+                                return true;
+                            });
+                        }
                         setter(data);
                     }
                     return res;

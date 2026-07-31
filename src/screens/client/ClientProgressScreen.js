@@ -249,7 +249,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
         return (
             <View style={[styles.container, styles.centerMsg]}>
                 <Text style={styles.centerMsgTxt}>Missing project.</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: SPACING.m }}>
+                <TouchableOpacity onPress={() => { if (navigation?.canGoBack?.() && navigation.getState?.()?.routes?.length > 1) navigation.goBack(); else navigation.navigate('MainTabs'); }} style={{ marginTop: SPACING.m }}>
                     <Text style={styles.linkBack}>Go back</Text>
                 </TouchableOpacity>
             </View>
@@ -272,7 +272,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
                 <TouchableOpacity onPress={load} style={{ marginTop: SPACING.m }}>
                     <Text style={styles.linkBack}>Retry</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { if (navigation?.canGoBack?.() && navigation.getState?.()?.routes?.length > 1) navigation.goBack(); else navigation.navigate('MainTabs'); }} style={{ marginTop: 8 }}>
                     <Text style={styles.linkBack}>Go back</Text>
                 </TouchableOpacity>
             </View>
@@ -285,7 +285,7 @@ const ClientProgressScreen = ({ route, navigation }) => {
 
             <View style={[styles.header, { paddingTop: insets.top + 10, paddingHorizontal: isCompact ? 12 : 20 }]}>
                 <View style={styles.topRow}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <TouchableOpacity onPress={() => { if (navigation?.canGoBack?.() && navigation.getState?.()?.routes?.length > 1) navigation.goBack(); else navigation.navigate('MainTabs'); }} style={styles.backBtn}>
                         <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
                     </TouchableOpacity>
                     <View style={[styles.projectHeaderInfo, { flexWrap: 'wrap' }]}>
@@ -426,15 +426,6 @@ const ClientProgressScreen = ({ route, navigation }) => {
                                                             });
                                                         }}
                                                     >
-                                                        {hasChildren ? (
-                                                            <MaterialCommunityIcons
-                                                                name={isCollapsed ? 'chevron-right' : 'chevron-down'}
-                                                                size={16}
-                                                                color="#64748B"
-                                                            />
-                                                        ) : (
-                                                            <View style={{ width: 16 }} />
-                                                        )}
                                                         <Text style={styles.taskCell} numberOfLines={2}>
                                                             {task.title}
                                                         </Text>

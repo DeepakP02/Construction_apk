@@ -173,7 +173,7 @@ const ProjectManagerJobsScreen = ({ navigation }) => {
 
             <Animated.FlatList
                 data={filteredProjects}
-                keyExtractor={item => item._id || item.id}
+                keyExtractor={(item, index) => item?._id ? `pmjob-${item._id}-${index}` : (item?.id ? `pmjob-${item.id}-${index}` : `idx-${index}`)}
                 renderItem={renderProjectItem}
                 contentContainerStyle={styles.scroll}
                 showsVerticalScrollIndicator={false}

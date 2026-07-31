@@ -146,7 +146,7 @@ const JobsScreen = ({ navigation }) => {
             ) : (
                 <FlatList
                     data={filteredJobs}
-                    keyExtractor={(item, index) => item._id || item.id || `job-${index}`}
+                    keyExtractor={(item, index) => item?._id ? `job-${item._id}-${index}` : (item?.id ? `job-${item.id}-${index}` : `job-idx-${index}`)}
                     renderItem={renderJobItem}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={

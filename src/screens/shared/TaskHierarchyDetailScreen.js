@@ -109,8 +109,14 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         return d.toISOString().split('T')[0];
     };
     const handleSafeBack = () => {
-        if (navigation.canGoBack()) navigation.goBack();
-        else navigation.navigate('Main');
+        if (navigation?.canGoBack?.()) {
+            const state = navigation.getState?.();
+            if (state && state.routes && state.routes.length > 1) {
+                navigation.goBack();
+                return;
+            }
+        }
+        navigation.navigate('MainTabs');
     };
 
     useEffect(() => {
@@ -148,6 +154,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
         const map = new Map();
         (tasks || []).forEach((t) => map.set(String(t._id || t.id), { ...t, children: [] }));
         (tasks || []).forEach((t) => {
+            if (t.isSubTask) return;
             const node = map.get(String(t._id || t.id));
             const parentId = t.parentTaskId ? String(t.parentTaskId?._id || t.parentTaskId) : null;
             if (parentId && map.has(parentId)) map.get(parentId).children.push(node);
@@ -432,15 +439,6 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
                                     </View>
                                 </View>
                                 <View style={styles.hierTitleRow}>
-                                    {hasTreeChildren ? (
-                                        <TouchableOpacity style={{ padding: 2 }} onPress={onToggleCollapse}>
-                                            <MaterialCommunityIcons
-                                                name={collapsedFlag ? 'chevron-right' : 'chevron-down'}
-                                                size={18}
-                                                color="#64748B"
-                                            />
-                                        </TouchableOpacity>
-                                    ) : null}
                                     <TouchableOpacity onPress={() => toggleTaskCompletion(item)} style={styles.checkboxBtn}>
                                         <MaterialCommunityIcons
                                             name={isCompletedStatus(item?.status) ? 'checkbox-marked' : 'checkbox-blank-outline'}
@@ -524,7 +522,7 @@ const TaskHierarchyDetailScreen = ({ route, navigation }) => {
     const rootMeta = (selectedTask.description || selectedTask.remarks || '').trim() || 'No description';
     const rootSc = getStatusDisplay(selectedTask.status);
     const rootProgress = Math.min(100, Math.max(0, Number(selectedTask.progress) || 0));
-    const directChildCount = (tree?.children || []).length;
+    const directChildCount = (rows || []).length + (subTaskRows || []).length;
 
     return (
         <View style={styles.container}>

@@ -162,7 +162,7 @@ const WorkerJobsScreen = ({ navigation }) => {
             <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
                 <FlatList
                     data={displayJobs}
-                    keyExtractor={(item) => item._id}
+                    keyExtractor={(item, index) => item?._id ? `job-${item._id}-${index}` : `idx-${index}`}
                     renderItem={renderJobItem}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}

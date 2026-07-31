@@ -206,103 +206,219 @@ const WorkerTabs = () => {
     );
 };
 
-// ── REUSABLE DRAWER COMPONENTS ──────────────────────────
-const DrawerHeader = ({ title, subtitle, color = '#2563EB', isWorker = false }) => {
+// ── REUSABLE WEB-MATCHING SIDEBAR DRAWER COMPONENTS ──────────────────────────
+const DrawerHeader = ({ title, subtitle }) => {
     const insets = useSafeAreaInsets();
     return (
         <View style={{ 
-            paddingHorizontal: SPACING.m, 
-            paddingVertical: SPACING.m,
-            paddingTop: Math.max(insets.top, SPACING.m),
+            paddingHorizontal: 16, 
+            paddingVertical: 18,
+            paddingTop: Math.max(insets.top + 8, 20),
             borderBottomWidth: 1, 
-            borderBottomColor: COLORS.border, 
-            marginBottom: SPACING.s,
-            backgroundColor: COLORS.surface 
+            borderBottomColor: '#1e293b', 
+            backgroundColor: '#0f172a',
+            alignItems: 'center'
         }}>
-            <Image 
-                source={require('../../assets/logo.webp')} 
-                style={{ width: scale(36), height: scale(36), marginBottom: SPACING.s }} 
-                resizeMode="contain" 
-            />
-            <Text style={{ fontSize: moderateScale(16), fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.5 }}>{title}</Text>
-            <Text style={{ fontSize: moderateScale(10), color: color, fontWeight: '900', marginTop: 2, letterSpacing: 0.8 }}>{subtitle}</Text>
+            <View style={{ 
+                width: scale(46), 
+                height: scale(46), 
+                borderRadius: 23, 
+                backgroundColor: '#0f172a', 
+                borderWidth: 1.5, 
+                borderColor: '#155dff', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginBottom: 8,
+                shadowColor: '#155dff',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.5,
+                shadowRadius: 8,
+                elevation: 4
+            }}>
+                <Image 
+                    source={require('../../assets/logo.webp')} 
+                    style={{ width: scale(28), height: scale(28) }} 
+                    resizeMode="contain" 
+                />
+            </View>
+            <View style={{ width: 24, height: 2, backgroundColor: '#155dff', borderRadius: 1, marginBottom: 4 }} />
+            <Text style={{ fontSize: moderateScale(13), fontWeight: '900', color: '#ffffff', letterSpacing: 1 }}>{title}</Text>
+            <Text style={{ fontSize: moderateScale(9), color: '#64748b', fontWeight: '800', marginTop: 2, letterSpacing: 1.5, textTransform: 'uppercase' }}>{subtitle}</Text>
         </View>
     );
 };
 
 const DrawerSection = ({ title }) => (
     <Text style={{ 
-        ...TYPOGRAPHY.label, 
-        color: COLORS.textMuted, 
-        marginTop: SPACING.m, 
-        marginBottom: SPACING.xs, 
-        marginLeft: SPACING.xs,
+        fontSize: moderateScale(10),
+        fontWeight: '800',
+        color: '#64748b', 
+        marginTop: 18, 
+        marginBottom: 6, 
+        paddingHorizontal: 12,
+        letterSpacing: 1.5,
         textTransform: 'uppercase'
     }}>{title}</Text>
 );
 
+const WebCustomDrawerItem = ({ label, iconName, active, onPress, badge }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            borderRadius: 12,
+            marginBottom: 4,
+            backgroundColor: active ? '#155dff' : 'transparent',
+            position: 'relative'
+        }}
+    >
+        <View style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 10,
+            backgroundColor: active ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+            borderWidth: active ? 0 : 1,
+            borderColor: 'rgba(255, 255, 255, 0.06)'
+        }}>
+            <MaterialCommunityIcons name={iconName} size={16} color={active ? '#ffffff' : '#94a3b8'} />
+        </View>
+        <Text style={{ flex: 1, fontSize: moderateScale(12.5), fontWeight: active ? '700' : '600', color: active ? '#ffffff' : '#94a3b8' }}>
+            {label}
+        </Text>
+        {badge ? (
+            <View style={{
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 10,
+                backgroundColor: active ? '#ffffff' : 'rgba(21, 93, 255, 0.15)',
+                borderWidth: active ? 0 : 1,
+                borderColor: 'rgba(21, 93, 255, 0.3)'
+            }}>
+                <Text style={{ fontSize: moderateScale(9), fontWeight: '800', color: active ? '#155dff' : '#60a5fa' }}>{badge}</Text>
+            </View>
+        ) : null}
+        {active && (
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ffffff', marginLeft: 6 }} />
+        )}
+    </TouchableOpacity>
+);
+
+const DrawerFooter = ({ user, logout }) => (
+    <View style={{
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#1e293b',
+        backgroundColor: '#0f172a'
+    }}>
+        <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            padding: 10,
+            marginBottom: 12
+        }}>
+            <View style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: 'rgba(21, 93, 255, 0.15)',
+                borderWidth: 1,
+                borderColor: 'rgba(21, 93, 255, 0.3)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+                overflow: 'hidden'
+            }}>
+                {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={{ width: '100%', height: '100%' }} />
+                ) : (
+                    <Text style={{ color: '#155dff', fontWeight: '900', fontSize: moderateScale(14) }}>
+                        {(user?.fullName || user?.name || 'U').charAt(0).toUpperCase()}
+                    </Text>
+                )}
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: moderateScale(12) }} numberOfLines={1}>
+                    {user?.fullName || user?.name || 'User'}
+                </Text>
+                <Text style={{ color: '#64748b', fontWeight: '800', fontSize: moderateScale(9), textTransform: 'uppercase', marginTop: 1 }}>
+                    {user?.role?.replace(/_/g, ' ') || 'Platform Root'}
+                </Text>
+            </View>
+        </View>
+
+        <TouchableOpacity
+            onPress={logout}
+            activeOpacity={0.7}
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                paddingVertical: 10,
+                borderRadius: 12,
+                gap: 8
+            }}
+        >
+            <MaterialCommunityIcons name="logout" size={16} color="#f87171" />
+            <Text style={{ color: '#f87171', fontWeight: '800', fontSize: moderateScale(11), letterSpacing: 0.8 }}>
+                LOG OUT
+            </Text>
+        </TouchableOpacity>
+    </View>
+);
 
 const WorkerDrawerContent = (props) => {
     const { logout, user } = useApp();
+    const activeRoute = props.state?.routes[props.state?.index]?.name;
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-            <DrawerHeader 
-                title="WORKER PANEL" 
-                subtitle={user?.fullName || 'VERIFIED FIELD STAFF'} 
-                color="#10B981" 
-                isWorker 
-            />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
-                <View style={{ paddingHorizontal: 0 }}>
-                    <DrawerItem
-                        label="Home Dashboard"
-                        icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Check-In (My Clock)"
-                        icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs', { screen: 'Clock' })}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="My Hours (Attendance)"
-                        icon={({ color }) => <MaterialCommunityIcons name="timetable" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('WorkerLogs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Daily Site Logs"
-                        icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Discussions"
-                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <TouchableOpacity
-                        style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            backgroundColor: COLORS.dangerLight, 
-                            padding: SPACING.sm, 
-                            borderRadius: SIZES.radiusBtn, 
-                            marginTop: 30,
-                            marginHorizontal: SPACING.s,
-                            marginBottom: 30 
-                        }}
-                        onPress={logout}
-                    >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
-                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+            <DrawerHeader title="KAAL WORKER" subtitle={user?.fullName || 'VERIFIED FIELD STAFF'} />
+            <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }} contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 12 }}>
+                <DrawerSection title="CORE MANAGEMENT" />
+                <WebCustomDrawerItem
+                    label="Dashboard"
+                    iconName="view-dashboard-outline"
+                    active={activeRoute === 'MainTabs'}
+                    onPress={() => props.navigation.navigate('MainTabs')}
+                />
+                <DrawerSection title="FIELD OPERATIONS" />
+                <WebCustomDrawerItem
+                    label="My Clock (Site Check-In)"
+                    iconName="clock-outline"
+                    active={activeRoute === 'TimeClock'}
+                    onPress={() => props.navigation.navigate('MainTabs', { screen: 'Clock' })}
+                />
+                <WebCustomDrawerItem
+                    label="My Hours (Attendance)"
+                    iconName="clock-time-four-outline"
+                    active={activeRoute === 'WorkerLogs'}
+                    onPress={() => props.navigation.navigate('WorkerLogs')}
+                />
+                <WebCustomDrawerItem
+                    label="Daily Site Logs"
+                    iconName="file-document-edit-outline"
+                    active={activeRoute === 'DailyLogs'}
+                    onPress={() => props.navigation.navigate('DailyLogs')}
+                />
+                <WebCustomDrawerItem
+                    label="Site Discussions"
+                    iconName="message-text-outline"
+                    active={activeRoute === 'Chatboard'}
+                    onPress={() => props.navigation.navigate('Chatboard')}
+                />
             </DrawerContentScrollView>
+            <DrawerFooter user={user} logout={logout} />
         </View>
     );
 };
@@ -316,11 +432,7 @@ const WorkerDrawer = () => {
             screenOptions={{
                 headerShown: false,
                 drawerType: 'front',
-                drawerActiveBackgroundColor: '#EFF6FF',
-                drawerActiveTintColor: '#2563EB',
-                drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
-                drawerStyle: { width: Math.min(width * 0.70, 275) }
+                drawerStyle: { backgroundColor: '#0f172a', width: Math.min(width * 0.68, 245) }
             }}
         >
             <Drawer.Screen name="MainTabs" component={WorkerTabs} />
@@ -385,74 +497,58 @@ const ForemanTabs = () => {
 
 // High-Fidelity Custom Drawer Content for Foreman
 const ForemanDrawerContent = (props) => {
-    const { logout } = useApp();
+    const { logout, user } = useApp();
+    const activeRoute = props.state?.routes[props.state?.index]?.name;
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-            <DrawerHeader title="FOREMAN CONTROL" subtitle="SITE OPERATIONS HUB" color="#3B82F6" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
-                <View style={{ paddingHorizontal: 0 }}>
-                    <DrawerSection title="FIELD OPERATIONS" />
-                    <DrawerItem
-                        label="Home Dashboard"
-                        icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Check-In (My Clock)"
-                        icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('TimeClock')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Clock In Crew"
-                        icon={({ color }) => <MaterialCommunityIcons name="account-group" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('CrewClock')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Daily Logs"
-                        icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Issues"
-                        icon={({ color }) => <MaterialCommunityIcons name="alert-circle" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('ForemanIssues')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Purchase Orders"
-                        icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('PurchaseOrders')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Discussions"
-                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <TouchableOpacity
-                        style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            backgroundColor: COLORS.dangerLight, 
-                            padding: SPACING.sm, 
-                            borderRadius: SIZES.radiusBtn, 
-                            marginTop: 30,
-                            marginHorizontal: SPACING.s,
-                            marginBottom: 30 
-                        }}
-                        onPress={logout}
-                    >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
-                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+            <DrawerHeader title="KAAL FOREMAN" subtitle="SITE OPERATIONS HUB" />
+            <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }} contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 12 }}>
+                <DrawerSection title="CORE MANAGEMENT" />
+                <WebCustomDrawerItem
+                    label="Home Dashboard"
+                    iconName="view-dashboard-outline"
+                    active={activeRoute === 'MainTabs'}
+                    onPress={() => props.navigation.navigate('MainTabs')}
+                />
+                <DrawerSection title="FIELD OPERATIONS" />
+                <WebCustomDrawerItem
+                    label="My Clock (Site Check-In)"
+                    iconName="clock-outline"
+                    active={activeRoute === 'TimeClock'}
+                    onPress={() => props.navigation.navigate('TimeClock')}
+                />
+                <WebCustomDrawerItem
+                    label="Clock In Crew"
+                    iconName="account-group-outline"
+                    active={activeRoute === 'CrewClock'}
+                    onPress={() => props.navigation.navigate('CrewClock')}
+                />
+                <WebCustomDrawerItem
+                    label="Daily Logs"
+                    iconName="file-document-edit-outline"
+                    active={activeRoute === 'DailyLogs'}
+                    onPress={() => props.navigation.navigate('DailyLogs')}
+                />
+                <WebCustomDrawerItem
+                    label="Issues"
+                    iconName="alert-circle-outline"
+                    active={activeRoute === 'ForemanIssues'}
+                    onPress={() => props.navigation.navigate('ForemanIssues')}
+                />
+                <WebCustomDrawerItem
+                    label="Purchase Orders"
+                    iconName="clipboard-text-outline"
+                    active={activeRoute === 'PurchaseOrders'}
+                    onPress={() => props.navigation.navigate('PurchaseOrders')}
+                />
+                <WebCustomDrawerItem
+                    label="Site Discussions"
+                    iconName="message-text-outline"
+                    active={activeRoute === 'Chatboard'}
+                    onPress={() => props.navigation.navigate('Chatboard')}
+                />
             </DrawerContentScrollView>
+            <DrawerFooter user={user} logout={logout} />
         </View>
     );
 };
@@ -466,11 +562,7 @@ const ForemanDrawer = () => {
             screenOptions={{
                 headerShown: false,
                 drawerType: 'front',
-                drawerActiveBackgroundColor: '#EFF6FF',
-                drawerActiveTintColor: '#2563EB',
-                drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
-                drawerStyle: { width: Math.min(width * 0.70, 275) }
+                drawerStyle: { backgroundColor: '#0f172a', width: Math.min(width * 0.68, 245) }
             }}
         >
             <Drawer.Screen name="MainTabs" component={ForemanTabs} />
@@ -495,65 +587,46 @@ const ForemanDrawer = () => {
 // High-Fidelity Custom Drawer Content for Client
 const ClientDrawerContent = (props) => {
     const { logout, user } = useApp();
+    const activeRoute = props.state?.routes[props.state?.index]?.name;
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-            <DrawerHeader title="CLIENT HUB" subtitle={user?.companyName || 'PREMIUM ACCESS'} color="#6366F1" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
-                <View style={{ paddingHorizontal: 0 }}>
-                    <DrawerSection title="PORTFOLIO CONTROL" />
-                    <DrawerItem
-                        label="Home Dashboard"
-                        icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="FINANCIALS & RFIS" />
-                    <DrawerItem
-                        label="Project Invoices"
-                        icon={({ color }) => <MaterialCommunityIcons name="file-document-outline" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('ClientInvoices')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="RFI Center"
-                        icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('ClientRFI')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Discussions"
-                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="ACCOUNT" />
-                    <DrawerItem
-                        label="Settings"
-                        icon={({ color }) => <MaterialCommunityIcons name="cog" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Settings')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <TouchableOpacity
-                        style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            backgroundColor: COLORS.dangerLight, 
-                            padding: SPACING.sm, 
-                            borderRadius: SIZES.radiusBtn, 
-                            marginTop: 30,
-                            marginHorizontal: SPACING.s,
-                            marginBottom: 30 
-                        }}
-                        onPress={logout}
-                    >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
-                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+            <DrawerHeader title="KAAL CLIENT" subtitle={user?.companyName || 'PREMIUM PORTAL'} />
+            <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }} contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 12 }}>
+                <DrawerSection title="CORE MANAGEMENT" />
+                <WebCustomDrawerItem
+                    label="Home Dashboard"
+                    iconName="view-dashboard-outline"
+                    active={activeRoute === 'MainTabs'}
+                    onPress={() => props.navigation.navigate('MainTabs')}
+                />
+                <DrawerSection title="FINANCIALS & RFIS" />
+                <WebCustomDrawerItem
+                    label="Project Invoices"
+                    iconName="file-document-outline"
+                    active={activeRoute === 'ClientInvoices'}
+                    onPress={() => props.navigation.navigate('ClientInvoices')}
+                />
+                <WebCustomDrawerItem
+                    label="RFI Center"
+                    iconName="file-question-outline"
+                    active={activeRoute === 'ClientRFI'}
+                    onPress={() => props.navigation.navigate('ClientRFI')}
+                />
+                <WebCustomDrawerItem
+                    label="Site Discussions"
+                    iconName="message-text-outline"
+                    active={activeRoute === 'Chatboard'}
+                    onPress={() => props.navigation.navigate('Chatboard')}
+                />
+                <DrawerSection title="ACCOUNT" />
+                <WebCustomDrawerItem
+                    label="Settings"
+                    iconName="cog-outline"
+                    active={activeRoute === 'Settings'}
+                    onPress={() => props.navigation.navigate('Settings')}
+                />
             </DrawerContentScrollView>
+            <DrawerFooter user={user} logout={logout} />
         </View>
     );
 };
@@ -609,11 +682,7 @@ const ClientDrawer = () => {
             screenOptions={{
                 headerShown: false,
                 drawerType: 'front',
-                drawerActiveBackgroundColor: '#EFF6FF',
-                drawerActiveTintColor: '#2563EB',
-                drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
-                drawerStyle: { width: Math.min(width * 0.70, 275) }
+                drawerStyle: { backgroundColor: '#0f172a', width: Math.min(width * 0.68, 245) }
             }}
         >
             <Drawer.Screen name="MainTabs" component={ClientTabs} />
@@ -626,98 +695,78 @@ const ClientDrawer = () => {
 
 // High-Fidelity Custom Drawer Content for Project Manager
 const ProjectManagerDrawerContent = (props) => {
-    const { logout } = useApp();
+    const { logout, user } = useApp();
+    const activeRoute = props.state?.routes[props.state?.index]?.name;
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-            <DrawerHeader title="KAAL CONTROL" subtitle="PROJECT MANAGEMENT OPS" color="#10B981" />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
-                <View style={{ paddingHorizontal: 0 }}>
-                    <DrawerSection title="DASHBOARD OVERVIEW" />
-                    <DrawerItem
-                        label="Home Dashboard"
-                        icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="FIELD OPERATIONS" />
-                    <DrawerItem
-                        label="Clock In Crew"
-                        icon={({ color }) => <MaterialCommunityIcons name="account-group" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('CrewClock')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Daily Logs"
-                        icon={({ color }) => <MaterialCommunityIcons name="file-document-edit" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('DailyLogs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Issues"
-                        icon={({ color }) => <MaterialCommunityIcons name="alert-circle" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('ForemanIssues')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="GPS Tracking"
-                        icon={({ color }) => <MaterialCommunityIcons name="crosshairs-gps" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('PMGPSTracking')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="SITE DOCUMENTATION" />
-                    <DrawerItem
-                        label="Equipment"
-                        icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Purchase Orders"
-                        icon={({ color }) => <MaterialCommunityIcons name="receipt" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('PurchaseOrders')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="COMMUNICATIONS" />
-                    <DrawerItem
-                        label="RFI Center"
-                        icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('RFI')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Report Logs"
-                        icon={({ color }) => <MaterialCommunityIcons name="chart-box" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Reports')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Discussions"
-                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <TouchableOpacity
-                        style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            backgroundColor: COLORS.dangerLight, 
-                            padding: SPACING.sm, 
-                            borderRadius: SIZES.radiusBtn, 
-                            marginTop: 30,
-                            marginHorizontal: SPACING.s,
-                            marginBottom: 30 
-                        }}
-                        onPress={logout}
-                    >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
-                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+            <DrawerHeader title="KAAL PM CONTROL" subtitle="PROJECT MANAGEMENT OPS" />
+            <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }} contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 12 }}>
+                <DrawerSection title="CORE MANAGEMENT" />
+                <WebCustomDrawerItem
+                    label="Home Dashboard"
+                    iconName="view-dashboard-outline"
+                    active={activeRoute === 'MainTabs'}
+                    onPress={() => props.navigation.navigate('MainTabs')}
+                />
+                <DrawerSection title="FIELD OPERATIONS" />
+                <WebCustomDrawerItem
+                    label="Clock In Crew"
+                    iconName="account-group-outline"
+                    active={activeRoute === 'CrewClock'}
+                    onPress={() => props.navigation.navigate('CrewClock')}
+                />
+                <WebCustomDrawerItem
+                    label="Daily Logs"
+                    iconName="file-document-edit-outline"
+                    active={activeRoute === 'DailyLogs'}
+                    onPress={() => props.navigation.navigate('DailyLogs')}
+                />
+                <WebCustomDrawerItem
+                    label="Issues"
+                    iconName="alert-circle-outline"
+                    active={activeRoute === 'ForemanIssues'}
+                    onPress={() => props.navigation.navigate('ForemanIssues')}
+                />
+                <WebCustomDrawerItem
+                    label="GPS Tracking"
+                    iconName="crosshairs-gps"
+                    active={activeRoute === 'PMGPSTracking'}
+                    onPress={() => props.navigation.navigate('PMGPSTracking')}
+                />
+                <DrawerSection title="SITE DOCUMENTATION" />
+                <WebCustomDrawerItem
+                    label="Equipment"
+                    iconName="wrench-outline"
+                    active={activeRoute === 'Equipment'}
+                    onPress={() => props.navigation.navigate('Equipment')}
+                />
+                <WebCustomDrawerItem
+                    label="Purchase Orders"
+                    iconName="clipboard-text-outline"
+                    active={activeRoute === 'PurchaseOrders'}
+                    onPress={() => props.navigation.navigate('PurchaseOrders')}
+                />
+                <DrawerSection title="COMMUNICATIONS" />
+                <WebCustomDrawerItem
+                    label="RFI Center"
+                    iconName="file-question-outline"
+                    active={activeRoute === 'RFI'}
+                    onPress={() => props.navigation.navigate('RFI')}
+                />
+                <WebCustomDrawerItem
+                    label="Report Logs"
+                    iconName="chart-bar"
+                    active={activeRoute === 'Reports'}
+                    onPress={() => props.navigation.navigate('Reports')}
+                />
+                <WebCustomDrawerItem
+                    label="Site Discussions"
+                    iconName="message-text-outline"
+                    active={activeRoute === 'Chatboard'}
+                    onPress={() => props.navigation.navigate('Chatboard')}
+                />
             </DrawerContentScrollView>
+            <DrawerFooter user={user} logout={logout} />
         </View>
     );
 };
@@ -782,12 +831,8 @@ const ProjectManagerDrawer = () => {
             drawerContent={(props) => <ProjectManagerDrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
-                drawerActiveBackgroundColor: '#EFF6FF',
-                drawerActiveTintColor: '#2563EB',
-                drawerInactiveTintColor: '#64748B',
-                drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
                 drawerType: 'front',
-                drawerStyle: { width: Math.min(width * 0.70, 275) }
+                drawerStyle: { backgroundColor: '#0f172a', width: Math.min(width * 0.68, 245) }
             }}
         >
             <Drawer.Screen name="MainTabs" component={ProjectManagerTabs} />
@@ -818,65 +863,46 @@ const ProjectManagerDrawer = () => {
 // High-Fidelity Custom Drawer Content for Subcontractor
 const SubcontractorDrawerContent = (props) => {
     const { logout, user } = useApp();
+    const activeRoute = props.state?.routes[props.state?.index]?.name;
     return (
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-            <DrawerHeader title="CONTRACTOR PORTAL" subtitle={user?.fullName || 'VERIFIED PARTNER'} color={COLORS.primary} />
-            <DrawerContentScrollView {...props} style={{ backgroundColor: COLORS.surface }} contentContainerStyle={{ paddingTop: 0 }}>
-                <View style={{ paddingHorizontal: 0 }}>
-                    <DrawerSection title="DASHBOARD" />
-                    <DrawerItem
-                        label="Home Dashboard"
-                        icon={({ color }) => <MaterialCommunityIcons name="view-dashboard" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('MainTabs')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="SITE" />
-                    <DrawerItem
-                        label="Site Check-In (My Clock)"
-                        icon={({ color }) => <MaterialCommunityIcons name="clock-check" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('TimeClock')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Equipment"
-                        icon={({ color }) => <MaterialCommunityIcons name="hammer-wrench" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Equipment')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <DrawerSection title="COMMUNICATIONS" />
-                    <DrawerItem
-                        label="RFI Center"
-                        icon={({ color }) => <MaterialCommunityIcons name="frequently-asked-questions" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('RFI')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-                    <DrawerItem
-                        label="Site Discussions"
-                        icon={({ color }) => <MaterialCommunityIcons name="message-text" size={20} color={color} />}
-                        onPress={() => props.navigation.navigate('Chatboard')}
-                        labelStyle={{ ...TYPOGRAPHY.caption, fontWeight: '700', marginLeft: -4 }}
-                    />
-
-                    <TouchableOpacity
-                        style={{ 
-                            flexDirection: 'row', 
-                            alignItems: 'center', 
-                            backgroundColor: COLORS.dangerLight, 
-                            padding: SPACING.sm, 
-                            borderRadius: SIZES.radiusBtn, 
-                            marginTop: 30,
-                            marginHorizontal: SPACING.s,
-                            marginBottom: 30 
-                        }}
-                        onPress={logout}
-                    >
-                        <MaterialCommunityIcons name="logout-variant" size={20} color={COLORS.danger} />
-                        <Text style={{ color: COLORS.danger, fontWeight: '900', marginLeft: 10, fontSize: moderateScale(13) }}>LOGOUT</Text>
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+            <DrawerHeader title="KAAL SUBCONTRACTOR" subtitle={user?.fullName || 'VERIFIED PARTNER'} />
+            <DrawerContentScrollView {...props} style={{ backgroundColor: '#0f172a' }} contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 12 }}>
+                <DrawerSection title="CORE MANAGEMENT" />
+                <WebCustomDrawerItem
+                    label="Home Dashboard"
+                    iconName="view-dashboard-outline"
+                    active={activeRoute === 'MainTabs'}
+                    onPress={() => props.navigation.navigate('MainTabs')}
+                />
+                <DrawerSection title="FIELD OPERATIONS" />
+                <WebCustomDrawerItem
+                    label="My Clock (Site Check-In)"
+                    iconName="clock-outline"
+                    active={activeRoute === 'TimeClock'}
+                    onPress={() => props.navigation.navigate('TimeClock')}
+                />
+                <WebCustomDrawerItem
+                    label="Equipment"
+                    iconName="wrench-outline"
+                    active={activeRoute === 'Equipment'}
+                    onPress={() => props.navigation.navigate('Equipment')}
+                />
+                <DrawerSection title="COMMUNICATIONS" />
+                <WebCustomDrawerItem
+                    label="RFI Center"
+                    iconName="file-question-outline"
+                    active={activeRoute === 'RFI'}
+                    onPress={() => props.navigation.navigate('RFI')}
+                />
+                <WebCustomDrawerItem
+                    label="Site Discussions"
+                    iconName="message-text-outline"
+                    active={activeRoute === 'Chatboard'}
+                    onPress={() => props.navigation.navigate('Chatboard')}
+                />
             </DrawerContentScrollView>
+            <DrawerFooter user={user} logout={logout} />
         </View>
     );
 };
@@ -945,7 +971,7 @@ const SubcontractorDrawer = () => {
                 drawerActiveTintColor: '#2563EB',
                 drawerInactiveTintColor: '#64748B',
                 drawerLabelStyle: { fontWeight: '800', fontSize: moderateScale(13), marginLeft: -4 },
-                drawerStyle: { width: Math.min(width * 0.70, 275) }
+                drawerStyle: { backgroundColor: '#0f172a', width: Math.min(width * 0.68, 245) }
             }}
         >
             <Drawer.Screen name="MainTabs" component={SubcontractorTabs} />

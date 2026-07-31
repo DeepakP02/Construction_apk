@@ -58,8 +58,14 @@ const TaskCreateScreen = ({ route, navigation }) => {
         assignedTo: ''
     });
     const handleSafeBack = () => {
-        if (navigation.canGoBack()) navigation.goBack();
-        else navigation.navigate('Main');
+        if (navigation?.canGoBack?.()) {
+            const state = navigation.getState?.();
+            if (state && state.routes && state.routes.length > 1) {
+                navigation.goBack();
+                return;
+            }
+        }
+        navigation.navigate('MainTabs');
     };
 
     useEffect(() => {

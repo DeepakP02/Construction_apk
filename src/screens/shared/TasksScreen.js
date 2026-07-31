@@ -648,27 +648,6 @@ const TasksScreen = ({ navigation }) => {
                                                 </View>
                                                 
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                    {item.hasChildren && (
-                                                        <TouchableOpacity 
-                                                            style={{ padding: 4 }}
-                                                            onPress={() => {
-                                                                const newCollapsed = new Set(collapsedNodes);
-                                                                const id = String(item._id || item.id);
-                                                                if (newCollapsed.has(id)) {
-                                                                    newCollapsed.delete(id);
-                                                                } else {
-                                                                    newCollapsed.add(id);
-                                                                }
-                                                                setCollapsedNodes(newCollapsed);
-                                                            }}
-                                                        >
-                                                            <MaterialCommunityIcons 
-                                                                name={item.isCollapsed ? 'chevron-right' : 'chevron-down'} 
-                                                                size={18} 
-                                                                color="#64748B" 
-                                                            />
-                                                        </TouchableOpacity>
-                                                    )}
                                                     <Text style={[styles.taskTitleText, { fontSize: isDeepLevel ? 12 : (isCompact ? 13 : 15) }]} numberOfLines={1}>{item.title}</Text>
                                                 </View>
                                                 <Text style={styles.projectContextText} numberOfLines={1}>
