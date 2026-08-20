@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+.expo-shared/
 
 # Native
 .kotlin/
@@ -25,12 +26,17 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.log*
+*.log
 
 # macOS
 .DS_Store
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript
@@ -39,3 +45,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# build artifacts and local exports
+*.apk
+*.aab
+*.ipa
+*.zip
+local_export_output*.txt
+check_output.txt
