@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import AppHeader from '../../components/AppHeader';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
+import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
 
 const ProjectChatScreen = ({ route }) => {
     const { project } = route.params;
@@ -16,6 +18,10 @@ const ProjectChatScreen = ({ route }) => {
     const [dmRoomId, setDmRoomId] = useState(null);
     const [viewerUri, setViewerUri] = useState(null);
     const flatListRef = useRef();
+    const insets = useSafeAreaInsets();
+    const keyboardOverlap = useKeyboardOverlap(insets.bottom);
+    const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 14 : 10);
+    const messageListBottomPadding = 20 + keyboardOverlap;
 
     const targetId = (project._id || project.id)?.toString();
     const clientUserId = (project.clientId || project.client?.id || project.client?._id)?.toString();
@@ -340,16 +346,13 @@ const ProjectChatScreen = ({ route }) => {
         <View style={styles.container}>
             <AppHeader title={(project.fullName || project.name)} showBack showRight={false} showLogo={true} />
 
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 24}
-            >
+            <View style={styles.chatBody}>
                 <FlatList
                     ref={flatListRef}
                     data={chatMessages}
                     keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.list}
+                    style={styles.messages}
+                    contentContainerStyle={[styles.list, { paddingBottom: messageListBottomPadding }]}
                     showsVerticalScrollIndicator={false}
                     renderItem={renderMessage}
                     initialNumToRender={20}
@@ -361,7 +364,15 @@ const ProjectChatScreen = ({ route }) => {
                     keyboardDismissMode="on-drag"
                 />
 
-                <View style={styles.footerContainer}>
+                <View
+                    style={[
+                        styles.footerContainer,
+                        {
+                            paddingBottom: composerBottomPadding,
+                            transform: [{ translateY: -keyboardOverlap }],
+                        },
+                    ]}
+                >
                     <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
                         <TextInput style={styles.mainInputField} placeholder="Message" placeholderTextColor="#5F6368" value={text} onChangeText={setText} multiline />
                         <View style={styles.rightActions}>
@@ -375,7 +386,7 @@ const ProjectChatScreen = ({ route }) => {
                         </TouchableOpacity>
                     )}
                 </View>
-            </KeyboardAvoidingView>
+            </View>
 
             <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
                 <View style={styles.viewerBackdrop}>
@@ -404,7 +415,9 @@ const ProjectChatScreen = ({ route }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    list: { padding: SPACING.m, paddingBottom: 20 },
+    chatBody: { flex: 1, minHeight: 0, overflow: 'visible' },
+    messages: { flex: 1 },
+    list: { padding: SPACING.m },
     messageWrapper: { flexDirection: 'row', marginBottom: 12, maxWidth: '85%', gap: SPACING.s },
     myMessage: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
     theirMessage: { alignSelf: 'flex-start' },
@@ -430,7 +443,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.m,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 10,
         paddingTop: 12,
         backgroundColor: COLORS.background
     },

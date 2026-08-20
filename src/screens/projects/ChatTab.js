@@ -1,8 +1,10 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
+import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
 
 export const ChatTab = ({ project }) => {
     const { messagesByRoom, sendMessage, fetchMessages, user } = useApp();
@@ -10,6 +12,10 @@ export const ChatTab = ({ project }) => {
     const [loading, setLoading] = useState(false);
     const [unauthorized, setUnauthorized] = useState(false);
     const flatListRef = useRef();
+    const insets = useSafeAreaInsets();
+    const keyboardOverlap = useKeyboardOverlap(insets.bottom);
+    const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? SPACING.m : SPACING.s);
+    const messageListBottomPadding = SPACING.m + keyboardOverlap;
 
     const targetId = (project._id || project.id)?.toString();
 
@@ -80,16 +86,13 @@ export const ChatTab = ({ project }) => {
     const keyExtractor = useCallback((item, index) => item._id || item.id || index.toString(), []);
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-        >
+        <View style={styles.container}>
             <FlatList
                 ref={flatListRef}
                 data={projectMessages}
                 keyExtractor={keyExtractor}
-                contentContainerStyle={styles.list}
+                style={styles.messages}
+                contentContainerStyle={[styles.list, { paddingBottom: messageListBottomPadding }]}
                 renderItem={renderMessage}
                 initialNumToRender={20}
                 maxToRenderPerBatch={10}
@@ -97,9 +100,19 @@ export const ChatTab = ({ project }) => {
                 removeClippedSubviews={Platform.OS === 'android'}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                 onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
             />
 
-            <View style={styles.inputContainer}>
+            <View
+                style={[
+                    styles.inputContainer,
+                    {
+                        paddingBottom: composerBottomPadding,
+                        transform: [{ translateY: -keyboardOverlap }],
+                    },
+                ]}
+            >
                 <TextInput
                     style={styles.input}
                     placeholder="Type a group message..."
@@ -116,7 +129,7 @@ export const ChatTab = ({ project }) => {
                     <MaterialCommunityIcons name="send" size={24} color={COLORS.black} />
                 </TouchableOpacity>
             </View>
-        </KeyboardAvoidingView>
+        </View>
     );
 };
 
@@ -124,6 +137,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
+        minHeight: 0,
+        overflow: 'visible',
+    },
+    messages: {
+        flex: 1,
     },
     list: {
         padding: SPACING.m,
