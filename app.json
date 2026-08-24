@@ -8,11 +8,12 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.kaal.construction",
       "buildNumber": "16",
@@ -27,8 +28,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF",
+        "monochromeImage": "./assets/notification-icon.png"
       },
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.kaal.construction",
@@ -59,8 +61,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#3B82F6"
+          "icon": "./assets/notification-icon.png",
+          "color": "#FFA000"
         }
       ],
       "expo-font",
