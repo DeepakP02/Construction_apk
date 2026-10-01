@@ -37,6 +37,8 @@ export const COLORS = {
     successLight: '#DCFCE7',
     danger: '#DC2626',          // Red 600
     dangerLight: '#FEE2E2',
+    error: '#DC2626',           // Alias for danger
+    errorLight: '#FEE2E2',      // Alias for dangerLight
     warning: '#D97706',         // Amber 600
     warningLight: '#FEF3C7',
     info: '#0284C7',            // Sky 600

@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar, KeyboardAvoidingView } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { useApp } from '../../context/AppContext';
+import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 
 const getRoleBadgeInfo = (role) => {
     switch (role) {
