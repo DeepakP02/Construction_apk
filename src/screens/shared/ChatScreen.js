@@ -37,13 +37,21 @@ const getRoleBadgeInfo = (role) => {
 const ChatScreen = ({ navigation }) => {
     const { width } = useWindowDimensions();
     const isCompact = width < 360;
-    const { user, loading, chatRooms, refreshData, ensureDirectChatRoom, searchHierarchyUsers } = useApp();
+    const { user, loading, chatRooms, refreshData, ensureDirectChatRoom, searchHierarchyUsers, loadDirectoryUsers } = useApp();
 
     const [activeTab, setActiveTab] = useState('PROJECT_GROUP'); // 'PROJECT_GROUP' | 'DIRECT'
     const [search, setSearch] = useState('');
     const [hierarchyContacts, setHierarchyContacts] = useState([]);
     const [isSearchingContacts, setIsSearchingContacts] = useState(false);
     const [isStartingDirect, setIsStartingDirect] = useState(false);
+    const searchSeqRef = useRef(0);
+
+    // Preload directory contacts on mount or tab switch for instant 0ms search
+    useEffect(() => {
+        if (loadDirectoryUsers) {
+            loadDirectoryUsers().catch(() => {});
+        }
+    }, [loadDirectoryUsers, activeTab]);
 
     // Refresh rooms on screen focus
     useFocusEffect(
@@ -69,28 +77,51 @@ const ChatScreen = ({ navigation }) => {
             .reduce((sum, r) => sum + (r.unreadCount || 0), 0);
     }, [roomList]);
 
-    // Debounced search for hierarchy contacts when in PRIVATE tab
+    // Instant search for hierarchy contacts when in PRIVATE tab with sequence tracking
     useEffect(() => {
         if (activeTab !== 'DIRECT' || !search.trim()) {
             setHierarchyContacts([]);
+            setIsSearchingContacts(false);
             return;
         }
 
-        const timer = setTimeout(async () => {
-            setIsSearchingContacts(true);
+        const currentSeq = ++searchSeqRef.current;
+        const qTrim = search.trim();
+        const qLower = qTrim.toLowerCase();
+
+        // 1. Immediately drop non-matching stale contacts so they never linger on screen
+        setHierarchyContacts(prev => prev.filter(c => {
+            const name = (c.fullName || '').toLowerCase();
+            const email = (c.email || '').toLowerCase();
+            const role = (c.role || '').toLowerCase();
+            const phone = (c.phone || '').toLowerCase();
+            return name.includes(qLower) || email.includes(qLower) || role.includes(qLower) || phone.includes(qLower);
+        }));
+
+        // 2. Instant search execution against hot memory cache
+        let isCancelled = false;
+        const executeSearch = async () => {
             try {
                 if (searchHierarchyUsers) {
-                    const results = await searchHierarchyUsers(search.trim());
-                    setHierarchyContacts(results || []);
+                    const results = await searchHierarchyUsers(qTrim);
+                    if (!isCancelled && searchSeqRef.current === currentSeq) {
+                        setHierarchyContacts(results || []);
+                    }
                 }
             } catch (err) {
                 console.error('[ChatScreen] Contact search error:', err);
             } finally {
-                setIsSearchingContacts(false);
+                if (!isCancelled && searchSeqRef.current === currentSeq) {
+                    setIsSearchingContacts(false);
+                }
             }
-        }, 300);
+        };
 
-        return () => clearTimeout(timer);
+        executeSearch();
+
+        return () => {
+            isCancelled = true;
+        };
     }, [search, activeTab, searchHierarchyUsers]);
 
     const msgToTime = (raw) => {

@@ -1446,38 +1446,53 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const searchHierarchyUsers = async (query = '') => {
-        const qTrim = (query || '').trim();
-        const qLower = qTrim.toLowerCase();
+    // High-speed synchronized cache for directory contacts
+    const directoryCacheRef = React.useRef([]);
+    const isPrimaryEndpointAvailableRef = React.useRef(null);
+    const isFetchingDirectoryRef = React.useRef(false);
 
-        const deduplicateById = (userList) => {
-            const seen = new Set();
-            const result = [];
-            for (const u of (userList || [])) {
-                const uid = String(u._id || u.id || '');
-                if (uid && !seen.has(uid)) {
-                    seen.add(uid);
-                    result.push({
-                        ...u,
-                        _id: uid,
-                        id: uid
-                    });
+    const deduplicateById = React.useCallback((userList) => {
+        const seen = new Set();
+        const result = [];
+        for (const u of (userList || [])) {
+            const uid = String(u._id || u.id || '');
+            if (uid && !seen.has(uid)) {
+                seen.add(uid);
+                result.push({
+                    ...u,
+                    _id: uid,
+                    id: uid
+                });
+            }
+        }
+        return result;
+    }, []);
+
+    const loadDirectoryUsers = React.useCallback(async (force = false) => {
+        if (!force && directoryCacheRef.current.length > 0) {
+            return directoryCacheRef.current;
+        }
+        if (isFetchingDirectoryRef.current) return directoryCacheRef.current;
+        isFetchingDirectoryRef.current = true;
+
+        try {
+            // If primary endpoint is known to work or untested, try /chat/hierarchy-users
+            if (isPrimaryEndpointAvailableRef.current !== false) {
+                try {
+                    const res = await api.get('/chat/hierarchy-users?limit=100');
+                    if (Array.isArray(res.data?.users) && res.data.users.length > 0) {
+                        isPrimaryEndpointAvailableRef.current = true;
+                        directoryCacheRef.current = deduplicateById(res.data.users);
+                        return directoryCacheRef.current;
+                    }
+                } catch (e) {
+                    if (e.response?.status === 400 || e.response?.status === 404) {
+                        isPrimaryEndpointAvailableRef.current = false;
+                    }
                 }
             }
-            return result;
-        };
 
-        try {
-            const res = await api.get(`/chat/hierarchy-users?q=${encodeURIComponent(qTrim)}`);
-            if (Array.isArray(res.data?.users)) {
-                return deduplicateById(res.data.users);
-            }
-        } catch (err) {
-            console.warn('[searchHierarchyUsers] Primary hierarchy endpoint unavailable, attempting fallback:', err.response?.data?.message || err.message);
-        }
-
-        // Resilient fallback for environments where /chat/hierarchy-users is shadowed by /:roomId
-        try {
+            // Resilient fallback (runs if primary is unavailable or returns 400/404)
             const [chatUsersRes, authUsersRes] = await Promise.allSettled([
                 api.get('/chat/users'),
                 api.get('/auth/users')
@@ -1497,37 +1512,67 @@ export const AppProvider = ({ children }) => {
             const candidatePool = chatList.length > 0 ? chatList : authList;
             const currentUserId = String(user?._id || user?.id || '');
 
-            const filtered = candidatePool.filter(u => {
-                const uid = String(u._id || u.id);
-                if (currentUserId && uid === currentUserId) return false;
-                if (!qLower) return true;
-                const name = (u.fullName || '').toLowerCase();
-                const email = (u.email || '').toLowerCase();
-                const role = (u.role || '').toLowerCase();
-                const phone = (u.phone || phoneMap[uid] || '').toLowerCase();
-                return name.includes(qLower) || email.includes(qLower) || role.includes(qLower) || phone.includes(qLower);
-            });
+            const mapped = candidatePool
+                .filter(u => {
+                    const uid = String(u._id || u.id);
+                    return !currentUserId || uid !== currentUserId;
+                })
+                .map(u => {
+                    const uid = String(u._id || u.id);
+                    return {
+                        _id: uid,
+                        id: uid,
+                        fullName: u.fullName || 'User',
+                        email: u.email || '',
+                        role: u.role || 'WORKER',
+                        avatar: u.avatar || avatarMap[uid] || null,
+                        phone: u.phone || phoneMap[uid] || null,
+                        sharedProjects: u.sharedProjects || []
+                    };
+                });
 
-            const mapped = filtered.map(u => {
-                const uid = String(u._id || u.id);
-                return {
-                    _id: uid,
-                    id: uid,
-                    fullName: u.fullName || 'User',
-                    email: u.email || '',
-                    role: u.role || 'WORKER',
-                    avatar: u.avatar || avatarMap[uid] || null,
-                    phone: u.phone || phoneMap[uid] || null,
-                    sharedProjects: u.sharedProjects || []
-                };
-            });
-
-            return deduplicateById(mapped);
-        } catch (fallbackErr) {
-            console.error('[searchHierarchyUsers] Fallback failed:', fallbackErr);
-            return [];
+            directoryCacheRef.current = deduplicateById(mapped);
+            return directoryCacheRef.current;
+        } catch (err) {
+            console.error('[loadDirectoryUsers] Error:', err);
+            return directoryCacheRef.current;
+        } finally {
+            isFetchingDirectoryRef.current = false;
         }
-    };
+    }, [user, deduplicateById]);
+
+    // Preload directory contacts on startup / auth change
+    React.useEffect(() => {
+        if (user?._id || user?.id) {
+            loadDirectoryUsers();
+        }
+    }, [user, loadDirectoryUsers]);
+
+    const searchHierarchyUsers = React.useCallback(async (query = '') => {
+        const qTrim = (query || '').trim();
+        const qLower = qTrim.toLowerCase();
+
+        // 1. Ensure directory contacts cache is populated
+        if (directoryCacheRef.current.length === 0) {
+            await loadDirectoryUsers();
+        }
+
+        const currentUserId = String(user?._id || user?.id || '');
+
+        // 2. Instant client-side search across preloaded contacts (< 1ms execution time)
+        const filtered = directoryCacheRef.current.filter(u => {
+            const uid = String(u._id || u.id);
+            if (currentUserId && uid === currentUserId) return false;
+            if (!qLower) return true;
+            const name = (u.fullName || '').toLowerCase();
+            const email = (u.email || '').toLowerCase();
+            const role = (u.role || '').toLowerCase();
+            const phone = (u.phone || '').toLowerCase();
+            return name.includes(qLower) || email.includes(qLower) || role.includes(qLower) || phone.includes(qLower);
+        });
+
+        return deduplicateById(filtered);
+    }, [user, loadDirectoryUsers, deduplicateById]);
 
     const fetchMessages = async (roomId) => {
         try {
@@ -1989,7 +2034,7 @@ export const AppProvider = ({ children }) => {
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
-            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, searchHierarchyUsers, uploadFile,
+            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, searchHierarchyUsers, loadDirectoryUsers, uploadFile,
             socketRef,
             rfis, rfiStats, addRFI,
             isClockedIn, isClocking, toggleClock,
