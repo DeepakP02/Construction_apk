@@ -298,13 +298,14 @@ const ChatScreen = ({ navigation }) => {
                             <Text style={[styles.inlineBadgeText, { color: roleBadge.text }]}>{roleBadge.label}</Text>
                         </View>
                     </View>
-                    {item.sharedProjects?.length > 0 ? (
-                        <Text style={styles.contactSub} numberOfLines={1}>
-                            Shared: {item.sharedProjects.map(p => p.title).join(', ')}
+                    {item.sharedProjects?.length > 0 && (
+                        <Text style={[styles.contactSub, { color: '#2563EB', fontWeight: '600' }]} numberOfLines={1}>
+                            Projects: {item.sharedProjects.map(p => typeof p === 'string' ? p : (p.name || p.title)).join(', ')}
                         </Text>
-                    ) : (
-                        <Text style={styles.contactSub} numberOfLines={1}>{item.email}</Text>
                     )}
+                    <Text style={styles.contactSub} numberOfLines={1}>
+                        {item.email || 'No email'}{item.phone ? ` • ${item.phone}` : ''}
+                    </Text>
                 </View>
 
                 <View style={styles.messageBtn}>
@@ -381,7 +382,7 @@ const ChatScreen = ({ navigation }) => {
                         <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" />
                         <TextInput
                             style={[styles.searchInput, { fontSize: isCompact ? 13 : 14 }]}
-                            placeholder={activeTab === 'PROJECT_GROUP' ? 'Filter project rooms...' : 'Search hierarchy contacts...'}
+                            placeholder={activeTab === 'PROJECT_GROUP' ? 'Filter project rooms...' : 'Search contacts by name, role, email, phone...'}
                             placeholderTextColor="#94A3B8"
                             value={search}
                             onChangeText={setSearch}
