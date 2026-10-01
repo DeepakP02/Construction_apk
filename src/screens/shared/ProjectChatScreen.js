@@ -1,13 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SHADOWS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { useApp } from '../../context/AppContext';
-import AppHeader from '../../components/AppHeader';
-import api, { getServerUrl, uploadMultipart } from '../../utils/api';
-import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, ActivityIndicator, Image, Alert, Keyboard, Dimensions, Modal, ScrollView, Pressable, StatusBar, KeyboardAvoidingView } from 'react-native';
 
 const getRoleBadgeInfo = (role) => {
     switch (role) {
@@ -42,9 +34,7 @@ const ProjectChatScreen = ({ route }) => {
     const [viewerUri, setViewerUri] = useState(null);
     const flatListRef = useRef();
     const insets = useSafeAreaInsets();
-    const keyboardOverlap = useKeyboardOverlap(insets.bottom);
-    const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 14 : 10);
-    const messageListBottomPadding = 20 + keyboardOverlap;
+    const composerBottomPadding = Math.max(insets.bottom, 10);
 
     const targetId = (project._id || project.id)?.toString();
     const myId = user?._id?.toString();
@@ -475,47 +465,52 @@ const ProjectChatScreen = ({ route }) => {
                 </View>
             </TouchableOpacity>
 
-            <View style={styles.chatBody}>
-                <FlatList
-                    ref={flatListRef}
-                    data={chatMessages}
-                    keyExtractor={keyExtractor}
-                    style={styles.messages}
-                    contentContainerStyle={[styles.list, { paddingBottom: messageListBottomPadding }]}
-                    showsVerticalScrollIndicator={false}
-                    renderItem={renderMessage}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={10}
-                    windowSize={10}
-                    removeClippedSubviews={Platform.OS === 'android'}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                />
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            >
+                <View style={styles.chatBody}>
+                    <FlatList
+                        ref={flatListRef}
+                        data={chatMessages}
+                        keyExtractor={keyExtractor}
+                        style={styles.messages}
+                        contentContainerStyle={styles.list}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={renderMessage}
+                        initialNumToRender={20}
+                        maxToRenderPerBatch={10}
+                        windowSize={10}
+                        removeClippedSubviews={Platform.OS === 'android'}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                    />
 
-                <View
-                    style={[
-                        styles.footerContainer,
-                        {
-                            paddingBottom: composerBottomPadding,
-                            transform: [{ translateY: -keyboardOverlap }],
-                        },
-                    ]}
-                >
-                    <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
-                        <TextInput style={styles.mainInputField} placeholder="Message" placeholderTextColor="#5F6368" value={text} onChangeText={setText} multiline />
-                        <View style={styles.rightActions}>
-                            <TouchableOpacity style={styles.sideIconBtn} onPress={handlePickImage}><MaterialCommunityIcons name="paperclip" size={24} color="#5F6368" /></TouchableOpacity>
-                            <TouchableOpacity style={styles.sideIconBtn} onPress={handleTakePhoto}><MaterialCommunityIcons name="camera" size={24} color="#5F6368" /></TouchableOpacity>
+                    <View
+                        style={[
+                            styles.footerContainer,
+                            {
+                                paddingBottom: composerBottomPadding,
+                            },
+                        ]}
+                    >
+                        <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
+                            <TextInput style={styles.mainInputField} placeholder="Message" placeholderTextColor="#5F6368" value={text} onChangeText={setText} multiline />
+                            <View style={styles.rightActions}>
+                                <TouchableOpacity style={styles.sideIconBtn} onPress={handlePickImage}><MaterialCommunityIcons name="paperclip" size={24} color="#5F6368" /></TouchableOpacity>
+                                <TouchableOpacity style={styles.sideIconBtn} onPress={handleTakePhoto}><MaterialCommunityIcons name="camera" size={24} color="#5F6368" /></TouchableOpacity>
+                            </View>
                         </View>
+                        {text.trim() && (
+                            <TouchableOpacity style={styles.sendFab} onPress={handleSend} disabled={sending}>
+                                {sending ? <ActivityIndicator color="#fff" size="small" /> : <MaterialCommunityIcons name="send" size={24} color="#fff" />}
+                            </TouchableOpacity>
+                        )}
                     </View>
-                    {text.trim() && (
-                        <TouchableOpacity style={styles.sendFab} onPress={handleSend} disabled={sending}>
-                            {sending ? <ActivityIndicator color="#fff" size="small" /> : <MaterialCommunityIcons name="send" size={24} color="#fff" />}
-                        </TouchableOpacity>
-                    )}
                 </View>
-            </View>
+            </KeyboardAvoidingView>
 
             <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
                 <View style={styles.viewerBackdrop}>

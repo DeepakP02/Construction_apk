@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, Platform, ActivityIndicator, Dimensions, Alert, Keyboard, Modal, ScrollView, Pressable, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, Platform, ActivityIndicator, Dimensions, Alert, Keyboard, Modal, ScrollView, Pressable, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,6 @@ import AppHeader from '../../components/AppHeader';
 import { useApp } from '../../context/AppContext';
 import { useFocusEffect } from '@react-navigation/native';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
-import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
 
 const { width } = Dimensions.get('window');
 
@@ -50,9 +49,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
     // Track the resolved room id for socket subscriptions
     const resolvedRoomIdRef = useRef(null);
     const insets = useSafeAreaInsets();
-    const keyboardOverlap = useKeyboardOverlap(insets.bottom);
-    const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 14 : 10);
-    const messageListBottomPadding = 20 + keyboardOverlap;
+    const composerBottomPadding = Math.max(insets.bottom, 10);
 
     // Group participants state
     const [groupParticipants, setGroupParticipants] = useState(() => {
@@ -624,77 +621,82 @@ const WorkerChatScreen = ({ navigation, route }) => {
                 </View>
             )}
 
-            <View style={styles.chatBody}>
-                <FlatList
-                    ref={flatListRef}
-                    data={roomMessages}
-                    keyExtractor={keyExtractor}
-                    style={styles.messages}
-                    contentContainerStyle={[styles.messageList, { paddingBottom: messageListBottomPadding }]}
-                    renderItem={renderMessage}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={10}
-                    windowSize={10}
-                    removeClippedSubviews={Platform.OS === 'android'}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                />
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            >
+                <View style={styles.chatBody}>
+                    <FlatList
+                        ref={flatListRef}
+                        data={roomMessages}
+                        keyExtractor={keyExtractor}
+                        style={styles.messages}
+                        contentContainerStyle={styles.messageList}
+                        renderItem={renderMessage}
+                        showsVerticalScrollIndicator={false}
+                        initialNumToRender={20}
+                        maxToRenderPerBatch={10}
+                        windowSize={10}
+                        removeClippedSubviews={Platform.OS === 'android'}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                    />
 
-                <View
-                    style={[
-                        styles.footerContainer,
-                        {
-                            paddingBottom: composerBottomPadding,
-                            transform: [{ translateY: -keyboardOverlap }],
-                        },
-                    ]}
-                >
-                    {isArchived ? (
-                        <View style={styles.readOnlyFooter}>
-                            <MaterialCommunityIcons name="lock-outline" size={16} color="#94A3B8" />
-                            <Text style={styles.readOnlyFooterText}>This conversation is read-only</Text>
-                        </View>
-                    ) : (
-                        <>
-                            <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
-                                <TextInput
-                                    style={styles.inputField}
-                                    placeholder="Message"
-                                    placeholderTextColor="#5F6368"
-                                    value={msgText}
-                                    onChangeText={setMsgText}
-                                    multiline
-                                />
-
-                                <View style={styles.rightActions}>
-                                    <TouchableOpacity style={styles.sideBtn} onPress={handlePickImage}>
-                                        <MaterialCommunityIcons name="paperclip" size={24} color="#5F6368" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.sideBtn} onPress={handleTakePhoto} >
-                                        <MaterialCommunityIcons name="camera" size={24} color="#5F6368" />
-                                    </TouchableOpacity>
-                                </View>
+                    <View
+                        style={[
+                            styles.footerContainer,
+                            {
+                                paddingBottom: composerBottomPadding,
+                            },
+                        ]}
+                    >
+                        {isArchived ? (
+                            <View style={styles.readOnlyFooter}>
+                                <MaterialCommunityIcons name="lock-outline" size={16} color="#94A3B8" />
+                                <Text style={styles.readOnlyFooterText}>This conversation is read-only</Text>
                             </View>
+                        ) : (
+                            <>
+                                <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
+                                    <TextInput
+                                        style={styles.inputField}
+                                        placeholder="Message"
+                                        placeholderTextColor="#5F6368"
+                                        value={msgText}
+                                        onChangeText={setMsgText}
+                                        multiline
+                                    />
 
-                            {msgText.trim() && (
-                                <TouchableOpacity 
-                                    style={styles.sendFab} 
-                                    onPress={handleSend}
-                                    disabled={sending}
-                                >
-                                    {sending ? (
-                                        <ActivityIndicator size="small" color="#fff" />
-                                    ) : (
-                                        <MaterialCommunityIcons name="send" size={24} color="#fff" />
-                                    )}
-                                </TouchableOpacity>
-                            )}
-                        </>
-                    )}
+                                    <View style={styles.rightActions}>
+                                        <TouchableOpacity style={styles.sideBtn} onPress={handlePickImage}>
+                                            <MaterialCommunityIcons name="paperclip" size={24} color="#5F6368" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.sideBtn} onPress={handleTakePhoto} >
+                                            <MaterialCommunityIcons name="camera" size={24} color="#5F6368" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                {msgText.trim() && (
+                                    <TouchableOpacity 
+                                        style={styles.sendFab} 
+                                        onPress={handleSend}
+                                        disabled={sending}
+                                    >
+                                        {sending ? (
+                                            <ActivityIndicator size="small" color="#fff" />
+                                        ) : (
+                                            <MaterialCommunityIcons name="send" size={24} color="#fff" />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        )}
+                    </View>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
 
             <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
                 <View style={styles.viewerBackdrop}>

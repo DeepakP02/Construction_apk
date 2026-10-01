@@ -1,10 +1,9 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
-import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
 
 export const ChatTab = ({ project }) => {
     const { messagesByRoom, sendMessage, fetchMessages, user } = useApp();
@@ -13,9 +12,7 @@ export const ChatTab = ({ project }) => {
     const [unauthorized, setUnauthorized] = useState(false);
     const flatListRef = useRef();
     const insets = useSafeAreaInsets();
-    const keyboardOverlap = useKeyboardOverlap(insets.bottom);
     const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? SPACING.m : SPACING.s);
-    const messageListBottomPadding = SPACING.m + keyboardOverlap;
 
     const targetId = (project._id || project.id)?.toString();
 
@@ -86,50 +83,55 @@ export const ChatTab = ({ project }) => {
     const keyExtractor = useCallback((item, index) => item._id || item.id || index.toString(), []);
 
     return (
-        <View style={styles.container}>
-            <FlatList
-                ref={flatListRef}
-                data={projectMessages}
-                keyExtractor={keyExtractor}
-                style={styles.messages}
-                contentContainerStyle={[styles.list, { paddingBottom: messageListBottomPadding }]}
-                renderItem={renderMessage}
-                initialNumToRender={20}
-                maxToRenderPerBatch={10}
-                windowSize={10}
-                removeClippedSubviews={Platform.OS === 'android'}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-            />
-
-            <View
-                style={[
-                    styles.inputContainer,
-                    {
-                        paddingBottom: composerBottomPadding,
-                        transform: [{ translateY: -keyboardOverlap }],
-                    },
-                ]}
-            >
-                <TextInput
-                    style={styles.input}
-                    placeholder="Type a group message..."
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={text}
-                    onChangeText={setText}
-                    multiline
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+            <View style={styles.container}>
+                <FlatList
+                    ref={flatListRef}
+                    data={projectMessages}
+                    keyExtractor={keyExtractor}
+                    style={styles.messages}
+                    contentContainerStyle={styles.list}
+                    renderItem={renderMessage}
+                    initialNumToRender={20}
+                    maxToRenderPerBatch={10}
+                    windowSize={10}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 />
-                <TouchableOpacity
-                    style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
-                    onPress={handleSend}
-                    disabled={!text.trim()}
+
+                <View
+                    style={[
+                        styles.inputContainer,
+                        {
+                            paddingBottom: composerBottomPadding,
+                        },
+                    ]}
                 >
-                    <MaterialCommunityIcons name="send" size={24} color={COLORS.black} />
-                </TouchableOpacity>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Type a group message..."
+                        placeholderTextColor={COLORS.textSecondary}
+                        value={text}
+                        onChangeText={setText}
+                        multiline
+                    />
+                    <TouchableOpacity
+                        style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
+                        onPress={handleSend}
+                        disabled={!text.trim()}
+                    >
+                        <MaterialCommunityIcons name="send" size={24} color={COLORS.black} />
+                    </TouchableOpacity>
+                </View>
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 
