@@ -9,13 +9,36 @@ import AppHeader from '../../components/AppHeader';
 import api, { getServerUrl, uploadMultipart } from '../../utils/api';
 import { useKeyboardOverlap } from '../../utils/useKeyboardOverlap';
 
+const getRoleBadgeInfo = (role) => {
+    switch (role) {
+        case 'SUPER_ADMIN':
+            return { label: 'SUPER ADMIN', bg: '#F3E8FF', text: '#7E22CE', border: '#E9D5FF' };
+        case 'COMPANY_OWNER':
+        case 'ADMIN':
+            return { label: 'ADMIN', bg: '#FEF3C7', text: '#B45309', border: '#FDE68A' };
+        case 'PM':
+            return { label: 'PROJECT MGR', bg: '#E0E7FF', text: '#4338CA', border: '#C7D2FE' };
+        case 'ENGINEER':
+            return { label: 'ENGINEER', bg: '#CFFAFE', text: '#0E7490', border: '#A5F3FC' };
+        case 'FOREMAN':
+            return { label: 'FOREMAN', bg: '#DBEAFE', text: '#1D4ED8', border: '#BFDBFE' };
+        case 'SUBCONTRACTOR':
+            return { label: 'SUBCONTRACTOR', bg: '#FFEDD5', text: '#C2410C', border: '#FED7AA' };
+        case 'WORKER':
+            return { label: 'WORKER', bg: '#D1FAE5', text: '#047857', border: '#A7F3D0' };
+        case 'CLIENT':
+            return { label: 'CLIENT', bg: '#FFE4E6', text: '#BE123C', border: '#FECDD3' };
+        default:
+            return { label: role || 'USER', bg: '#F1F5F9', text: '#475569', border: '#E2E8F0' };
+    }
+};
+
 const ProjectChatScreen = ({ route }) => {
     const { project } = route.params;
-    const { messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, user, uploadFile } = useApp();
+    const { messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, user, uploadFile } = useApp();
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
-    const [dmRoomId, setDmRoomId] = useState(null);
     const [viewerUri, setViewerUri] = useState(null);
     const flatListRef = useRef();
     const insets = useSafeAreaInsets();
@@ -24,26 +47,123 @@ const ProjectChatScreen = ({ route }) => {
     const messageListBottomPadding = 20 + keyboardOverlap;
 
     const targetId = (project._id || project.id)?.toString();
-    const clientUserId = (project.clientId || project.client?.id || project.client?._id)?.toString();
-    const peerId = clientUserId || targetId;
-    const isGeneral = targetId === 'GENERAL_COMPANY';
-    const isPrivate = project.isPrivate || project.type === 'private';
     const myId = user?._id?.toString();
+
+    // Group participants state
+    const [groupParticipants, setGroupParticipants] = useState([]);
+    const [loadingParticipants, setLoadingParticipants] = useState(false);
+    const [showMembersModal, setShowMembersModal] = useState(false);
+    const [participantSearch, setParticipantSearch] = useState('');
+
+    // Fetch group participants with resilient fallback
+    useEffect(() => {
+        if (!targetId) {
+            setGroupParticipants([]);
+            setLoadingParticipants(false);
+            return;
+        }
+
+        let cancelled = false;
+        const fetchParticipants = async () => {
+            let fetched = false;
+            try {
+                setLoadingParticipants(true);
+                const res = await api.get(`/chat/${targetId}/participants`);
+                const list = res.data?.participants || (Array.isArray(res.data) ? res.data : []);
+                if (!cancelled && Array.isArray(list) && list.length > 0) {
+                    setGroupParticipants(list);
+                    fetched = true;
+                }
+            } catch (err) {
+                console.warn('[ProjectChatScreen] Primary participants endpoint failed, attempting fallback:', err?.message || err);
+            }
+
+            // Fallback: If primary failed or empty, try project members & project details
+            if (!fetched) {
+                const pid = targetId;
+                if (pid) {
+                    try {
+                        const [membersRes, projectRes] = await Promise.allSettled([
+                            api.get(`/projects/${pid}/members`),
+                            api.get(`/projects/${pid}`)
+                        ]);
+
+                        const membersList = membersRes.status === 'fulfilled' && Array.isArray(membersRes.value.data)
+                            ? membersRes.value.data
+                            : [];
+                        const projectData = projectRes.status === 'fulfilled' ? projectRes.value.data : null;
+
+                        const userMap = new Map();
+
+                        if (projectData?.clientId) {
+                            const c = projectData.clientId;
+                            const cId = (c._id || c)?.toString();
+                            if (cId) {
+                                userMap.set(cId, {
+                                    id: cId,
+                                    participantId: cId,
+                                    userId: cId,
+                                    fullName: c.fullName || 'Client',
+                                    role: 'CLIENT',
+                                    avatar: c.avatar || null,
+                                    email: c.email || null,
+                                    isOnline: false
+                                });
+                            }
+                        }
+
+                        membersList.forEach(m => {
+                            if (m && m._id) {
+                                const mId = m._id.toString();
+                                userMap.set(mId, {
+                                    id: mId,
+                                    participantId: mId,
+                                    userId: mId,
+                                    fullName: m.fullName || 'User',
+                                    role: m.role || 'MEMBER',
+                                    avatar: m.avatar || null,
+                                    email: m.email || null,
+                                    isOnline: false
+                                });
+                            }
+                        });
+
+                        const fallbackList = Array.from(userMap.values());
+                        if (!cancelled && fallbackList.length > 0) {
+                            setGroupParticipants(fallbackList);
+                        }
+                    } catch (fallbackErr) {
+                        console.warn('[ProjectChatScreen] Fallback participant loading failed:', fallbackErr?.message || fallbackErr);
+                    }
+                }
+            }
+
+            if (!cancelled) {
+                setLoadingParticipants(false);
+            }
+        };
+
+        fetchParticipants();
+        return () => {
+            cancelled = true;
+        };
+    }, [targetId]);
+
+    const filteredParticipants = useMemo(() => {
+        if (!participantSearch.trim()) return groupParticipants;
+        const query = participantSearch.toLowerCase();
+        return groupParticipants.filter(p => 
+            p.fullName?.toLowerCase().includes(query) ||
+            p.role?.toLowerCase().includes(query) ||
+            p.email?.toLowerCase().includes(query)
+        );
+    }, [groupParticipants, participantSearch]);
 
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
             try {
-                let fetchId = targetId;
-                if (isPrivate) {
-                    const rid = await ensureDirectChatRoom(peerId);
-                    if (!cancelled && rid) {
-                        setDmRoomId(rid);
-                        fetchId = rid;
-                    } else if (!cancelled) setDmRoomId(null);
-                } else {
-                    setDmRoomId(null);
-                }
+                const fetchId = targetId;
 
                 const hasCache = messagesByRoom[fetchId] && messagesByRoom[fetchId].length > 0;
                 if (!hasCache && !cancelled) {
@@ -60,7 +180,7 @@ const ProjectChatScreen = ({ route }) => {
         };
         load();
         return () => { cancelled = true; };
-    }, [targetId, isPrivate]);
+    }, [targetId]);
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -70,35 +190,22 @@ const ProjectChatScreen = ({ route }) => {
     }, []);
 
     const chatMessages = useMemo(() => {
-        const activeKey = isPrivate ? dmRoomId : targetId;
-        if (!activeKey) return [];
+        if (!targetId) return [];
         
-        const rawList = messagesByRoom[activeKey] || [];
+        const rawList = messagesByRoom[targetId] || [];
         return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    }, [messagesByRoom, dmRoomId, targetId, isPrivate]);
+    }, [messagesByRoom, targetId]);
 
     const handleSend = async () => {
+        if (sending) return;
         if (!text.trim()) return;
         const textToSend = text;
         setText(''); // Clear input textbox immediately
         setSending(true);
         try {
-            let resolvedDmRoomId = dmRoomId;
-            if (isPrivate && !dmRoomId) {
-                const rid = await ensureDirectChatRoom(peerId);
-                if (rid) {
-                    resolvedDmRoomId = rid;
-                    setDmRoomId(rid);
-                }
-            }
-            const sendPromise = isPrivate
-                ? sendMessage(textToSend, null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId)
-                : sendMessage(textToSend, targetId);
-
-            setSending(false);
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+            const success = await sendMessage(textToSend, targetId);
 
-            const success = await sendPromise;
             if (!success) {
                 setText(textToSend); // Restore input text if sending failed
                 Alert.alert('Error', 'Message failed to send. Please check your connection.');
@@ -148,15 +255,7 @@ const ProjectChatScreen = ({ route }) => {
 
     const sendImageMessage = async (uri) => {
         try {
-            let resolvedDmRoomId = dmRoomId;
-            if (isPrivate && !dmRoomId) {
-                const rid = await ensureDirectChatRoom(peerId);
-                if (rid) {
-                    resolvedDmRoomId = rid;
-                    setDmRoomId(rid);
-                }
-            }
-            const targetKey = isPrivate ? (resolvedDmRoomId || peerId) : targetId;
+            const targetKey = targetId;
 
             // Immediately send the message with a placeholder attachment containing isPending: true
             const placeholderAttachment = {
@@ -166,9 +265,7 @@ const ProjectChatScreen = ({ route }) => {
                 isPending: true
             };
 
-            const placeholderMsg = isPrivate
-                ? await sendMessage("[Photo Attachment]", null, resolvedDmRoomId ? null : peerId, resolvedDmRoomId || peerId, [placeholderAttachment])
-                : await sendMessage("[Photo Attachment]", targetId, null, targetId, [placeholderAttachment]);
+            const placeholderMsg = await sendMessage("[Photo Attachment]", targetId, null, targetId, [placeholderAttachment]);
 
             if (!placeholderMsg) {
                 Alert.alert('Error', 'Could not send the photo placeholder.');
@@ -346,6 +443,38 @@ const ProjectChatScreen = ({ route }) => {
         <View style={styles.container}>
             <AppHeader title={(project.fullName || project.name)} showBack showRight={false} showLogo={true} />
 
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setShowMembersModal(true)}
+                style={styles.groupSubHeader}
+            >
+                <View style={styles.groupSubHeaderLeft}>
+                    <MaterialCommunityIcons name="account-group" size={17} color="#2563EB" />
+                    <Text style={styles.groupSubHeaderTitle}>Group Members</Text>
+                    <View style={styles.groupMemberCountBadge}>
+                        <Text style={styles.groupMemberCountText}>{groupParticipants.length}</Text>
+                    </View>
+                </View>
+                <View style={styles.groupSubHeaderRight}>
+                    {/* Compact Avatar Stack */}
+                    <View style={styles.groupAvatarStack}>
+                        {groupParticipants.slice(0, 3).map((p, idx) => (
+                            <View key={p.userId || p.id || idx} style={[styles.stackAvatarCircle, { marginLeft: idx > 0 ? -8 : 0 }]}>
+                                {p.avatar ? (
+                                    <Image source={{ uri: getServerUrl(p.avatar) }} style={styles.stackAvatarImg} />
+                                ) : (
+                                    <View style={styles.stackAvatarPlaceholder}>
+                                        <Text style={styles.stackAvatarInitial}>{(p.fullName || 'U').charAt(0).toUpperCase()}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                    </View>
+                    <Text style={styles.groupSubHeaderLink}>View All</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={16} color="#2563EB" />
+                </View>
+            </TouchableOpacity>
+
             <View style={styles.chatBody}>
                 <FlatList
                     ref={flatListRef}
@@ -409,6 +538,126 @@ const ProjectChatScreen = ({ route }) => {
                     </TouchableOpacity>
                 </View>
             </Modal>
+
+            {/* Group Members Modal */}
+            <Modal
+                visible={showMembersModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => {
+                    setShowMembersModal(false);
+                    setParticipantSearch('');
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {/* Header */}
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>Project Group Members</Text>
+                                <Text style={styles.modalSubtitle}>
+                                    {groupParticipants.length} active participants in this project
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.modalCloseBtn}
+                                onPress={() => {
+                                    setShowMembersModal(false);
+                                    setParticipantSearch('');
+                                }}
+                            >
+                                <MaterialCommunityIcons name="close" size={22} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Search Input */}
+                        <View style={styles.modalSearchContainer}>
+                            <MaterialCommunityIcons name="magnify" size={20} color="#94A3B8" style={styles.searchIcon} />
+                            <TextInput
+                                style={styles.modalSearchInput}
+                                placeholder="Search by name or role..."
+                                placeholderTextColor="#94A3B8"
+                                value={participantSearch}
+                                onChangeText={setParticipantSearch}
+                                autoCapitalize="none"
+                            />
+                            {Boolean(participantSearch) && (
+                                <TouchableOpacity onPress={() => setParticipantSearch('')} style={styles.clearSearchBtn}>
+                                    <MaterialCommunityIcons name="close-circle" size={16} color="#94A3B8" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Participants List */}
+                        {loadingParticipants && groupParticipants.length === 0 ? (
+                            <View style={styles.modalLoadingContainer}>
+                                <ActivityIndicator size="small" color="#2563EB" />
+                                <Text style={styles.modalLoadingText}>Loading group members...</Text>
+                            </View>
+                        ) : filteredParticipants.length === 0 ? (
+                            <View style={styles.modalEmptyContainer}>
+                                <MaterialCommunityIcons name="account-search-outline" size={40} color="#CBD5E1" />
+                                <Text style={styles.modalEmptyText}>
+                                    {participantSearch ? 'No members matching search' : 'No participants found'}
+                                </Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={filteredParticipants}
+                                keyExtractor={(item, index) => item.userId || item.id || index.toString()}
+                                contentContainerStyle={styles.modalList}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => {
+                                    const badge = getRoleBadgeInfo(item.role);
+                                    const isMe = String(item.userId) === String(user?._id);
+                                    const avatarUri = item.avatar ? getServerUrl(item.avatar) : null;
+                                    return (
+                                        <View style={styles.memberRow}>
+                                            <View style={styles.memberAvatarContainer}>
+                                                {avatarUri ? (
+                                                    <Image source={{ uri: avatarUri }} style={styles.memberAvatarImg} />
+                                                ) : (
+                                                    <View style={styles.memberAvatarPlaceholder}>
+                                                        <Text style={styles.memberAvatarText}>
+                                                            {(item.fullName || 'U').charAt(0).toUpperCase()}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                <View
+                                                    style={[
+                                                        styles.memberOnlineDot,
+                                                        { backgroundColor: item.isOnline ? '#10B981' : '#CBD5E1' }
+                                                    ]}
+                                                />
+                                            </View>
+                                            <View style={styles.memberInfo}>
+                                                <View style={styles.memberNameRow}>
+                                                    <Text style={styles.memberName} numberOfLines={1}>
+                                                        {item.fullName}
+                                                    </Text>
+                                                    {isMe && (
+                                                        <View style={styles.youBadge}>
+                                                            <Text style={styles.youBadgeText}>YOU</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <Text style={styles.memberStatusText} numberOfLines={1}>
+                                                    {item.email || (item.isOnline ? 'Active Online' : 'Offline')}
+                                                </Text>
+                                            </View>
+                                            <View style={[styles.memberRoleBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                                                <Text style={[styles.memberRoleText, { color: badge.text }]}>
+                                                    {badge.label}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    );
+                                }}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -450,7 +699,248 @@ const styles = StyleSheet.create({
     sideIconBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
     mainInputField: { flex: 1, fontSize: 16, color: COLORS.textPrimary, paddingVertical: 10, fontWeight: '500' },
     rightActions: { flexDirection: 'row', alignItems: 'center' },
-    sendFab: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryAccent, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium }
+    sendFab: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryAccent, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+    groupSubHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: SPACING.m,
+        paddingVertical: 9,
+        backgroundColor: '#F8FAFC',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    groupSubHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    groupSubHeaderTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+    },
+    groupMemberCountBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 1,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    groupMemberCountText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#2563EB',
+    },
+    groupSubHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    groupAvatarStack: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    stackAvatarCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+        overflow: 'hidden',
+        backgroundColor: '#CBD5E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    stackAvatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    stackAvatarPlaceholder: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#E2E8F0',
+    },
+    stackAvatarInitial: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#475569',
+    },
+    groupSubHeaderLink: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#2563EB',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '80%',
+        paddingBottom: 24,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: SPACING.l,
+        paddingTop: SPACING.l,
+        paddingBottom: SPACING.m,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: COLORS.textPrimary,
+    },
+    modalSubtitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
+        marginTop: 2,
+    },
+    modalCloseBtn: {
+        padding: 4,
+    },
+    modalSearchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: SPACING.l,
+        marginVertical: SPACING.m,
+        paddingHorizontal: SPACING.m,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        height: 40,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    modalSearchInput: {
+        flex: 1,
+        fontSize: 13,
+        color: COLORS.textPrimary,
+        paddingVertical: 0,
+    },
+    clearSearchBtn: {
+        padding: 4,
+    },
+    modalLoadingContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        gap: 8,
+    },
+    modalLoadingText: {
+        fontSize: 12,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    modalEmptyContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        gap: 8,
+    },
+    modalEmptyText: {
+        fontSize: 13,
+        color: '#94A3B8',
+        fontWeight: '600',
+    },
+    modalList: {
+        paddingHorizontal: SPACING.l,
+        paddingBottom: 16,
+    },
+    memberRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFC',
+    },
+    memberAvatarContainer: {
+        position: 'relative',
+        marginRight: 12,
+    },
+    memberAvatarImg: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#E2E8F0',
+    },
+    memberAvatarPlaceholder: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#EFF6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    memberAvatarText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#2563EB',
+    },
+    memberOnlineDot: {
+        position: 'absolute',
+        bottom: -1,
+        right: -1,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    memberInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    memberNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    memberName: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+        maxWidth: '75%',
+    },
+    youBadge: {
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 4,
+    },
+    youBadgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        color: '#2563EB',
+    },
+    memberStatusText: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 1,
+    },
+    memberRoleBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    memberRoleText: {
+        fontSize: 9,
+        fontWeight: '900',
+    }
 });
 
 export default ProjectChatScreen;

@@ -214,12 +214,25 @@ export function setupNotificationListeners(navigationRef) {
         console.log('[PushNotifications] Foreground notification received:', notification);
     });
 
-    // 2. RESPONSE LISTENER (when user taps a notification)
+    // 2. RESPONSE LISTENER (when user taps a notification while app is in background or foreground)
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
         console.log('[PushNotifications] Notification response received:', response);
-        const remoteMessage = response.notification.request.content;
-        handleNotificationNavigation({ data: remoteMessage.data }, navigationRef);
+        const remoteMessage = response?.notification?.request?.content;
+        handleNotificationNavigation({ data: remoteMessage?.data }, navigationRef);
     });
+
+    // 3. TERMINATED / COLD START (when app was terminated and opened via notification tap)
+    if (typeof Notifications.getLastNotificationResponseAsync === 'function') {
+        Notifications.getLastNotificationResponseAsync().then(response => {
+            if (response?.notification?.request?.content) {
+                console.log('[PushNotifications] Cold-start notification response detected:', response);
+                const remoteMessage = response.notification.request.content;
+                handleNotificationNavigation({ data: remoteMessage?.data }, navigationRef);
+            }
+        }).catch(err => {
+            console.warn('[PushNotifications] Error checking last notification response:', err.message);
+        });
+    }
 
     return () => {
         subscription.remove();
@@ -236,11 +249,14 @@ function handleNotificationNavigation(remoteMessage, navigationRef) {
         if (data.roomId) {
             console.log('[PushNotifications] Navigating to WorkerChat screen with roomId:', data.roomId);
             if (navigationRef && navigationRef.current) {
+                const isDirect = data.roomType === 'DIRECT' || data.type === 'DIRECT' || (data.type === 'private');
                 navigationRef.current.navigate('WorkerChat', {
                     room: {
                         id: data.roomId,
-                        name: data.senderName || 'Discussion Room',
-                        type: data.senderId ? 'private' : 'group'
+                        name: data.senderName || (isDirect ? 'Direct Conversation' : 'Project Room'),
+                        type: isDirect ? 'private' : 'project',
+                        roomType: isDirect ? 'DIRECT' : 'PROJECT_GROUP',
+                        projectId: data.projectId || null
                     }
                 });
             } else {

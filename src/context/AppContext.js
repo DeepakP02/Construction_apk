@@ -512,6 +512,7 @@ export const AppProvider = ({ children }) => {
     const addIncomingMessage = useCallback((incoming) => {
         if (!incoming) return;
         const incomingId = String(incoming._id || incoming.id || '');
+        const clientMsgId = incoming.clientMsgId;
         const normalizedRoomId = String(incoming.roomId?._id || incoming.roomId || '');
         const normalizedProjectId = incoming.projectId
             ? String(incoming.projectId?._id || incoming.projectId)
@@ -519,26 +520,54 @@ export const AppProvider = ({ children }) => {
         const normalizedIncoming = {
             ...incoming,
             id: incomingId,
+            _id: incomingId,
             roomId: normalizedRoomId || undefined,
             projectId: normalizedProjectId || undefined
         };
 
         const keys = [];
         if (normalizedRoomId) keys.push(normalizedRoomId);
-        if (normalizedProjectId) keys.push(normalizedProjectId);
+        if (normalizedProjectId && normalizedProjectId !== normalizedRoomId) keys.push(normalizedProjectId);
         if (!normalizedRoomId && !normalizedProjectId) keys.push('GENERAL_COMPANY');
 
         setMessagesByRoom((prev) => {
             const next = { ...prev };
             keys.forEach(key => {
                 const roomMsgs = prev[key] || [];
-                if (!roomMsgs.some((m) => String(m._id || m.id) === incomingId)) {
-                    next[key] = [...roomMsgs, normalizedIncoming];
+
+                // 1. If already exists by canonical ID, do nothing
+                if (roomMsgs.some((m) => String(m._id || m.id) === incomingId)) {
+                    return;
                 }
+
+                // 2. Reconcile optimistic message by clientMsgId
+                if (clientMsgId && roomMsgs.some((m) => String(m._id || m.id) === clientMsgId || m.clientMsgId === clientMsgId)) {
+                    next[key] = roomMsgs.map((m) => 
+                        (String(m._id || m.id) === clientMsgId || m.clientMsgId === clientMsgId)
+                            ? normalizedIncoming
+                            : m
+                    );
+                    return;
+                }
+
+                // 3. Fallback: If sent by current user and has matching pending optimistic message with identical text
+                const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
+                if (user && senderId === String(user._id)) {
+                    const pendingIdx = roomMsgs.findIndex((m) => m.pending && m.message === incoming.message);
+                    if (pendingIdx !== -1) {
+                        const updated = [...roomMsgs];
+                        updated[pendingIdx] = normalizedIncoming;
+                        next[key] = updated;
+                        return;
+                    }
+                }
+
+                // 4. Genuinely new incoming message from someone else
+                next[key] = [...roomMsgs, normalizedIncoming];
             });
             return next;
         });
-    }, []);
+    }, [user]);
 
     const connectSocket = useCallback(async () => {
         if (!user?._id) return;
@@ -599,7 +628,10 @@ export const AppProvider = ({ children }) => {
                 const roomId = normalizedRoomId;
                 if (!roomId) return current;
                 const idx = current.findIndex((r) => String(r.id || r._id) === roomId);
-                if (idx === -1) return current;
+                if (idx === -1) {
+                    refreshBackgroundData();
+                    return current;
+                }
 
                 const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
                 const isMine = senderId && senderId === String(user._id);
@@ -1386,39 +1418,41 @@ export const AppProvider = ({ children }) => {
         console.warn('setMessages is deprecated. Use setMessagesByRoom instead.');
     }, []);
 
-    /** Resolve peer user id → DIRECT ChatRoom id (GET/POST /chat/direct). Required for DM list + send. */
-    const ensureDirectChatRoom = async (peerUserId) => {
+    const ensureDirectChatRoom = async (targetUserId) => {
         try {
-            if (!peerUserId) return null;
-            
-            // Fast client-side cache check
-            if (directRoomCache.current[peerUserId]) {
-                return directRoomCache.current[peerUserId];
+            if (!targetUserId) return null;
+            const res = await api.post('/chat/direct', { targetUserId });
+            const directRoom = res.data;
+            if (directRoom?.id || directRoom?._id) {
+                const canonicalId = directRoom.id || directRoom._id;
+                const formattedRoom = {
+                    ...directRoom,
+                    id: canonicalId,
+                    _id: canonicalId
+                };
+                setChatRooms(prev => {
+                    const current = Array.isArray(prev) ? prev : [];
+                    const exists = current.find(r => String(r.id || r._id) === String(canonicalId));
+                    if (!exists) return [formattedRoom, ...current];
+                    return current.map(r => String(r.id || r._id) === String(canonicalId) ? formattedRoom : r);
+                });
+                emitJoinRoom(canonicalId);
+                return formattedRoom;
             }
+            return null;
+        } catch (err) {
+            console.error('Error ensuring direct chat room:', err.response?.data || err.message);
+            throw err;
+        }
+    };
 
-            const res = await api.post('/chat/direct', { targetUserId: peerUserId });
-            const id = res.data?.id || res.data?._id;
-            if (id) {
-                const strId = id.toString();
-                directRoomCache.current[peerUserId] = strId;
-                return strId;
-            }
-            return null;
-        } catch (e) {
-            const data = e.response?.data;
-            const msg =
-                typeof data === 'string' ? data : (data?.message || data?.error || e.message || '');
-            const legacyPmClient =
-                typeof msg === 'string' &&
-                msg.includes('Project Managers are not permitted to initiate direct chats with Clients');
-            if (legacyPmClient) {
-                console.warn(
-                    '[Chat] Your API is still on an old build. Redeploy Constuction_Backend with the current chatController (PMs may DM clients). Until then, direct chats with clients will fail.'
-                );
-            } else {
-                console.warn('ensureDirectChatRoom:', msg);
-            }
-            return null;
+    const searchHierarchyUsers = async (query = '') => {
+        try {
+            const res = await api.get(`/chat/hierarchy-users?q=${encodeURIComponent(query)}`);
+            return res.data?.users || [];
+        } catch (err) {
+            console.error('Error searching hierarchy users:', err.response?.data || err.message);
+            return [];
         }
     };
 
@@ -1513,16 +1547,7 @@ export const AppProvider = ({ children }) => {
         const pStr = projectId?.toString();
         const rStr = roomId?.toString();
 
-        let finalRoomId = rStr || pStr || receiverId?.toString();
-
-        // For direct messages, always resolve to the canonical ChatRoom id early.
-        // This avoids backend-side room resolution on each send (which adds latency).
-        if (receiverId && (!rStr || rStr === receiverId?.toString())) {
-            const directRoomId = await ensureDirectChatRoom(receiverId);
-            if (directRoomId) {
-                finalRoomId = String(directRoomId);
-            }
-        }
+        let finalRoomId = rStr || pStr;
 
         if (pStr && (finalRoomId === pStr || !finalRoomId)) {
             const existingRoom = (chatRooms || []).find((r) => {
@@ -1538,10 +1563,12 @@ export const AppProvider = ({ children }) => {
             }
         }
 
+        const tempId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const payload = {
             message: text,
             attachments: attachments,
-            roomId: finalRoomId
+            roomId: finalRoomId,
+            clientMsgId: tempId
         };
 
         if (projectId) payload.projectId = pStr;
@@ -1549,10 +1576,10 @@ export const AppProvider = ({ children }) => {
         if (shouldSendReceiverId) payload.receiverId = receiverId?.toString();
         if (finalRoomId) emitJoinRoom(finalRoomId);
 
-        const tempId = `optimistic-${Date.now()}`;
         const optimisticMsg = {
             _id: tempId,
             id: tempId,
+            clientMsgId: tempId,
             message: text,
             attachments: attachments || [],
             roomId: finalRoomId,
@@ -1564,15 +1591,20 @@ export const AppProvider = ({ children }) => {
             pending: true
         };
 
-        // Target key resolve & optimistic state update
-        const targetKey = finalRoomId || pStr || receiverId?.toString() || 'GENERAL_COMPANY';
+        // Target key resolve & optimistic state update across all relevant keys
+        const updateKeys = new Set();
+        if (finalRoomId) updateKeys.add(String(finalRoomId));
+        if (pStr) updateKeys.add(String(pStr));
+        if (receiverId) updateKeys.add(String(receiverId));
+        if (updateKeys.size === 0) updateKeys.add('GENERAL_COMPANY');
         
         setMessagesByRoom((prev) => {
-            const roomMsgs = prev[targetKey] || [];
-            return {
-                ...prev,
-                [targetKey]: [...roomMsgs, optimisticMsg]
-            };
+            const next = { ...prev };
+            updateKeys.forEach(k => {
+                const roomMsgs = prev[k] || [];
+                next[k] = [...roomMsgs, optimisticMsg];
+            });
+            return next;
         });
 
         setChatRooms((prev) => {
@@ -1603,24 +1635,25 @@ export const AppProvider = ({ children }) => {
             const normalizedMsg = {
                 ...savedMsg,
                 id: savedMsg._id || savedMsg.id,
+                _id: savedMsg._id || savedMsg.id,
                 roomId: rawRoom != null ? String(rawRoom) : undefined,
                 projectId: rawProj != null ? String(rawProj) : undefined,
                 receiverId: savedMsg.receiverId || payload.receiverId
             };
+            const canonicalId = String(normalizedMsg.id);
 
             setMessagesByRoom((prev) => {
-                const roomMsgs = prev[targetKey] || [];
-                const withoutTemp = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
-                if (withoutTemp.some((m) => String(m._id || m.id) === String(normalizedMsg.id))) {
-                    return {
-                        ...prev,
-                        [targetKey]: withoutTemp
-                    };
-                }
-                return {
-                    ...prev,
-                    [targetKey]: [...withoutTemp, normalizedMsg]
-                };
+                const next = { ...prev };
+                updateKeys.forEach(k => {
+                    const roomMsgs = prev[k] || [];
+                    const withoutTemp = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
+                    if (withoutTemp.some((m) => String(m._id || m.id) === canonicalId)) {
+                        next[k] = withoutTemp;
+                    } else {
+                        next[k] = [...withoutTemp, normalizedMsg];
+                    }
+                });
+                return next;
             });
 
             setChatRooms((prev) => {
@@ -1646,11 +1679,12 @@ export const AppProvider = ({ children }) => {
         } catch (e) {
             console.error('Send message error', e.response?.data || e);
             setMessagesByRoom((prev) => {
-                const roomMsgs = prev[targetKey] || [];
-                return {
-                    ...prev,
-                    [targetKey]: roomMsgs.filter((m) => String(m._id || m.id) !== tempId)
-                };
+                const next = { ...prev };
+                updateKeys.forEach(k => {
+                    const roomMsgs = prev[k] || [];
+                    next[k] = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
+                });
+                return next;
             });
             return false;
         }
@@ -1882,7 +1916,7 @@ export const AppProvider = ({ children }) => {
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
-            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, uploadFile,
+            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, searchHierarchyUsers, uploadFile,
             socketRef,
             rfis, rfiStats, addRFI,
             isClockedIn, isClocking, toggleClock,
@@ -1894,6 +1928,8 @@ export const AppProvider = ({ children }) => {
             metrics,
             todos, addTodo, toggleTodo, updateTodo, deleteTodo,
             unreadChatCount: (chatRooms || []).reduce((acc, room) => acc + (room.unreadCount || 0), 0),
+            groupUnreadCount: (chatRooms || []).filter(r => (r.roomType || 'PROJECT_GROUP') === 'PROJECT_GROUP').reduce((acc, r) => acc + (r.unreadCount || 0), 0),
+            privateUnreadCount: (chatRooms || []).filter(r => r.roomType === 'DIRECT').reduce((acc, r) => acc + (r.unreadCount || 0), 0),
             uploadNotes, setUploadNotes,
             addUploadNote: (note) => setUploadNotes([note, ...uploadNotes]),
             refreshData: fetchInitialData,
