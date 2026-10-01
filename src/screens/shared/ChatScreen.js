@@ -169,7 +169,9 @@ const ChatScreen = ({ navigation }) => {
     const handleSelectContact = async (contact) => {
         try {
             setIsStartingDirect(true);
-            const directRoom = await ensureDirectChatRoom(contact._id);
+            const targetId = String(contact._id || contact.id || '');
+            if (!targetId) return;
+            const directRoom = await ensureDirectChatRoom(targetId);
             if (directRoom) {
                 setSearch('');
                 setHierarchyContacts([]);
@@ -253,6 +255,11 @@ const ChatScreen = ({ navigation }) => {
                                 : ''}
                         </Text>
                     </View>
+                    {isDirect && (roomMeta?.otherUser?.email || roomMeta?.email) ? (
+                        <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '500', marginBottom: 2 }} numberOfLines={1}>
+                            {roomMeta?.otherUser?.email || roomMeta?.email}
+                        </Text>
+                    ) : null}
                     <View style={styles.msgRow}>
                         {previewSender ? (
                             <Text style={[styles.senderChip, isDirect && { color: '#4F46E5', backgroundColor: '#EEF2FF' }]} numberOfLines={1}>
@@ -303,9 +310,14 @@ const ChatScreen = ({ navigation }) => {
                             Projects: {item.sharedProjects.map(p => typeof p === 'string' ? p : (p.name || p.title)).join(', ')}
                         </Text>
                     )}
-                    <Text style={styles.contactSub} numberOfLines={1}>
-                        {item.email || 'No email'}{item.phone ? ` • ${item.phone}` : ''}
+                    <Text style={[styles.contactSub, { color: '#0F172A', fontWeight: '700', fontSize: 12 }]} numberOfLines={1}>
+                        {item.email || 'No email registered'}
                     </Text>
+                    {item.phone ? (
+                        <Text style={[styles.contactSub, { color: '#64748B', fontSize: 11 }]} numberOfLines={1}>
+                            {item.phone}
+                        </Text>
+                    ) : null}
                 </View>
 
                 <View style={styles.messageBtn}>

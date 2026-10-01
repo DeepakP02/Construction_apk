@@ -575,8 +575,8 @@ const WorkerChatScreen = ({ navigation, route }) => {
                             </View>
                         )}
                     </View>
-                    <Text style={styles.directFrequencyText}>
-                        {room?.otherUser?.isOnline ? 'Active Online' : 'Direct Frequency'}
+                    <Text style={styles.directFrequencyText} numberOfLines={1}>
+                        {room?.otherUser?.email ? room.otherUser.email : (room?.otherUser?.isOnline ? 'Active Online' : 'Direct Frequency')}
                     </Text>
                 </View>
             )}

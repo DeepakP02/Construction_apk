@@ -1449,10 +1449,28 @@ export const AppProvider = ({ children }) => {
     const searchHierarchyUsers = async (query = '') => {
         const qTrim = (query || '').trim();
         const qLower = qTrim.toLowerCase();
+
+        const deduplicateById = (userList) => {
+            const seen = new Set();
+            const result = [];
+            for (const u of (userList || [])) {
+                const uid = String(u._id || u.id || '');
+                if (uid && !seen.has(uid)) {
+                    seen.add(uid);
+                    result.push({
+                        ...u,
+                        _id: uid,
+                        id: uid
+                    });
+                }
+            }
+            return result;
+        };
+
         try {
             const res = await api.get(`/chat/hierarchy-users?q=${encodeURIComponent(qTrim)}`);
             if (Array.isArray(res.data?.users)) {
-                return res.data.users;
+                return deduplicateById(res.data.users);
             }
         } catch (err) {
             console.warn('[searchHierarchyUsers] Primary hierarchy endpoint unavailable, attempting fallback:', err.response?.data?.message || err.message);
@@ -1490,7 +1508,7 @@ export const AppProvider = ({ children }) => {
                 return name.includes(qLower) || email.includes(qLower) || role.includes(qLower) || phone.includes(qLower);
             });
 
-            return filtered.map(u => {
+            const mapped = filtered.map(u => {
                 const uid = String(u._id || u.id);
                 return {
                     _id: uid,
@@ -1503,6 +1521,8 @@ export const AppProvider = ({ children }) => {
                     sharedProjects: u.sharedProjects || []
                 };
             });
+
+            return deduplicateById(mapped);
         } catch (fallbackErr) {
             console.error('[searchHierarchyUsers] Fallback failed:', fallbackErr);
             return [];
