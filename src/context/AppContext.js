@@ -18,6 +18,11 @@ import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ISSUES, MOCK_MESSAGES, MOCK_USER, MOCK_
 
 const AppContext = createContext();
 
+const CANONICAL_USER_ALIASES = {
+    '6a5b33f89845db87c7a92641': '69cda4ad4a2742699702e4c6',
+    '6aae432ece4d83703ab0c45f': '69cda4ad4a2742699702e4c6'
+};
+
 /**
  * POST /tasks only accepts parentTaskId referencing a Task document.
  * The flat task feed can include SubTask and JobTask rows whose _id is not a Task.
@@ -634,7 +639,12 @@ export const AppProvider = ({ children }) => {
                 }
 
                 const senderId = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
-                const isMine = senderId && senderId === String(user._id);
+                const currentUserId = String(user?._id || user?.id || '');
+                const isMine = senderId && (
+                    senderId === currentUserId ||
+                    (CANONICAL_USER_ALIASES[senderId] && CANONICAL_USER_ALIASES[senderId] === currentUserId) ||
+                    (CANONICAL_USER_ALIASES[currentUserId] && CANONICAL_USER_ALIASES[currentUserId] === senderId)
+                );
                 const room = { ...current[idx] };
                 room.lastMessage = {
                     text: incoming.message,
@@ -649,11 +659,20 @@ export const AppProvider = ({ children }) => {
 
             const incomingId = String(incoming._id || incoming.id || '');
             const senderForSound = String(incoming.sender?._id || incoming.sender || incoming.senderId || '');
-            const isOwnEcho = senderForSound && senderForSound === String(user._id);
+            const currentUserId = String(user?._id || user?.id || '');
+            const isOwnEcho = senderForSound && (
+                senderForSound === currentUserId ||
+                (CANONICAL_USER_ALIASES[senderForSound] && CANONICAL_USER_ALIASES[senderForSound] === currentUserId) ||
+                (CANONICAL_USER_ALIASES[currentUserId] && CANONICAL_USER_ALIASES[currentUserId] === senderForSound)
+            );
             if (!isOwnEcho && lastPopupMessageIdRef.current !== incomingId) {
                 lastPopupMessageIdRef.current = incomingId;
                 playIncomingChatSound();
             }
+        });
+
+        socket.on('unread_count_updated', () => {
+            refreshBackgroundData();
         });
 
         socket.on('new_notification', (payload) => {
