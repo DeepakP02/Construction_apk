@@ -1418,10 +1418,16 @@ export const AppProvider = ({ children }) => {
         console.warn('setMessages is deprecated. Use setMessagesByRoom instead.');
     }, []);
 
+    const CANONICAL_USER_ALIASES = React.useMemo(() => ({
+        '6a5b33f89845db87c7a92641': '69cda4ad4a2742699702e4c6',
+        '6aae432ece4d83703ab0c45f': '69cda4ad4a2742699702e4c6'
+    }), []);
+
     const ensureDirectChatRoom = async (targetUserId) => {
         try {
             if (!targetUserId) return null;
-            const res = await api.post('/chat/direct', { targetUserId });
+            const canonicalTargetId = CANONICAL_USER_ALIASES[String(targetUserId)] || targetUserId;
+            const res = await api.post('/chat/direct', { targetUserId: canonicalTargetId });
             const directRoom = res.data;
             if (directRoom?.id || directRoom?._id) {
                 const canonicalId = directRoom.id || directRoom._id;
@@ -1454,19 +1460,30 @@ export const AppProvider = ({ children }) => {
     const deduplicateById = React.useCallback((userList) => {
         const seen = new Set();
         const result = [];
+        const userById = new Map();
         for (const u of (userList || [])) {
-            const uid = String(u._id || u.id || '');
-            if (uid && !seen.has(uid)) {
-                seen.add(uid);
+            const rawId = String(u?._id || u?.id || '');
+            if (rawId) userById.set(rawId, u);
+        }
+
+        for (const u of (userList || [])) {
+            const rawId = String(u?._id || u?.id || '');
+            if (!rawId) continue;
+            const canonId = CANONICAL_USER_ALIASES[rawId] || rawId;
+            if (!seen.has(canonId)) {
+                seen.add(canonId);
+                const canonicalDoc = userById.get(canonId) || u;
                 result.push({
-                    ...u,
-                    _id: uid,
-                    id: uid
+                    ...canonicalDoc,
+                    _id: canonId,
+                    id: canonId,
+                    role: canonicalDoc.role || u.role || 'WORKER',
+                    email: canonicalDoc.email || u.email || ''
                 });
             }
         }
         return result;
-    }, []);
+    }, [CANONICAL_USER_ALIASES]);
 
     const loadDirectoryUsers = React.useCallback(async (force = false) => {
         if (!force && directoryCacheRef.current.length > 0) {
