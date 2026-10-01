@@ -44,7 +44,7 @@ const ChatScreen = ({ navigation }) => {
     const [hierarchyContacts, setHierarchyContacts] = useState([]);
     const [isSearchingContacts, setIsSearchingContacts] = useState(false);
     const [isStartingDirect, setIsStartingDirect] = useState(false);
-    const searchSeqRef = useRef(0);
+    const searchSeqRef = React.useRef(0);
 
     // Preload directory contacts on mount or tab switch for instant 0ms search
     useEffect(() => {
