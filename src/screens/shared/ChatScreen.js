@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
     View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, 
     StatusBar, ActivityIndicator, useWindowDimensions, KeyboardAvoidingView, 
