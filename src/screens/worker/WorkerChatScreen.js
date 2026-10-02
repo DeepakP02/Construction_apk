@@ -296,6 +296,14 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const peerId = room?.id?.toString();
     const myId = user?._id?.toString();
 
+    const roomMessages = useMemo(() => {
+        const activeKey = room?.id;
+        if (!activeKey) return [];
+        
+        const rawList = messagesByRoom[activeKey] || [];
+        return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    }, [messagesByRoom, room?.id]);
+
     const handleSend = () => {
         if (isArchived) {
             Alert.alert('Read-Only', 'This conversation is archived and cannot receive new messages.');
