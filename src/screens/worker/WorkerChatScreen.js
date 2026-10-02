@@ -629,7 +629,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <View style={styles.chatBody}>
@@ -646,6 +646,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
                         windowSize={10}
                         removeClippedSubviews={Platform.OS === 'android'}
                         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                     />
@@ -672,6 +673,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
                                         placeholderTextColor="#5F6368"
                                         value={msgText}
                                         onChangeText={setMsgText}
+                                        onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)}
                                         multiline
                                     />
 

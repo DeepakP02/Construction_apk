@@ -482,7 +482,7 @@ const ProjectChatScreen = ({ route }) => {
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <View style={styles.chatBody}>
@@ -499,6 +499,7 @@ const ProjectChatScreen = ({ route }) => {
                         windowSize={10}
                         removeClippedSubviews={Platform.OS === 'android'}
                         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                     />
@@ -512,7 +513,15 @@ const ProjectChatScreen = ({ route }) => {
                         ]}
                     >
                         <View style={[styles.whatsAppInputLine, SHADOWS.small]}>
-                            <TextInput style={styles.mainInputField} placeholder="Message" placeholderTextColor="#5F6368" value={text} onChangeText={setText} multiline />
+                            <TextInput 
+                                style={styles.mainInputField} 
+                                placeholder="Message" 
+                                placeholderTextColor="#5F6368" 
+                                value={text} 
+                                onChangeText={setText} 
+                                onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)}
+                                multiline 
+                            />
                             <View style={styles.rightActions}>
                                 <TouchableOpacity style={styles.sideIconBtn} onPress={handlePickImage}><MaterialCommunityIcons name="paperclip" size={24} color="#5F6368" /></TouchableOpacity>
                                 <TouchableOpacity style={styles.sideIconBtn} onPress={handleTakePhoto}><MaterialCommunityIcons name="camera" size={24} color="#5F6368" /></TouchableOpacity>

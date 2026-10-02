@@ -107,7 +107,7 @@ export const ChatTab = ({ project }) => {
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
             <View style={styles.container}>
@@ -142,6 +142,7 @@ export const ChatTab = ({ project }) => {
                         placeholderTextColor={COLORS.textSecondary}
                         value={text}
                         onChangeText={setText}
+                        onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)}
                         multiline
                     />
                     <TouchableOpacity
