@@ -43,13 +43,13 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const { user, messagesByRoom, setMessagesByRoom, sendMessage, retryMessage, fetchMessages, uploadFile, socketRef } = useApp();
     const [msgText, setMsgText] = useState('');
     const [loading, setLoading] = useState(false);
-    const [sending, setSending] = useState(false);
     const [viewerUri, setViewerUri] = useState(null);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const flatListRef = useRef();
     // Track the resolved room id for socket subscriptions
     const resolvedRoomIdRef = useRef(null);
     const insets = useSafeAreaInsets();
-    const composerBottomPadding = Math.max(insets.bottom, 10);
+    const composerBottomPadding = isKeyboardOpen ? 6 : Math.max(insets.bottom, 10);
 
     // Group participants state
     const [groupParticipants, setGroupParticipants] = useState(() => {
@@ -61,6 +61,26 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const [loadingParticipants, setLoadingParticipants] = useState(false);
     const [showMembersModal, setShowMembersModal] = useState(false);
     const [participantSearch, setParticipantSearch] = useState('');
+
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => {
+                setIsKeyboardOpen(true);
+                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setIsKeyboardOpen(false);
+            }
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     // Fetch group participants when opening a group channel with resilient fallback
     useEffect(() => {
@@ -276,24 +296,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const peerId = room?.id?.toString();
     const myId = user?._id?.toString();
 
-    useEffect(() => {
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-        });
-        return () => showSubscription.remove();
-    }, []);
-
-    const roomMessages = useMemo(() => {
-        const activeKey = room?.id;
-        if (!activeKey) return [];
-        
-        const rawList = messagesByRoom[activeKey] || [];
-        return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    }, [messagesByRoom, room?.id]);
-
-    const effectiveRoomId = room?.id || null;
-
-    const handleSend = async () => {
+    const handleSend = () => {
         if (isArchived) {
             Alert.alert('Read-Only', 'This conversation is archived and cannot receive new messages.');
             return;
@@ -301,13 +304,11 @@ const WorkerChatScreen = ({ navigation, route }) => {
         if (!msgText.trim()) return;
         const textToSend = msgText.trim();
         setMsgText('');
-        try {
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
-            await sendMessage(textToSend, room?.projectId || null, null, room?.id);
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
-        } catch (err) {
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+        void sendMessage(textToSend, room?.projectId || null, null, room?.id).catch(err => {
             console.error('[WorkerChatScreen handleSend error]', err);
-        }
+        });
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
     };
 
     const handlePickImage = async () => {
@@ -680,13 +681,9 @@ const WorkerChatScreen = ({ navigation, route }) => {
                                     <TouchableOpacity 
                                         style={styles.sendFab} 
                                         onPress={handleSend}
-                                        disabled={sending}
+                                        activeOpacity={0.8}
                                     >
-                                        {sending ? (
-                                            <ActivityIndicator size="small" color="#fff" />
-                                        ) : (
-                                            <MaterialCommunityIcons name="send" size={24} color="#fff" />
-                                        )}
+                                        <MaterialCommunityIcons name="send" size={24} color="#fff" />
                                     </TouchableOpacity>
                                 )}
                             </>

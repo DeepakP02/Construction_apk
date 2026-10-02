@@ -36,14 +36,34 @@ const ProjectChatScreen = ({ route }) => {
     const { messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, user, uploadFile } = useApp();
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
-    const [sending, setSending] = useState(false);
     const [viewerUri, setViewerUri] = useState(null);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const flatListRef = useRef();
     const insets = useSafeAreaInsets();
-    const composerBottomPadding = Math.max(insets.bottom, 10);
+    const composerBottomPadding = isKeyboardOpen ? 6 : Math.max(insets.bottom, 10);
 
     const targetId = (project._id || project.id)?.toString();
     const myId = user?._id?.toString();
+
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => {
+                setIsKeyboardOpen(true);
+                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setIsKeyboardOpen(false);
+            }
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     // Group participants state
     const [groupParticipants, setGroupParticipants] = useState([]);
@@ -192,26 +212,15 @@ const ProjectChatScreen = ({ route }) => {
         return [...rawList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     }, [messagesByRoom, targetId]);
 
-    const handleSend = async () => {
-        if (sending) return;
+    const handleSend = () => {
         if (!text.trim()) return;
-        const textToSend = text;
+        const textToSend = text.trim();
         setText(''); // Clear input textbox immediately
-        setSending(true);
-        try {
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-            const success = await sendMessage(textToSend, targetId);
-
-            if (!success) {
-                setText(textToSend); // Restore input text if sending failed
-                Alert.alert('Error', 'Message failed to send. Please check your connection.');
-            }
-        } catch (err) {
-            setText(textToSend);
-            Alert.alert('Error', 'An error occurred while sending message.');
-        } finally {
-            setSending(false);
-        }
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+        void sendMessage(textToSend, targetId).catch(err => {
+            console.error('[ProjectChatScreen handleSend error]', err);
+        });
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
     };
 
     const handlePickImage = async () => {
@@ -510,8 +519,8 @@ const ProjectChatScreen = ({ route }) => {
                             </View>
                         </View>
                         {text.trim() && (
-                            <TouchableOpacity style={styles.sendFab} onPress={handleSend} disabled={sending}>
-                                {sending ? <ActivityIndicator color="#fff" size="small" /> : <MaterialCommunityIcons name="send" size={24} color="#fff" />}
+                            <TouchableOpacity style={styles.sendFab} onPress={handleSend} activeOpacity={0.8}>
+                                <MaterialCommunityIcons name="send" size={24} color="#fff" />
                             </TouchableOpacity>
                         )}
                     </View>

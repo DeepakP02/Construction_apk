@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING, TYPOGRAPHY } from '../../constants/theme';
@@ -10,11 +10,32 @@ export const ChatTab = ({ project }) => {
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [unauthorized, setUnauthorized] = useState(false);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const flatListRef = useRef();
     const insets = useSafeAreaInsets();
-    const composerBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? SPACING.m : SPACING.s);
+    const composerBottomPadding = isKeyboardOpen ? 6 : Math.max(insets.bottom, Platform.OS === 'ios' ? SPACING.m : SPACING.s);
 
     const targetId = (project._id || project.id)?.toString();
+
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => {
+                setIsKeyboardOpen(true);
+                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setIsKeyboardOpen(false);
+            }
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     React.useEffect(() => {
         let cancelled = false;
@@ -55,11 +76,12 @@ export const ChatTab = ({ project }) => {
         );
     }
 
-    const handleSend = async () => {
+    const handleSend = () => {
         if (!text.trim()) return;
-        await sendMessage(text, targetId);
+        const textToSend = text.trim();
         setText('');
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+        void sendMessage(textToSend, targetId);
     };
 
     const renderMessage = useCallback(({ item }) => {
