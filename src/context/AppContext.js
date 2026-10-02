@@ -1697,6 +1697,22 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const roomSendQueuesRef = useRef({});
+
+    const enqueueSendTask = useCallback((queueKey, task) => {
+        const key = queueKey || 'GLOBAL';
+        const previousPromise = roomSendQueuesRef.current[key] || Promise.resolve();
+
+        const currentPromise = previousPromise
+            .then(() => task())
+            .catch((err) => {
+                console.error(`[SendQueue ${key}] Task execution failed:`, err?.message || err);
+            });
+
+        roomSendQueuesRef.current[key] = currentPromise;
+        return currentPromise;
+    }, []);
+
     const sendMessage = async (text, projectId = null, receiverId = null, roomId = null, attachments = []) => {
         const pStr = projectId?.toString();
         const rStr = roomId?.toString();
@@ -1778,75 +1794,78 @@ export const AppProvider = ({ children }) => {
 
         void playSentChatSound();
 
-        try {
-            const res = await api.post('/chat', payload);
-            const savedMsg = res.data;
-            const savedRoom = savedMsg?.roomId?._id || savedMsg?.roomId || finalRoomId;
-            if (savedRoom) emitJoinRoom(savedRoom);
+        const queueKey = String(finalRoomId || pStr || receiverId || 'GENERAL_COMPANY');
+        return enqueueSendTask(queueKey, async () => {
+            try {
+                const res = await api.post('/chat', payload);
+                const savedMsg = res.data;
+                const savedRoom = savedMsg?.roomId?._id || savedMsg?.roomId || finalRoomId;
+                if (savedRoom) emitJoinRoom(savedRoom);
 
-            const rawRoom = savedMsg.roomId ?? payload.roomId;
-            const rawProj = savedMsg.projectId ?? payload.projectId;
-            const normalizedMsg = {
-                ...savedMsg,
-                id: savedMsg._id || savedMsg.id,
-                _id: savedMsg._id || savedMsg.id,
-                roomId: rawRoom != null ? String(rawRoom) : undefined,
-                projectId: rawProj != null ? String(rawProj) : undefined,
-                receiverId: savedMsg.receiverId || payload.receiverId
-            };
-            const canonicalId = String(normalizedMsg.id);
-
-            setMessagesByRoom((prev) => {
-                const next = { ...prev };
-                updateKeys.forEach(k => {
-                    const roomMsgs = prev[k] || [];
-                    const withoutTemp = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
-                    if (withoutTemp.some((m) => String(m._id || m.id) === canonicalId)) {
-                        next[k] = withoutTemp;
-                    } else {
-                        next[k] = [...withoutTemp, normalizedMsg];
-                    }
-                });
-                return next;
-            });
-
-            setChatRooms((prev) => {
-                const list = Array.isArray(prev) ? [...prev] : [];
-                const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
-                if (idx === -1) return list;
-                const room = { ...list[idx] };
-                room.lastMessage = {
-                    text: savedMsg.message,
-                    sender: savedMsg.sender?.fullName || user?.fullName,
-                    time: savedMsg.createdAt
+                const rawRoom = savedMsg.roomId ?? payload.roomId;
+                const rawProj = savedMsg.projectId ?? payload.projectId;
+                const normalizedMsg = {
+                    ...savedMsg,
+                    id: savedMsg._id || savedMsg.id,
+                    _id: savedMsg._id || savedMsg.id,
+                    roomId: rawRoom != null ? String(rawRoom) : undefined,
+                    projectId: rawProj != null ? String(rawProj) : undefined,
+                    receiverId: savedMsg.receiverId || payload.receiverId
                 };
-                list.splice(idx, 1);
-                list.unshift(room);
-                return list;
-            });
+                const canonicalId = String(normalizedMsg.id);
 
-            if (!socketRef.current?.connected) {
-                refreshBackgroundData();
-            }
-
-            return normalizedMsg;
-        } catch (e) {
-            console.error('Send message error', e.response?.data || e);
-            setMessagesByRoom((prev) => {
-                const next = { ...prev };
-                updateKeys.forEach(k => {
-                    const roomMsgs = prev[k] || [];
-                    next[k] = roomMsgs.map((m) => String(m._id || m.id) === tempId ? {
-                        ...m,
-                        pending: false,
-                        failed: true,
-                        retryPayload: payload
-                    } : m);
+                setMessagesByRoom((prev) => {
+                    const next = { ...prev };
+                    updateKeys.forEach(k => {
+                        const roomMsgs = prev[k] || [];
+                        const withoutTemp = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
+                        if (withoutTemp.some((m) => String(m._id || m.id) === canonicalId)) {
+                            next[k] = withoutTemp;
+                        } else {
+                            next[k] = [...withoutTemp, normalizedMsg];
+                        }
+                    });
+                    return next;
                 });
-                return next;
-            });
-            return false;
-        }
+
+                setChatRooms((prev) => {
+                    const list = Array.isArray(prev) ? [...prev] : [];
+                    const idx = list.findIndex((r) => String(r.id || r._id) === String(finalRoomId));
+                    if (idx === -1) return list;
+                    const room = { ...list[idx] };
+                    room.lastMessage = {
+                        text: savedMsg.message,
+                        sender: savedMsg.sender?.fullName || user?.fullName,
+                        time: savedMsg.createdAt
+                    };
+                    list.splice(idx, 1);
+                    list.unshift(room);
+                    return list;
+                });
+
+                if (!socketRef.current?.connected) {
+                    refreshBackgroundData();
+                }
+
+                return normalizedMsg;
+            } catch (e) {
+                console.error('Send message error', e.response?.data || e);
+                setMessagesByRoom((prev) => {
+                    const next = { ...prev };
+                    updateKeys.forEach(k => {
+                        const roomMsgs = prev[k] || [];
+                        next[k] = roomMsgs.map((m) => String(m._id || m.id) === tempId ? {
+                            ...m,
+                            pending: false,
+                            failed: true,
+                            retryPayload: payload
+                        } : m);
+                    });
+                    return next;
+                });
+                return false;
+            }
+        });
     };
 
     const retryMessage = async (failedMsg) => {
@@ -1861,43 +1880,46 @@ export const AppProvider = ({ children }) => {
             return next;
         });
 
-        try {
-            const payload = failedMsg.retryPayload || {
-                message: failedMsg.message || failedMsg.text,
-                attachments: failedMsg.attachments,
-                roomId: failedMsg.roomId,
-                projectId: failedMsg.projectId,
-                clientMsgId: tempId
-            };
-            const res = await api.post('/chat', payload);
-            const savedMsg = res.data;
-            const canonicalId = String(savedMsg._id || savedMsg.id);
+        const queueKey = String(failedMsg.roomId || failedMsg.projectId || 'GENERAL_COMPANY');
+        return enqueueSendTask(queueKey, async () => {
+            try {
+                const payload = failedMsg.retryPayload || {
+                    message: failedMsg.message || failedMsg.text,
+                    attachments: failedMsg.attachments,
+                    roomId: failedMsg.roomId,
+                    projectId: failedMsg.projectId,
+                    clientMsgId: tempId
+                };
+                const res = await api.post('/chat', payload);
+                const savedMsg = res.data;
+                const canonicalId = String(savedMsg._id || savedMsg.id);
 
-            setMessagesByRoom((prev) => {
-                const next = { ...prev };
-                Object.keys(next).forEach(k => {
-                    next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? {
-                        ...m,
-                        ...savedMsg,
-                        _id: canonicalId,
-                        id: canonicalId,
-                        pending: false,
-                        failed: false
-                    } : m);
+                setMessagesByRoom((prev) => {
+                    const next = { ...prev };
+                    Object.keys(next).forEach(k => {
+                        next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? {
+                            ...m,
+                            ...savedMsg,
+                            _id: canonicalId,
+                            id: canonicalId,
+                            pending: false,
+                            failed: false
+                        } : m);
+                    });
+                    return next;
                 });
-                return next;
-            });
-            return true;
-        } catch (err) {
-            setMessagesByRoom((prev) => {
-                const next = { ...prev };
-                Object.keys(next).forEach(k => {
-                    next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? { ...m, pending: false, failed: true } : m);
+                return true;
+            } catch (err) {
+                setMessagesByRoom((prev) => {
+                    const next = { ...prev };
+                    Object.keys(next).forEach(k => {
+                        next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? { ...m, pending: false, failed: true } : m);
+                    });
+                    return next;
                 });
-                return next;
-            });
-            return false;
-        }
+                return false;
+            }
+        });
     };
 
     const uploadFile = async (fileUri, fileName, fileType = 'image/jpeg', description = '', projectId = '') => {
