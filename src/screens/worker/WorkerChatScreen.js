@@ -40,7 +40,7 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const isDirect = room?.type === 'private' || room?.roomType === 'DIRECT';
     const isArchived = Boolean(room?.isArchived || room?.readOnly);
     const roleBadge = isDirect && room?.otherUser?.role ? getRoleBadgeInfo(room.otherUser.role) : null;
-    const { user, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, uploadFile, socketRef } = useApp();
+    const { user, messagesByRoom, setMessagesByRoom, sendMessage, retryMessage, fetchMessages, uploadFile, socketRef } = useApp();
     const [msgText, setMsgText] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
@@ -294,30 +294,19 @@ const WorkerChatScreen = ({ navigation, route }) => {
     const effectiveRoomId = room?.id || null;
 
     const handleSend = async () => {
-        if (sending) return;
         if (isArchived) {
             Alert.alert('Read-Only', 'This conversation is archived and cannot receive new messages.');
             return;
         }
         if (!msgText.trim()) return;
-        const textToSend = msgText;
+        const textToSend = msgText.trim();
         setMsgText('');
-        setSending(true);
         try {
-            setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
-            const success = await sendMessage(textToSend, room.projectId || null, null, room.id);
-
-            if (success) {
-                setTimeout(() => flatListRef.current?.scrollToEnd(), 150);
-            } else {
-                setMsgText(textToSend);
-                Alert.alert('Error', 'Message could not be sent. Check your connection and permissions.');
-            }
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+            await sendMessage(textToSend, room?.projectId || null, null, room?.id);
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
         } catch (err) {
-            setMsgText(textToSend);
-            Alert.alert("Error", "Message could not be sent.");
-        } finally {
-            setSending(false);
+            console.error('[WorkerChatScreen handleSend error]', err);
         }
     };
 
@@ -395,12 +384,10 @@ const WorkerChatScreen = ({ navigation, route }) => {
                     // Use the dedicated chat upload endpoint (/chat/upload)
                     // which stores to ImageKit and returns [{ name, url, fileType }]
                     const rawName = uri.split('/').pop() || '';
-                    // Detect mime type from uri or asset - camera on Android often returns content:// or raw paths
                     const isGif = uri.toLowerCase().includes('.gif');
                     const isPng = uri.toLowerCase().includes('.png');
                     const ext = isGif ? '.gif' : isPng ? '.png' : '.jpg';
                     const mimeType = isGif ? 'image/gif' : isPng ? 'image/png' : 'image/jpeg';
-                    // Ensure filename always has a proper extension (camera URIs often have no extension)
                     const hasExt = /\.(jpg|jpeg|png|gif|webp)$/i.test(rawName);
                     const fileName = hasExt ? rawName : `photo_${Date.now()}${ext}`;
                     
@@ -473,8 +460,6 @@ const WorkerChatScreen = ({ navigation, route }) => {
                             })
                         };
                     });
-                    // Also PATCH the backend so the web knows the upload failed (isPending → false)
-                    // This stops the web spinner from spinning forever
                     try {
                         const failedAttachments = (placeholderMsg.attachments || []).map(a => ({
                             ...a,
@@ -509,10 +494,8 @@ const WorkerChatScreen = ({ navigation, route }) => {
                         <View style={styles.attachmentContainer}>
                             {item.attachments.map((att, i) => {
                                 const rawUrl = typeof att === 'string' ? att : (att?.url || att?.imageUrl || att?.uri || '');
-                                console.log('--- RENDERING ATTACHMENT ---', att, '->', rawUrl);
                                 const resolvedUri = rawUrl ? getServerUrl(rawUrl) : '';
                                 if (!resolvedUri) {
-                                    // Upload pending or URL missing — show a placeholder
                                     return (
                                         <View key={i} style={[styles.attachmentImage, styles.attachmentPlaceholder]}>
                                             <ActivityIndicator color="#90CAF9" size="small" />
@@ -545,13 +528,27 @@ const WorkerChatScreen = ({ navigation, route }) => {
                             {item.message}
                         </Text>
                     ) : null}
-                    <Text style={[styles.timeText, isMe ? styles.sentTime : styles.receivedTime]}>
-                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 2 }}>
+                        <Text style={[styles.timeText, isMe ? styles.sentTime : styles.receivedTime, { marginRight: 4 }]}>
+                            {new Date(item.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        {isMe && (
+                            item.pending ? (
+                                <ActivityIndicator size="small" color="#90CAF9" style={{ width: 10, height: 10 }} />
+                            ) : item.failed ? (
+                                <TouchableOpacity onPress={() => retryMessage && retryMessage(item)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                    <MaterialCommunityIcons name="refresh" size={12} color="#DC2626" />
+                                    <Text style={{ fontSize: 9, color: '#DC2626', fontWeight: '800', marginLeft: 2 }}>Retry</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <MaterialCommunityIcons name="check" size={12} color="#90CAF9" />
+                            )
+                        )}
+                    </View>
                 </View>
             </View>
         );
-    }, [user?._id]);
+    }, [user?._id, retryMessage]);
 
     const keyExtractor = useCallback((item, index) => item._id || item.id || index.toString(), []);
 

@@ -1836,7 +1836,63 @@ export const AppProvider = ({ children }) => {
                 const next = { ...prev };
                 updateKeys.forEach(k => {
                     const roomMsgs = prev[k] || [];
-                    next[k] = roomMsgs.filter((m) => String(m._id || m.id) !== tempId);
+                    next[k] = roomMsgs.map((m) => String(m._id || m.id) === tempId ? {
+                        ...m,
+                        pending: false,
+                        failed: true,
+                        retryPayload: payload
+                    } : m);
+                });
+                return next;
+            });
+            return false;
+        }
+    };
+
+    const retryMessage = async (failedMsg) => {
+        if (!failedMsg || !failedMsg.clientMsgId) return false;
+        const tempId = failedMsg.clientMsgId;
+
+        setMessagesByRoom((prev) => {
+            const next = { ...prev };
+            Object.keys(next).forEach(k => {
+                next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? { ...m, pending: true, failed: false } : m);
+            });
+            return next;
+        });
+
+        try {
+            const payload = failedMsg.retryPayload || {
+                message: failedMsg.message || failedMsg.text,
+                attachments: failedMsg.attachments,
+                roomId: failedMsg.roomId,
+                projectId: failedMsg.projectId,
+                clientMsgId: tempId
+            };
+            const res = await api.post('/chat', payload);
+            const savedMsg = res.data;
+            const canonicalId = String(savedMsg._id || savedMsg.id);
+
+            setMessagesByRoom((prev) => {
+                const next = { ...prev };
+                Object.keys(next).forEach(k => {
+                    next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? {
+                        ...m,
+                        ...savedMsg,
+                        _id: canonicalId,
+                        id: canonicalId,
+                        pending: false,
+                        failed: false
+                    } : m);
+                });
+                return next;
+            });
+            return true;
+        } catch (err) {
+            setMessagesByRoom((prev) => {
+                const next = { ...prev };
+                Object.keys(next).forEach(k => {
+                    next[k] = (next[k] || []).map(m => String(m._id || m.id) === tempId ? { ...m, pending: false, failed: true } : m);
                 });
                 return next;
             });
@@ -2070,7 +2126,7 @@ export const AppProvider = ({ children }) => {
             jobs, addJob, updateJob,
             updateEquipment, deleteEquipment,
             issues, setIssues, addIssue,
-            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, fetchMessages, ensureDirectChatRoom, searchHierarchyUsers, loadDirectoryUsers, uploadFile,
+            messages, setMessages, messagesByRoom, setMessagesByRoom, sendMessage, retryMessage, fetchMessages, ensureDirectChatRoom, searchHierarchyUsers, loadDirectoryUsers, uploadFile,
             socketRef,
             rfis, rfiStats, addRFI,
             isClockedIn, isClocking, toggleClock,
