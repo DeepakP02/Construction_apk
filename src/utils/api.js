@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL_CANDIDATES = [
     process.env.EXPO_PUBLIC_API_URL,
     // Local backend - your Mac's LAN IP, backend runs on port 4000
-    // 'http://192.168.1.7:4000',   // ✅ This Mac (LAN IP) - primary local backend
+    // 'http://192.168.1.32:4000',   // ✅ This Mac (LAN IP) - primary local backend
     // 'http://10.0.2.2:4000',      // Android Emulator loopback to host
     // Production fallback (Railway) - used if local is unreachable
     'https://construction-production-b18f.up.railway.app',
